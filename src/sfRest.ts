@@ -23,7 +23,8 @@ import * as vscode from 'vscode';
 
 export class SFRest {
     secret = "";
-    apiVersion = "9.1";
+    clientApiVersion = "9.1";
+    resourceApiVersion = "2018-02-01";
     timeOut = 100;
     maxResults = 100;
     subscriptionId = "";
@@ -40,14 +41,12 @@ export class SFRest {
         clusterHttpEndpoint: string | null = null
     ) {
         if (secret) this.secret = secret;
-        if (apiVersion) this.apiVersion = apiVersion;
-
         if (subscriptionId) this.subscriptionId = subscriptionId;
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 
     }
 
-    public async connect(): Promise<any> {
+    public async azureConnect(): Promise<any> {
         let azureAccount: any | null = null;
         try {
             //await apiUtils.getAzureExtensionApi(context, 'ms-vscode.azure-account','0.0.1').then((api) => {console.log(api);});
@@ -59,14 +58,40 @@ export class SFRest {
 
         }
         catch (error) {
-            vscode.window.showErrorMessage(JSON.stringify(error));
+            this.showError(JSON.stringify(error));
+            return null;
         }
         return azureAccount;
     }
 
+    public clusterConnect(): boolean {
+        // uses cluster server certificate to connect to cluster
+        // todo: get and verify cluster server certificate
+        if (!this.clusterHttpEndpoint) {
+            this.showError("Cluster endpoint not set");
+            return false;
+        }
+        if (!this.secret) {
+            this.showWarning("Cluster secret not set");
+            if (!this.azureConnect()) {
+                this.showError("Azure account not connected");
+                return false;
+            }
+        }
+        return true;
+    }
+
     public getClusters(): any {
-        this.connect();
-        const restQuery = `${this.resourceManagerEndpoint}/subscriptions/${this.subscriptionId}/providers/Microsoft.ServiceFabric/clusters?api-version=2018-02-01`;
+        // uses azure account to enumerate clusters
+        if (!this.secret || !this.subscriptionId) {
+            this.showWarning("Cluster secret or subscription id not set");
+            if (!this.azureConnect()) {
+                this.showError("Azure account not connected");
+                return null;
+            }
+        }
+
+        const restQuery = `${this.resourceManagerEndpoint}/subscriptions/${this.subscriptionId}/providers/Microsoft.ServiceFabric/clusters?api-version=${this.resourceApiVersion}`;
         const result = request(restQuery, {
             method: "GET",
             headers: {
@@ -87,6 +112,28 @@ export class SFRest {
         //    }
         // });
         // return result.toString();
+    }
+
+    public getCluster(): any {
+        // uses cluster server certificate to connect to cluster
+        if (!this.clusterConnect()) {
+            return null;
+        }
+
+        const restQuery = `${this.clientEndpoint}/$/GetClusterHealth?api-version=${this.clientApiVersion}&NodesHealthStateFilter=Default`;
+        this.showInformation(restQuery);
+    }
+
+    private showError(message: string): void {
+        vscode.window.showErrorMessage(message);
+    }
+
+    private showInformation(message: string): void {
+        vscode.window.showInformationMessage(message);
+    }
+
+    private showWarning(message: string): void {
+        vscode.window.showWarningMessage(message);
     }
 
 }
