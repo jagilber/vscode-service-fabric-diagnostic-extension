@@ -55,11 +55,11 @@
 					"name": "File Explorer"
 				},
 				{
-					"id": "testView",
+					"id": "serviceFabricClusterView",
 					"name": "Test View"
 				},
 				{
-					"id": "testViewDragAndDrop",
+					"id": "serviceFabricClusterViewDragAndDrop",
 					"name": "Test View Drag and Drop"
 				}
 			]
@@ -138,11 +138,11 @@
 				"title": "Open File"
 			},
 			{
-				"command": "testView.reveal",
+				"command": "serviceFabricClusterView.reveal",
 				"title": "Test View: Reveal"
 			},
 			{
-				"command": "testView.changeTitle",
+				"command": "serviceFabricClusterView.changeTitle",
 				"title": "Test View: Change Title"
 			}
 		],

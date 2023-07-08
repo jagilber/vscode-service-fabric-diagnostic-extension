@@ -10,6 +10,8 @@
 	},
 	"exclude": [
 		"node_modules",
-		".vscode-test"
+		".vscode-test",
+		"./azure-account.api.d.ts",
+		"./vscode.d.ts"
 	]
 }

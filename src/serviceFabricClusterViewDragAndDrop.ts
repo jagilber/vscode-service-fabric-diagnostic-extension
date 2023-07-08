@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 
-export class TestViewDragAndDrop implements vscode.TreeDataProvider<Node>, vscode.TreeDragAndDropController<Node> {
-	dropMimeTypes = ['application/vnd.code.tree.testViewDragAndDrop'];
+export class serviceFabricClusterViewDragAndDrop implements vscode.TreeDataProvider<Node>, vscode.TreeDragAndDropController<Node> {
+	dropMimeTypes = ['application/vnd.code.tree.serviceFabricClusterViewDragAndDrop'];
 	dragMimeTypes = ['text/uri-list'];
 	private _onDidChangeTreeData: vscode.EventEmitter<(Node | undefined)[] | undefined> = new vscode.EventEmitter<Node[] | undefined>();
 	// We want to use an array as the event type, but the API for this is currently being finalized. Until it's finalized, use any.
@@ -30,7 +30,7 @@ export class TestViewDragAndDrop implements vscode.TreeDataProvider<Node>, vscod
 	private nodes: any = {};
 
 	constructor(context: vscode.ExtensionContext) {
-		const view = vscode.window.createTreeView('testViewDragAndDrop', { treeDataProvider: this, showCollapseAll: true, canSelectMany: true, dragAndDropController: this });
+		const view = vscode.window.createTreeView('serviceFabricClusterViewDragAndDrop', { treeDataProvider: this, showCollapseAll: true, canSelectMany: true, dragAndDropController: this });
 		context.subscriptions.push(view);
 	}
 
@@ -56,7 +56,7 @@ export class TestViewDragAndDrop implements vscode.TreeDataProvider<Node>, vscod
 	// Drag and drop controller
 
 	public async handleDrop(target: Node | undefined, sources: vscode.DataTransfer, token: vscode.CancellationToken): Promise<void> {
-		const transferItem = sources.get('application/vnd.code.tree.testViewDragAndDrop');
+		const transferItem = sources.get('application/vnd.code.tree.serviceFabricClusterViewDragAndDrop');
 		if (!transferItem) {
 			return;
 		}
@@ -73,7 +73,7 @@ export class TestViewDragAndDrop implements vscode.TreeDataProvider<Node>, vscod
 	}
 
 	public async handleDrag(source: Node[], treeDataTransfer: vscode.DataTransfer, token: vscode.CancellationToken): Promise<void> {
-		treeDataTransfer.set('application/vnd.code.tree.testViewDragAndDrop', new vscode.DataTransferItem(source));
+		treeDataTransfer.set('application/vnd.code.tree.serviceFabricClusterViewDragAndDrop', new vscode.DataTransferItem(source));
 	}
 
 	// Helper methods
