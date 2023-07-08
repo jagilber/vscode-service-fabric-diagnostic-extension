@@ -12,6 +12,7 @@
 		"node_modules",
 		".vscode-test",
 		"./azure-account.api.d.ts",
-		"./vscode.d.ts"
+		"./vscode.d.ts",
+		"**/node_modules/@microsoft/vscode-azext-utils/index.d.ts"
 	]
 }

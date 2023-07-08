@@ -1,16 +1,18 @@
-//'use strict';
-// @ts-ignore - no types
+'use strict';
+
 //import { WebSiteManagementClient } from '@azure/arm-appservice';
-// @ts-ignore - no types
-//import { ResourceManagementClient } from '@azure/arm-resources';
-// @ts-ignore - no types
-//import { SubscriptionClient, SubscriptionModels } from '@azure/arm-subscriptions';
-// @ts-ignore - no types
-import type { AzureExtensionApiProvider } from '@microsoft/vscode-azext-utils/api';
-import { commands, ExtensionContext, extensions, QuickPickItem, window } from 'vscode';
 
-import { AzureAccountExtensionApi, AzureSession } from '../azure-account.api'; // Other extensions need to copy this .d.ts to their repository.
+// import { ResourceManagementClient } from '@azure/arm-resources';
+// import { SubscriptionClient } from '@azure/arm-subscriptions';
 
+// import { apiUtils } from '@microsoft/vscode-azext-utils';
+
+//import { commands, ExtensionContext, extensions, QuickPickItem, window } from 'vscode';
+
+//import { AzureAccountExtensionApi, AzureSession } from '../azure-account.api'; // Other extensions need to copy this .d.ts to their repository.
+//const apiUtils = require('@microsoft/vscode-azext-utils');
+//const accountApi = require('../azure-account.api');
+//const vscode = require('vscode');
 import * as vscode from 'vscode';
 import { SFRest } from './sfRest';
 import { DepNodeProvider, Dependency } from './nodeDependencies';
@@ -20,21 +22,15 @@ import { FileExplorer } from './fileExplorer';
 import { serviceFabricClusterViewDragAndDrop } from './serviceFabricClusterViewDragAndDrop';
 import { serviceFabricClusterView } from './serviceFabricClusterView';
 
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
     const rootPath = (vscode.workspace.workspaceFolders && (vscode.workspace.workspaceFolders.length > 0))
         ? vscode.workspace.workspaceFolders[0].uri.fsPath : undefined;
-
-    const azureAccount: AzureAccountExtensionApi = (<AzureExtensionApiProvider>extensions.getExtension('ms-vscode.azure-account')!.exports).getApi('^0.11.5');
-    //const subscriptions = context.subscriptions;
-   // subscriptions.push(commands.registerCommand('azure-account-sample.showSubscriptions', showSubscriptions(azureAccount)));
-    //subscriptions.push(commands.registerCommand('azure-account-sample.showAppServices', showAppServices(azureAccount)));
-    //sfRest.getClusters();
-
+    
 
     // Samples of `window.registerTreeDataProvider`
     const nodeDependenciesProvider = new DepNodeProvider(rootPath);
     vscode.window.registerTreeDataProvider('nodeDependencies', nodeDependenciesProvider);
-//    vscode.commands.registerCommand('nodeDependencies.sfcluster', () => sfRest.getClusters());
+    //    vscode.commands.registerCommand('nodeDependencies.sfcluster', () => sfRest.getClusters());
     vscode.commands.registerCommand('nodeDependencies.refreshEntry', () => nodeDependenciesProvider.refresh());
     vscode.commands.registerCommand('extension.openPackageOnNpm', moduleName => vscode.commands.executeCommand('vscode.open', vscode.Uri.parse(`https://www.npmjs.com/package/${moduleName}`)));
     vscode.commands.registerCommand('nodeDependencies.addEntry', () => vscode.window.showInformationMessage(`Successfully called add entry.`));
@@ -44,7 +40,7 @@ export function activate(context: vscode.ExtensionContext) {
     const jsonOutlineProvider = new JsonOutlineProvider(context);
     vscode.window.registerTreeDataProvider('jsonOutline', jsonOutlineProvider);
     const sfRest = new SFRest(context);
-    vscode.commands.registerCommand('jsonOutline.sfcluster', () => sfRest.getClusters());
+    registerCommand(context, 'jsonOutline.sfClusterTest', () => sfRest.getClusters());
     vscode.commands.registerCommand('jsonOutline.refresh', () => jsonOutlineProvider.refresh());
     vscode.commands.registerCommand('jsonOutline.refreshNode', offset => jsonOutlineProvider.refresh(offset));
     vscode.commands.registerCommand('jsonOutline.renameNode', args => {
@@ -68,6 +64,10 @@ export function activate(context: vscode.ExtensionContext) {
     new serviceFabricClusterView(context);
 
     new serviceFabricClusterViewDragAndDrop(context);
+}
+
+function registerCommand(context: vscode.ExtensionContext, command: string, callback: (...args: any[]) => any, thisArg?: any): void {
+    context.subscriptions.push(vscode.commands.registerCommand(command, callback, thisArg));
 }
 
 // interface SubscriptionItem {
