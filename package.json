@@ -118,12 +118,20 @@
 				"title": "Refresh"
 			},
 			{
-				"command": "jsonOutline.sfClusterTest",
-				"title": "sf cluster test"
-			},
-			{
 				"command": "jsonOutline.renameNode",
 				"title": "Rename"
+			},
+			{
+				"command": "jsonOutline.sfGetClusters",
+				"title": "service fabric: get clusters from subscription"
+			},
+			{
+				"command": "jsonOutline.sfGetCluster",
+				"title": "service fabric: get cluster"
+			},
+			{
+				"command": "jsonOutline.sfSetClusterEndpoint",
+				"title": "service fabric: set cluster endpoint ('https://localhost:19080')"
 			},
 			{
 				"command": "fileExplorer.refreshFile",

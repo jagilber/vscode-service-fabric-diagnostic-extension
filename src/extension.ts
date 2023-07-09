@@ -39,8 +39,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
     const jsonOutlineProvider = new JsonOutlineProvider(context);
     vscode.window.registerTreeDataProvider('jsonOutline', jsonOutlineProvider);
-    const sfRest = new SFRest(context);
-    registerCommand(context, 'jsonOutline.sfClusterTest', () => sfRest.getClusters());
     vscode.commands.registerCommand('jsonOutline.refresh', () => jsonOutlineProvider.refresh());
     vscode.commands.registerCommand('jsonOutline.refreshNode', offset => jsonOutlineProvider.refresh(offset));
     vscode.commands.registerCommand('jsonOutline.renameNode', args => {
@@ -55,6 +53,12 @@ export async function activate(context: vscode.ExtensionContext) {
         }
     });
     vscode.commands.registerCommand('extension.openJsonSelection', range => jsonOutlineProvider.select(range));
+
+    // sf
+    const sfRest = new SFRest(context);
+    registerCommand(context, 'jsonOutline.sfGetClusters', () => sfRest.getClusters());
+    registerCommand(context, 'jsonOutline.sfGetCluster', () => sfRest.getCluster());
+    registerCommand(context, 'jsonOutline.sfSetClusterEndpoint', () => sfRest.promptForClusterEndpoint());
 
     // Samples of `window.createView`
     new FtpExplorer(context);
