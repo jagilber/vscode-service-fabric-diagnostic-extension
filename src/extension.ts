@@ -14,18 +14,19 @@
 //const accountApi = require('../azure-account.api');
 //const vscode = require('vscode');
 import * as vscode from 'vscode';
-import { SFRest } from './sfRest';
+//import { SFRest } from './sfRest';
+import { SFMgr } from './sfMgr';
 import { DepNodeProvider, Dependency } from './nodeDependencies';
 import { JsonOutlineProvider } from './jsonOutline';
 import { FtpExplorer } from './ftpExplorer';
 import { FileExplorer } from './fileExplorer';
-import { serviceFabricClusterViewDragAndDrop } from './serviceFabricClusterViewDragAndDrop';
-import { serviceFabricClusterView } from './serviceFabricClusterView';
+// import { serviceFabricClusterViewDragAndDrop } from './serviceFabricClusterViewDragAndDrop';
+// import { serviceFabricClusterView } from './serviceFabricClusterView';
 
 export async function activate(context: vscode.ExtensionContext) {
     const rootPath = (vscode.workspace.workspaceFolders && (vscode.workspace.workspaceFolders.length > 0))
         ? vscode.workspace.workspaceFolders[0].uri.fsPath : undefined;
-    
+
 
     // Samples of `window.registerTreeDataProvider`
     const nodeDependenciesProvider = new DepNodeProvider(rootPath);
@@ -54,21 +55,23 @@ export async function activate(context: vscode.ExtensionContext) {
     });
     vscode.commands.registerCommand('extension.openJsonSelection', range => jsonOutlineProvider.select(range));
 
-    // sf
-    const sfRest = new SFRest(context);
-    registerCommand(context, 'jsonOutline.sfGetClusters', () => sfRest.getClusters());
-    registerCommand(context, 'jsonOutline.sfGetCluster', () => sfRest.getCluster());
-    registerCommand(context, 'jsonOutline.sfSetClusterEndpoint', () => sfRest.promptForClusterEndpoint());
-    registerCommand(context, 'jsonOutline.sfSetClusterRestCall', () => sfRest.promptForClusterRestCall());
 
     // Samples of `window.createView`
-    new FtpExplorer(context);
-    new FileExplorer(context);
+    //new FtpExplorer(context);
+    //new FileExplorer(context);
 
     // Test View
-    new serviceFabricClusterView(context);
+    // const sfClusterView  = new serviceFabricClusterView(context);
+    // const sfClusterViewDD  = new serviceFabricClusterViewDragAndDrop(context);
 
-    new serviceFabricClusterViewDragAndDrop(context);
+    // sf
+    //const sfRest = new SFRest(context, sfClusterView);
+    const sfMgr = new SFMgr(context);
+    registerCommand(context, 'jsonOutline.sfGetClusters', () => sfMgr.getClusters());
+    registerCommand(context, 'jsonOutline.sfGetCluster', () => sfMgr.getCluster());
+    registerCommand(context, 'jsonOutline.sfSetClusterEndpoint', () => sfMgr.promptForClusterEndpoint());
+    registerCommand(context, 'jsonOutline.sfSetClusterRestCall', () => sfMgr.promptForClusterRestCall());
+
 }
 
 function registerCommand(context: vscode.ExtensionContext, command: string, callback: (...args: any[]) => any, thisArg?: any): void {

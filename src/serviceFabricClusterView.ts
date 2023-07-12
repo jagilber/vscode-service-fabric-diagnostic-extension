@@ -20,26 +20,27 @@ export class serviceFabricClusterView {
 	}
 }
 
-const tree: any = {
-	'a': {
-		'aa': {
-			'aaa': {
-				'aaaa': {
-					'aaaaa': {
-						'aaaaaa': {
+const tree: any = {};
+// const tree: any = {
+// 	'a': {
+// 		'aa': {
+// 			'aaa': {
+// 				'aaaa': {
+// 					'aaaaa': {
+// 						'aaaaaa': {
 
-						}
-					}
-				}
-			}
-		},
-		'ab': {}
-	},
-	'b': {
-		'ba': {},
-		'bb': {}
-	}
-};
+// 						}
+// 					}
+// 				}
+// 			}
+// 		},
+// 		'ab': {}
+// 	},
+// 	'b': {
+// 		'ba': {},
+// 		'bb': {}
+// 	}
+// };
 const nodes: any = {};
 
 function aNodeWithIdTreeDataProvider(): vscode.TreeDataProvider<{ key: string }> {
