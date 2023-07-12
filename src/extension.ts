@@ -59,6 +59,7 @@ export async function activate(context: vscode.ExtensionContext) {
     registerCommand(context, 'jsonOutline.sfGetClusters', () => sfRest.getClusters());
     registerCommand(context, 'jsonOutline.sfGetCluster', () => sfRest.getCluster());
     registerCommand(context, 'jsonOutline.sfSetClusterEndpoint', () => sfRest.promptForClusterEndpoint());
+    registerCommand(context, 'jsonOutline.sfSetClusterRestCall', () => sfRest.promptForClusterRestCall());
 
     // Samples of `window.createView`
     new FtpExplorer(context);

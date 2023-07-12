@@ -134,6 +134,10 @@
 				"title": "service fabric: set cluster endpoint ('https://localhost:19080')"
 			},
 			{
+				"command": "jsonOutline.sfSetClusterRestCall",
+				"title": "service fabric: adhoc REST query ('/$/GetClusterHealth')"
+			},
+			{
 				"command": "fileExplorer.refreshFile",
 				"title": "Refresh"
 			},
