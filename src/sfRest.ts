@@ -119,6 +119,44 @@ export class SFRest {
         return result;
     }
 
+    public createHttpOptions(absolutePath = '', uriParameters: any = this.createUriParameters()): any | tls.ConnectionOptions | RequestOptions {
+        let path = absolutePath + "?";
+        for (const key in uriParameters) {
+            const keyValue = uriParameters[key];
+            if (keyValue && keyValue !== null && keyValue !== undefined && keyValue !== '' && keyValue !== 0) {
+                path += `${key}=${keyValue}&`;
+            }
+        }
+        const parsedUri = url.parse(this.clusterHttpEndpoint!);
+        const httpOptions: tls.ConnectionOptions | RequestOptions = {
+            host: parsedUri!.hostname ? parsedUri.hostname : "localhost",
+            method: "GET",
+            path: path.replace(/(&|\?)$/, ""),
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            port: parsedUri.port ? parseInt(parsedUri.port) : 19080,
+            //timeout: this.timeOut,
+            key: this.key,
+            cert: this.certificate,
+            enableTrace: true,
+            rejectUnauthorized: false
+        };
+        return httpOptions;
+    }
+
+    public createUriParameters(): any {
+        return {
+            //method: "GET",
+            //absolutePath: "",
+            'api-version': this.clientApiVersion,
+            continuationToken: "",
+            nodeStatusFilter: "", // "default",
+            maxResults: 0, //100,
+            timeout: this.timeOut
+        };
+    }
 
     public async getClusters(secret: string | null = null, subscriptionId: string | null = null): Promise<any> {
         // uses azure account to enumerate clusters
@@ -215,20 +253,21 @@ export class SFRest {
                     });
                     response.on('data', (chunk: any) => {
                         //this.debuglog('invokeRestApi:data:' + chunk, debugLevel.info);
+                        SFUtility.outputLog('invokeRequest:data:' + chunk, null, debugLevel.trace);
                         data += chunk;
                     });
                     response.on('end', () => {
                         resolve(data);
                     });
                 }).on('error', (error: any) => {
-                    SFUtility.outputLog('invokeRestApi:error:', error, debugLevel.error);
+                    SFUtility.outputLog('invokeRequest:error:', error, debugLevel.error);
                     SFUtility.outputLog(error);
                 }).on('timeout', () => {
-                    SFUtility.outputLog("Request timed out", null, debugLevel.error);
+                    SFUtility.outputLog("invokeRequest:Request timed out", null, debugLevel.error);
                 }).on('connect', () => {
-                    SFUtility.outputLog("Request connected");
+                    SFUtility.outputLog("invokeRequest:Request connected");
                 }).on('continue', () => {
-                    SFUtility.outputLog("Request continue");
+                    SFUtility.outputLog("invokeRequest:Request continue");
                     //  }).on('response', (response: any) => {
                     //     this.debuglog('invokeRestApi:response');
                     //     this.debuglog(response);
@@ -284,45 +323,6 @@ export class SFRest {
         catch (error) {
             SFUtility.showError(`invokeRequest:error:${JSON.stringify(error)}`);
         }
-    }
-
-    public createHttpOptions(absolutePath = '', uriParameters: any = this.createUriParameters()): any | tls.ConnectionOptions | RequestOptions {
-        let path = absolutePath + "?";
-        for (const key in uriParameters) {
-            const keyValue = uriParameters[key];
-            if (keyValue && keyValue !== null && keyValue !== undefined && keyValue !== '' && keyValue !== 0) {
-                path += `${key}=${keyValue}&`;
-            }
-        }
-        const parsedUri = url.parse(this.clusterHttpEndpoint!);
-        const httpOptions: tls.ConnectionOptions | RequestOptions = {
-            host: parsedUri!.hostname ? parsedUri.hostname : "localhost",
-            method: "GET",
-            path: path.replace(/(&|\?)$/, ""),
-            headers: {
-                "Content-Type": "application/json",
-                "Accept": "application/json"
-            },
-            port: parsedUri.port ? parseInt(parsedUri.port) : 19080,
-            //timeout: this.timeOut,
-            key: this.key,
-            cert: this.certificate,
-            enableTrace: true,
-            rejectUnauthorized: false
-        };
-        return httpOptions;
-    }
-
-    public createUriParameters(): any {
-        return {
-            //method: "GET",
-            //absolutePath: "",
-            'api-Version': this.clientApiVersion,
-            continuationToken: "",
-            nodeStatusFilter: "", // "default",
-            maxResults: 0, //100,
-            timeout: this.timeOut
-        };
     }
 
     public async invokeRestApi(
