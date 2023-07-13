@@ -1,10 +1,13 @@
 
 import * as xmlConverter from 'xml-js';
+import { SFUtility } from './sfUtility';
 
 export class SFConfiguration {
     public xmlManifest = "";
+    public xmlJson = "";
     private context: any;
     public clusterHttpEndpoint:string|undefined;
+    public clusterName:string|undefined;
 
     constructor(context: any) {
         this.context = context;
@@ -15,9 +18,10 @@ export class SFConfiguration {
     }
 
     public setManifest(xmlManifest: string): void {
-        const xml = xmlConverter.xml2json(xmlManifest, { compact: true, spaces: 4 });
-        // print the name of the root element or error message
-        this.xmlManifest = xml;
+        this.xmlManifest = JSON.parse(xmlManifest).Manifest;
+        SFUtility.outputLog(`xml manifest: \r\n${this.xmlManifest}`);
+        this.xmlJson = xmlConverter.xml2json(this.xmlManifest, { compact: true, spaces: 4 });
+        SFUtility.outputLog(`json manifest: \r\n${this.xmlJson}`);
     }
 
 }

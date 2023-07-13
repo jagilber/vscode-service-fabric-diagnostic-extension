@@ -72,6 +72,7 @@ export class SFUtility {
         try {
             if (level === debugLevel.error) {
                 this.channel.error(message);
+                this.channel.error(JSON.stringify(console.trace(), null, 2));
                 this.showError(message);
             }
             else if (level === debugLevel.warn) {
