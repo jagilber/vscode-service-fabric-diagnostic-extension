@@ -49,6 +49,7 @@ export class SFMgr {
         this.sfRest.getClusterManifest()
             .then((data: any) => {
                 this.sfConfig.setManifest(data);
+                this.getNodes();
             });
     }
 
@@ -72,6 +73,12 @@ export class SFMgr {
             });
     }
 
+    public getNodes(): void {
+        this.sfRest.getNodes()
+            .then((data: any) => {
+                SFUtility.outputLog(data);
+            });
+    }
 
     public async promptForClusterRestCall() {
         const adhocRestCall: string | undefined = await vscode.window.showInputBox({
@@ -81,7 +88,7 @@ export class SFMgr {
 
         if (!adhocRestCall) return;
         if(!this.sfConfig.clusterHttpEndpoint) await this.getClusters();
-        this.sfRest.invokeRestApi("GET", this.sfConfig.clusterHttpEndpoint!, adhocRestCall, null)
+        this.sfRest.invokeRestApi("GET", this.sfConfig.clusterHttpEndpoint!, adhocRestCall)
             .then((data: any) => {
                 SFUtility.outputLog(data);
             });

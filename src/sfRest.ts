@@ -21,14 +21,26 @@ import * as vscode from 'vscode';
 import * as os from 'os';
 import { serviceFabricClusterView } from './serviceFabricClusterView.js';
 import { SFUtility, debugLevel } from './sfUtility.js';
-import { ClientRequest } from 'http';
+import { ClientRequest, RequestOptions } from 'http';
+
+export const enum nodeStatusFilterEnum {
+    default = "default",
+    all = "all",
+    up = "up",
+    down = "down",
+    enabling = "enabling",
+    disabling = "disabling",
+    disabled = "disabled",
+    unknown = "unknown",
+    removed = "removed"
+}
 
 export class SFRest {
     //https://www.npmjs.com/package/keytar
     private extensionContext: vscode.ExtensionContext | undefined;
-    private clientApiVersion = "9.0";
+    private clientApiVersion = "6.3";
     private resourceApiVersion = "2018-02-01";
-    private timeOut = 90000;
+    private timeOut = 9000;
     private maxResults = 100;
     private subscriptionId = "";
     private clusterHttpEndpoint = "https://localhost:19080";
@@ -94,7 +106,7 @@ export class SFRest {
             SFUtility.showError("Cluster endpoint not set");
             return false;
         }
-        await this.invokeRestApi("GET", this.clusterHttpEndpoint!, "$/GetClusterVersion", null)
+        await this.invokeRestApi("GET", this.clusterHttpEndpoint!, "$/GetClusterVersion")
             .then((data: any) => {
                 SFUtility.outputLog(data);
                 result = true;
@@ -170,7 +182,29 @@ export class SFRest {
         return clusterManifest;
     }
 
-    public async invokeRequest(httpOptions: https.RequestOptions | tls.ConnectionOptions): Promise<ClientRequest | string | undefined> {
+    public async getNodes(nodeStatusFilter: nodeStatusFilterEnum = nodeStatusFilterEnum.default): Promise<string | null> {
+        // uses cluster server certificate to connect to cluster
+        let nodes = '';
+        const uriParameters = this.createUriParameters();
+        //uriParameters.maxResults = this.maxResults;
+        //uriParameters.nodeStatusFilter = nodeStatusFilter;
+        const options = this.createHttpOptions("/Nodes", uriParameters);
+
+        await this.invokeRequest(options)
+            .then((data: any) => {
+                SFUtility.outputLog(data);
+                nodes = data;
+            })
+            .catch((error: any) => {
+                SFUtility.outputLog(error);
+                SFUtility.showError("Error invoking rest api");
+                return null;
+            });
+        return nodes;
+    }
+
+    public async invokeRequest(httpOptions: any | https.RequestOptions | tls.ConnectionOptions): Promise<ClientRequest | string | undefined> {
+        SFUtility.outputLog(`invokeRequest:httpOptions:${httpOptions.method} ${httpOptions.host}:${httpOptions.port}${httpOptions.path}`);
         try {
             const promise: Promise<ClientRequest | string> = new Promise<ClientRequest | string>((resolve, reject) => {
                 const result: ClientRequest = https.request(httpOptions, (response) => {
@@ -252,37 +286,66 @@ export class SFRest {
         }
     }
 
+    public createHttpOptions(absolutePath = '', uriParameters: any = this.createUriParameters()): any | tls.ConnectionOptions | RequestOptions {
+        let path = absolutePath + "?";
+        for (const key in uriParameters) {
+            const keyValue = uriParameters[key];
+            if (keyValue && keyValue !== null && keyValue !== undefined && keyValue !== '' && keyValue !== 0) {
+                path += `${key}=${keyValue}&`;
+            }
+        }
+        const parsedUri = url.parse(this.clusterHttpEndpoint!);
+        const httpOptions: tls.ConnectionOptions | RequestOptions = {
+            host: parsedUri!.hostname ? parsedUri.hostname : "localhost",
+            method: "GET",
+            path: path.replace(/(&|\?)$/, ""),
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            port: parsedUri.port ? parseInt(parsedUri.port) : 19080,
+            //timeout: this.timeOut,
+            key: this.key,
+            cert: this.certificate,
+            enableTrace: true,
+            rejectUnauthorized: false
+        };
+        return httpOptions;
+    }
+
+    public createUriParameters(): any {
+        return {
+            //method: "GET",
+            //absolutePath: "",
+            'api-Version': this.clientApiVersion,
+            continuationToken: "",
+            nodeStatusFilter: "", // "default",
+            maxResults: 0, //100,
+            timeout: this.timeOut
+        };
+    }
 
     public async invokeRestApi(
+        //deprecated
         method = "GET",
         uri: string = this.clusterHttpEndpoint!,
-        absolutePath: string | null = null,
-        uriParameters: string | null = null,
+        absolutePath = "",
         body: string | null = null): Promise<ClientRequest | string | undefined> {
 
         try {
 
             const parsedUri = url.parse(uri);
             //parsedUri.query = uriParameters ? JSON.stringify(uriParameters) : null;
-            const restQuery = `/${absolutePath}?api-version=${this.clientApiVersion}&${uriParameters}timeout=${this.timeOut}`;
+            const restQuery = `/${absolutePath}?api-version=${this.clientApiVersion}&timeout=${this.timeOut}`;
             SFUtility.outputLog('restQuery:' + uri + restQuery);
-            const httpOptions: https.RequestOptions | tls.ConnectionOptions = {
-                hostname: parsedUri.hostname,
-                method: method,
-                path: restQuery,
-                headers: {
-                    "Content-Type": "application/json",
-                    "Accept": "application/json"
-                },
-                port: parsedUri.port ? parseInt(parsedUri.port) : 19080,
-                timeout: this.timeOut,
-                key: this.key,
-                cert: this.certificate,
-                enableTrace: true,
-                rejectUnauthorized: false
-            };
 
-            return await this.invokeRequest(httpOptions);
+            const options = this.createHttpOptions(absolutePath);
+            options.method = method;
+            options.host = parsedUri.hostname;
+            options.path = restQuery;
+            options.port = parsedUri.port ? parseInt(parsedUri.port) : 19080;
+
+            return await this.invokeRequest(options);
         }
         catch (error) {
             SFUtility.showError(`invokeRestApi:error:${JSON.stringify(error)}`);
