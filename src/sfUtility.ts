@@ -20,21 +20,6 @@ export class SFUtility {
         SFUtility.createTelemetryClient();
     }
 
-    public static showError(message: string): void {
-        //this.debuglog(message);
-        vscode.window.showErrorMessage(JSON.stringify(message, null, 4));
-    }
-
-    public static showInformation(message: string): void {
-        //this.debuglog(message);
-        vscode.window.showInformationMessage(JSON.stringify(message, null, 4));
-    }
-
-    public static showWarning(message: string): void {
-        //this.debuglog(message);
-        vscode.window.showWarningMessage(JSON.stringify(message, null, 4));
-    }
-
     private static createTelemetryClient(): any {
         // @ts-ignore - telemetry is not yet exposed in the vscode api
         const sender = {
@@ -57,8 +42,10 @@ export class SFUtility {
 
     private static createDebugLogChannel(): void {
         // @ts-ignore - telemetry is not yet exposed in the vscode api
-        this.channel = vscode.window.createOutputChannel("SFRest", { log: true });
-        this.channel.show();
+        if(!this.channel){
+            this.channel = vscode.window.createOutputChannel("SFRest", { log: true });
+        }
+        //this.channel.show();
         return;
     }
 
@@ -70,7 +57,13 @@ export class SFUtility {
         }
 
         try {
-            if (level === debugLevel.error) {
+            if (level === debugLevel.debug) {
+                this.channel.debug(message);
+            }
+            else if (level === debugLevel.trace) {
+                this.channel.trace(message);
+            }
+            else if (level === debugLevel.error) {
                 this.channel.error(message);
                 this.channel.error(JSON.stringify(console.trace(), null, 2));
                 this.showError(message);
@@ -90,6 +83,28 @@ export class SFUtility {
         }
     }
 
+    public static readExtensionConfig(key: string): any {
+        return this.context.globalState.get(key);
+    }
+
+    public static saveExtensionConfig(key: string, value: any): void {
+        this.context.globalState.update(key, value);
+    }
+
+    public static showError(message: string): void {
+        //this.debuglog(message);
+        vscode.window.showErrorMessage(JSON.stringify(message, null, 4));
+    }
+
+    public static showInformation(message: string): void {
+        //this.debuglog(message);
+        vscode.window.showInformationMessage(JSON.stringify(message, null, 4));
+    }
+
+    public static showWarning(message: string): void {
+        //this.debuglog(message);
+        vscode.window.showWarningMessage(JSON.stringify(message, null, 4));
+    }
 }
 
 SFUtility.init();

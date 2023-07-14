@@ -1,4 +1,27 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
+
+/*
+todo: autorest https://github.com/Azure/azure-rest-api-specs/tree/main/specification/servicefabric/data-plane
+https://github.com/MicrosoftDocs/azure-docs-sdk-node/blob/main/docs-ref-services/latest/arm-servicefabric-readme.md
+https://github.com/Azure/azure-sdk-for-js/tree/main/sdk/servicefabric/servicefabric
+https://github.com/Azure/ms-rest-nodeauth/blob/master/migrate-to-identity-v2.md
+https://www.npmjs.com/package/@azure/servicefabric
+
+https://github.com/Azure/autorest
+
+autorest --help
+autorest
+https://github.com/Azure/autorest/blob/main/docs/generate/readme.md
+
+https://github.com/Azure/azure-rest-api-specs
+https://github.com/Azure/azure-rest-api-specs/tree/main/specification/servicefabric
+I:\githubshared\azure\azure-rest-api-specs\specification\servicefabric\data-plane
+autorest --typescript --typescript-sdks-folder=I:\githubshared\jagilber\vscode-service-fabric-diagnostic-extension\src --generate-empty-classes=true
+I:\githubshared\azure\azure-rest-api-specs\specification\servicefabric\resource-manager
+autorest --typescript --typescript-sdks-folder=I:\githubshared\jagilber\vscode-service-fabric-diagnostic-extension\src --azure-arm --generate-empty-classes=true
+
+
+
 // https://learn.microsoft.com/en-us/rest/api/servicefabric/
 //https://code.visualstudio.com/api/get-started/your-first-extension
 //https://learn.microsoft.com/en-us/rest/api/azure/
@@ -10,18 +33,30 @@
 //https://code.visualstudio.com/api/advanced-topics/extension-host
 //https://code.visualstudio.com/api/references/vscode-api
 
+*/
+
 import { ResourceManagementClient } from '@azure/arm-resources';
 import { SubscriptionClient } from '@azure/arm-subscriptions';
 import { apiUtils } from '@microsoft/vscode-azext-utils';
+import * as armServiceFabric from '@azure/arm-servicefabric';
+import * as azureIdentity from '@azure/identity';
+import * as serviceFabric from '@azure/servicefabric';
+
+import { ServiceFabricManagementClient } from './sdk/servicefabric/arm-servicefabric/src/serviceFabricManagementClient';
+import { ServiceFabricClientAPIs } from './sdk/servicefabric/servicefabric/src/serviceFabricClientAPIs';
+
+import {ServiceFabricClientAPIsOptionalParams } from './sdk/servicefabric/servicefabric/src/models';
 
 import * as url from 'url';
 import * as https from 'https';
 import * as tls from 'tls';
 import * as vscode from 'vscode';
 import * as os from 'os';
-import { serviceFabricClusterView } from './serviceFabricClusterView.js';
-import { SFUtility, debugLevel } from './sfUtility.js';
+import { serviceFabricClusterView } from './serviceFabricClusterView';
+import { SFUtility, debugLevel } from './sfUtility';
+import {SfRestClient} from './sfRestClient';
 import { ClientRequest, RequestOptions } from 'http';
+import { ServiceClient } from '@azure/core-client';
 
 export const enum nodeStatusFilterEnum {
     default = "default",
@@ -106,7 +141,7 @@ export class SFRest {
             SFUtility.showError("Cluster endpoint not set");
             return false;
         }
-        await this.invokeRestApi("GET", this.clusterHttpEndpoint!, "$/GetClusterVersion")
+        await this.invokeRestApi("GET", this.clusterHttpEndpoint!, "/$/GetClusterVersion")
             .then((data: any) => {
                 SFUtility.outputLog(data);
                 result = true;
@@ -117,6 +152,62 @@ export class SFRest {
                 result = false;
             });
         return result;
+    }
+
+    public async connectToCluster() {
+        //serviceFabric.ClusterClient.open(this.sfConfig.clusterHttpEndpoint!);
+
+         const optionalParams: ServiceFabricClientAPIsOptionalParams = {
+            $host: this.clusterHttpEndpoint!,
+            apiVersion: this.clientApiVersion,
+            allowInsecureConnection: true,
+            httpClient: new SfRestClient(this)
+            //credentials: credentials
+        };
+
+        // const optionalParams = this.createSfAutoRestHttpOptions();
+        // optionalParams.allowInsecureConnection = true;
+        // optionalParams.apiVersion = this.clientApiVersion;
+        // optionalParams.httpClient = new SfRestClient();
+        
+        const sfApi = new ServiceFabricClientAPIs(optionalParams);
+
+        //const sfApi = new SfApi.ServiceFabricClientAPIs(optionalParams);
+        // const optionalParams = new sfApi.ServiceFabricClientAPIsOptionalParams({
+        //     baseUri: this.sfConfig.clusterHttpEndpoint!,
+        //     //credentials: credentials
+        // });
+        // const sfApi = new ServiceFabricClientAPIs(optionalParams);
+        //SFUtility.outputLog('sfMgr:connectToCluster:sfApi:', sfApi);
+        const clusterHealth = await sfApi.getClusterHealth();
+        SFUtility.outputLog('sfMgr:connectToCluster:clusterHealth:', clusterHealth);
+        const custerVersion = await sfApi.getClusterVersion();
+        SFUtility.outputLog('sfMgr:connectToCluster:custerVersion:', custerVersion);
+        const nodes = await sfApi.getNodeInfoList();
+        SFUtility.outputLog('sfMgr:connectToCluster:nodes:', nodes);
+
+    }
+
+    public createSfAutoRestHttpOptions(uri:string): any | tls.ConnectionOptions | RequestOptions {
+        //const parsedUri = url.parse(this.clusterHttpEndpoint!);
+        const parsedUri = url.parse(uri);
+
+        const httpOptions: tls.ConnectionOptions | RequestOptions = {
+            host: parsedUri!.hostname ? parsedUri.hostname : "localhost",
+            path: parsedUri!.path,
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            port: parsedUri.port ? parseInt(parsedUri.port) : 19080,
+            //timeout: this.timeOut,
+            key: this.key,
+            cert: this.certificate,
+            enableTrace: true,
+            rejectUnauthorized: false
+        };
+        return httpOptions;
     }
 
     public createHttpOptions(absolutePath = '', uriParameters: any = this.createUriParameters()): any | tls.ConnectionOptions | RequestOptions {
@@ -207,7 +298,7 @@ export class SFRest {
             return null;
         }
 
-        await this.invokeRestApi("GET", this.clusterHttpEndpoint!, "$/GetClusterManifest")
+        await this.invokeRestApi("GET", this.clusterHttpEndpoint!, "/$/GetClusterManifest")
             .then((data: any) => {
                 SFUtility.outputLog(data);
                 clusterManifest = data;
@@ -220,54 +311,99 @@ export class SFRest {
         return clusterManifest;
     }
 
+    public async getNode(name: string): Promise<string | null> {
+        // uses cluster server certificate to connect to cluster
+        let node = '';
+        const uriParameters = this.createUriParameters();
+        //uriParameters.maxResults = this.maxResults;
+        //uriParameters.nodeStatusFilter = nodeStatusFilter;
+        const options = this.createHttpOptions(`/Nodes/${name}`, uriParameters);
+
+        await this.invokeRequest(options)
+            .then((data: any) => {
+                SFUtility.outputLog('node:', data);
+                node = data;
+            })
+            .catch((error: any) => {
+                SFUtility.outputLog(error);
+                SFUtility.showError("getNode:error invoking rest api");
+                return null;
+            });
+        return node;
+    }
+
     public async getNodes(nodeStatusFilter: nodeStatusFilterEnum = nodeStatusFilterEnum.default): Promise<string | null> {
         // uses cluster server certificate to connect to cluster
         let nodes = '';
         const uriParameters = this.createUriParameters();
-        //uriParameters.maxResults = this.maxResults;
-        //uriParameters.nodeStatusFilter = nodeStatusFilter;
+        uriParameters.maxResults = this.maxResults;
+        uriParameters.nodeStatusFilter = nodeStatusFilter;
         const options = this.createHttpOptions("/Nodes", uriParameters);
 
         await this.invokeRequest(options)
             .then((data: any) => {
-                SFUtility.outputLog(data);
+                SFUtility.outputLog('nodes:', data);
                 nodes = data;
             })
             .catch((error: any) => {
                 SFUtility.outputLog(error);
-                SFUtility.showError("Error invoking rest api");
+                SFUtility.showError("getNodes:error invoking rest api");
                 return null;
             });
         return nodes;
     }
 
     public async invokeRequest(httpOptions: any | https.RequestOptions | tls.ConnectionOptions): Promise<ClientRequest | string | undefined> {
-        SFUtility.outputLog(`invokeRequest:httpOptions:${httpOptions.method} ${httpOptions.host}:${httpOptions.port}${httpOptions.path}`);
+        SFUtility.outputLog(`invokeRequest:httpOptions:${httpOptions.method} https://${httpOptions.host}:${httpOptions.port}${httpOptions.path}`);
         try {
             const promise: Promise<ClientRequest | string> = new Promise<ClientRequest | string>((resolve, reject) => {
                 const result: ClientRequest = https.request(httpOptions, (response) => {
                     let data = '';
+
                     response.on('error', (error: any) => {
                         SFUtility.outputLog(error, null, debugLevel.error);
                         reject(error);
                     });
+
                     response.on('data', (chunk: any) => {
-                        //this.debuglog('invokeRestApi:data:' + chunk, debugLevel.info);
-                        SFUtility.outputLog('invokeRequest:data:' + chunk, null, debugLevel.trace);
-                        data += chunk;
+                        SFUtility.outputLog(`invokeRequest:response data length:${chunk.length}`, null, debugLevel.info);
+                        const jObject = JSON.parse(chunk);
+
+                        if (jObject.CancellationToken) {
+                            SFUtility.outputLog(`invokeRequest:response CancellationToken:${jObject.CancellationToken}`, null, debugLevel.info);
+                            httpOptions.CancellationToken = jObject.CancellationToken;
+                            data += this.invokeRequest(httpOptions);
+                        }
+                        else {
+                            httpOptions.CancellationToken = null;
+                        }
+
+                        if (jObject.Items) {
+                            SFUtility.outputLog(`invokeRequest:response Items:${jObject.Items.length}`, null, debugLevel.info);
+                            for (const item of jObject.Items) {
+                                SFUtility.outputLog(`invokeRequest:response Item:`, item, debugLevel.info);
+                                data += item;
+                            }
+                        }
+                        else {
+                            SFUtility.outputLog(`invokeRequest:response Items:0`, null, debugLevel.info);
+                            data += chunk;
+                        }
                     });
+
                     response.on('end', () => {
+                        SFUtility.outputLog('invokeRequest:request end', null, debugLevel.info);
                         resolve(data);
                     });
                 }).on('error', (error: any) => {
-                    SFUtility.outputLog('invokeRequest:error:', error, debugLevel.error);
+                    SFUtility.outputLog('invokeRequest:request error:', error, debugLevel.error);
                     SFUtility.outputLog(error);
                 }).on('timeout', () => {
-                    SFUtility.outputLog("invokeRequest:Request timed out", null, debugLevel.error);
+                    SFUtility.outputLog("invokeRequest:request timed out", null, debugLevel.error);
                 }).on('connect', () => {
-                    SFUtility.outputLog("invokeRequest:Request connected");
+                    SFUtility.outputLog("invokeRequest:request connected");
                 }).on('continue', () => {
-                    SFUtility.outputLog("invokeRequest:Request continue");
+                    SFUtility.outputLog("invokeRequest:request continue");
                     //  }).on('response', (response: any) => {
                     //     this.debuglog('invokeRestApi:response');
                     //     this.debuglog(response);
@@ -336,7 +472,7 @@ export class SFRest {
 
             const parsedUri = url.parse(uri);
             //parsedUri.query = uriParameters ? JSON.stringify(uriParameters) : null;
-            const restQuery = `/${absolutePath}?api-version=${this.clientApiVersion}&timeout=${this.timeOut}`;
+            const restQuery = `${absolutePath}?api-version=${this.clientApiVersion}&timeout=${this.timeOut}`;
             SFUtility.outputLog('restQuery:' + uri + restQuery);
 
             const options = this.createHttpOptions(absolutePath);

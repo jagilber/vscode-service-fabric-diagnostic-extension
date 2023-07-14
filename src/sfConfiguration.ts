@@ -2,6 +2,16 @@
 import * as xmlConverter from 'xml-js';
 import { SFUtility } from './sfUtility';
 
+type nodeTypes = {
+    nodeType: {
+        nodes: {
+            node: {
+                name: string;
+            }
+        }
+    }
+};
+
 export class SFConfiguration {
     public xmlManifest = "";
     public jsonManifest = "";
@@ -9,11 +19,14 @@ export class SFConfiguration {
     private context: any;
     public clusterHttpEndpoint:string|undefined;
     public clusterName:string|undefined;
-    public nodeTypes: any = {};
 
 
     constructor(context: any) {
         this.context = context;
+    }
+
+    public addNode(node: any) {
+      //  this.nodes.push(node);
     }
 
     public getManifest(): string {
@@ -31,7 +44,7 @@ export class SFConfiguration {
     }
 
     public setNodeType(nodeType: string, nodeTypeName: string): void {
-        this.nodeTypes[nodeType] = nodeTypeName;
+      //  this.nodeTypes[nodeType] = nodeTypeName;
     }
     
 

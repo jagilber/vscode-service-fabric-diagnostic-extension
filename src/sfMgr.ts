@@ -4,12 +4,18 @@ import * as SFConfiguration from './sfConfiguration.js';
 import * as SFRest from './sfRest.js';
 import { serviceFabricClusterViewDragAndDrop } from './serviceFabricClusterViewDragAndDrop.js';
 import { serviceFabricClusterView } from './serviceFabricClusterView.js';
-import { SFUtility} from './sfUtility.js';
-import * as xmlConverter from 'xml-js';
+import { SFUtility } from './sfUtility.js';
+import * as armServiceFabric from '@azure/arm-servicefabric';
 
+
+import * as serviceFabric from '@azure/servicefabric';
+import { ClientSecretCredential } from "@azure/identity";
+//import * as SfApi from './sdk/servicefabric/servicefabric/src/serviceFabricClientAPIs.js';
+import { ServiceFabricManagementClient } from './sdk/servicefabric/arm-servicefabric/src/serviceFabricManagementClient.js';
+import { ServiceFabricClientAPIs } from './sdk/servicefabric/servicefabric/src/serviceFabricClientAPIs.js';
 
 export class SFMgr {
-    private secret = "";
+    private clientSecret = "";
     private key = "";
     private certificate = "";
     private subscriptionId = "";
@@ -19,17 +25,22 @@ export class SFMgr {
     private sfRest: SFRest.SFRest;
     private sfConfig: SFConfiguration.SFConfiguration;
     public sfClusters: any[] = [];
+    private clientApiVersion = "6.3";
+    private resourceApiVersion = "2018-02-01";
+    private timeOut = 9000;
+    private maxResults = 100;
+
 
     constructor(context: any) {
         this.context = context;
-        this.sfClusterView  = new serviceFabricClusterView(context);
-        this.sfClusterViewDD  = new serviceFabricClusterViewDragAndDrop(context);
+        this.sfClusterView = new serviceFabricClusterView(context);
+        this.sfClusterViewDD = new serviceFabricClusterViewDragAndDrop(context);
         this.sfRest = new SFRest.SFRest(context);
         this.sfConfig = new SFConfiguration.SFConfiguration(context);
 
         context.secrets.get("sfRestSecret").then((value: string | undefined) => {
             if (value) {
-                this.secret = value;
+                this.clientSecret = value;
             }
         });
         context.secrets.get("sfRestKey").then((value: any) => {
@@ -43,9 +54,16 @@ export class SFMgr {
             }
         });
 
+        //todo: https://github.com/Azure/azure-sdk-for-js/blob/main/documentation/MIGRATION-guide-for-next-generation-management-libraries.md
+        // const credentials = new ClientSecretCredential(tenantId, clientId, this.clientSecret);
+
     }
 
-    public getCluster() {
+    public async getCluster() {
+        //test
+        return await this.sfRest.connectToCluster();
+        //end test
+
         this.sfRest.getClusterManifest()
             .then((data: any) => {
                 this.sfConfig.setManifest(data);
@@ -55,7 +73,7 @@ export class SFMgr {
 
     public getClusters(): any {
         // uses azure account to enumerate clusters
-        if (!this.sfConfig.clusterHttpEndpoint && !this.secret || !this.subscriptionId) {
+        if (!this.sfConfig.clusterHttpEndpoint && !this.clientSecret || !this.subscriptionId) {
             SFUtility.showWarning("Cluster secret or subscription id not set");
             if (!this.sfRest.azureConnect()) {
                 SFUtility.showError("Azure account not connected");
@@ -76,7 +94,12 @@ export class SFMgr {
     public getNodes(): void {
         this.sfRest.getNodes()
             .then((data: any) => {
-                SFUtility.outputLog(data);
+                SFUtility.outputLog('sfMgr:getNodes:response:', data);
+                //const jObject = JSON.parse(data);
+                for (const node of data) {
+                    SFUtility.outputLog('sfMgr:getNodes:node:', node);
+                    this.sfConfig.addNode(node);
+                }
             });
     }
 
@@ -86,8 +109,8 @@ export class SFMgr {
             placeHolder: "/$/GetClusterHealth"
         });
 
-        if (!adhocRestCall) return;
-        if(!this.sfConfig.clusterHttpEndpoint) await this.getClusters();
+        if (!adhocRestCall) { return; }
+        if (!this.sfConfig.clusterHttpEndpoint) await this.getClusters();
         this.sfRest.invokeRestApi("GET", this.sfConfig.clusterHttpEndpoint!, adhocRestCall)
             .then((data: any) => {
                 SFUtility.outputLog(data);

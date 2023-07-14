@@ -242,7 +242,12 @@
 	},
 	"dependencies": {
 		"@azure/arm-resources": "^5.2.0",
+		"@azure/arm-servicefabric": "^2.1.0",
 		"@azure/arm-subscriptions": "^5.1.0",
+		"@azure/core-client": "^1.7.3",
+		"@azure/core-rest-pipeline": "^1.11.0",
+		"@azure/identity": "^3.2.3",
+		"@azure/servicefabric": "^5.0.0",
 		"@microsoft/vscode-azext-utils": "^2.0.1",
 		"ftp": "^0.3.10",
 		"jsonc-parser": "^0.4.2",
