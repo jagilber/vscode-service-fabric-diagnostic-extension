@@ -20,6 +20,7 @@ import { SFUtility, debugLevel } from './sfUtility';
 import { SFRest } from './sfRest';
 import { ClientRequest, RequestOptions } from 'http';
 import { ServiceClient } from '@azure/core-client';
+import { inherits } from 'util';
 
 
 export class SfRestClient {
@@ -47,8 +48,26 @@ export class SfRestClient {
         //return await this.pipeline.sendRequest(request);
         //const options = this.sfRest?.createHttpOptions(request.url.replace('http://', 'https://'));
         const options = this.sfRest?.createSfAutoRestHttpOptions(request.url.replace('http://', 'https://'));
-        return new Promise((request, resolve) => {
-            this.invokeRequest(options);
+        return new Promise<PipelineResponse>((resolve,reject) => {
+            this.invokeRequest(options)
+                .then((response: any) => {
+                    SFUtility.outputLog(`sendRequest:response:${response}`);
+
+                    const pipelineResponse: PipelineResponse = {
+                        request: request,
+                        status: 200,
+                        headers: request.headers,
+                        bodyAsText: response,
+                        //bodyAsJson: JSON.parse(response),
+                        //bodyAsByteArray: Buffer.from(response),
+                        //body: response
+                    };
+                    resolve(pipelineResponse);
+                }
+                ).catch((error: any) => {
+                    SFUtility.outputLog(`sendRequest:error:${error}`);
+                    resolve(error);
+                });
         });
     }
 
@@ -78,28 +97,28 @@ export class SfRestClient {
 
                     response.on('data', (chunk: any) => {
                         SFUtility.outputLog(`invokeRequest:response data length:${chunk.length}`, null, debugLevel.info);
-                        const jObject = JSON.parse(chunk);
+                        // const jObject = JSON.parse(chunk);
 
-                        if (jObject.CancellationToken) {
-                            SFUtility.outputLog(`invokeRequest:response CancellationToken:${jObject.CancellationToken}`, null, debugLevel.info);
-                            httpOptions.CancellationToken = jObject.CancellationToken;
-                            data += this.invokeRequest(httpOptions);
-                        }
-                        else {
-                            httpOptions.CancellationToken = null;
-                        }
+                        // if (jObject.CancellationToken) {
+                        //     SFUtility.outputLog(`invokeRequest:response CancellationToken:${jObject.CancellationToken}`, null, debugLevel.info);
+                        //     httpOptions.CancellationToken = jObject.CancellationToken;
+                        //     data += this.invokeRequest(httpOptions);
+                        // }
+                        // else {
+                        //     httpOptions.CancellationToken = null;
+                        // }
 
-                        if (jObject.Items) {
-                            SFUtility.outputLog(`invokeRequest:response Items:${jObject.Items.length}`, null, debugLevel.info);
-                            for (const item of jObject.Items) {
-                                SFUtility.outputLog(`invokeRequest:response Item:`, item, debugLevel.info);
-                                data += item;
-                            }
-                        }
-                        else {
-                            SFUtility.outputLog(`invokeRequest:response Items:0`, null, debugLevel.info);
+                        // if (jObject.Items) {
+                        //     SFUtility.outputLog(`invokeRequest:response Items:${jObject.Items.length}`, null, debugLevel.info);
+                        //     for (const item of jObject.Items) {
+                        //         SFUtility.outputLog(`invokeRequest:response Item:`, item, debugLevel.info);
+                        //         data += item;
+                        //     }
+                        // }
+                        // else {
+                        //     SFUtility.outputLog(`invokeRequest:response Items:0`, null, debugLevel.info);
                             data += chunk;
-                        }
+                        // }
                     });
 
                     response.on('end', () => {
