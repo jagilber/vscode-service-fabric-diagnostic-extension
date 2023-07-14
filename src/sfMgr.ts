@@ -1,18 +1,20 @@
 
 import * as vscode from 'vscode';
-import * as SFConfiguration from './sfConfiguration.js';
-import * as SFRest from './sfRest.js';
-import { serviceFabricClusterViewDragAndDrop } from './serviceFabricClusterViewDragAndDrop.js';
-import { serviceFabricClusterView } from './serviceFabricClusterView.js';
-import { SFUtility } from './sfUtility.js';
+import * as SFConfiguration from './sfConfiguration';
+import * as SFRest from './sfRest';
+import { serviceFabricClusterViewDragAndDrop } from './serviceFabricClusterViewDragAndDrop';
+import { serviceFabricClusterView, TreeItem } from './serviceFabricClusterView';
+import { SFUtility } from './sfUtility';
 import * as armServiceFabric from '@azure/arm-servicefabric';
 
 
 import * as serviceFabric from '@azure/servicefabric';
 import { ClientSecretCredential } from "@azure/identity";
-//import * as SfApi from './sdk/servicefabric/servicefabric/src/serviceFabricClientAPIs.js';
-import { ServiceFabricManagementClient } from './sdk/servicefabric/arm-servicefabric/src/serviceFabricManagementClient.js';
-import { ServiceFabricClientAPIs } from './sdk/servicefabric/servicefabric/src/serviceFabricClientAPIs.js';
+
+//import * as SfApi from './sdk/servicefabric/servicefabric/src/serviceFabricClientAPIs';
+import * as sfModels from './sdk/servicefabric/servicefabric/src/models';
+import { ServiceFabricManagementClient } from './sdk/servicefabric/arm-servicefabric/src/serviceFabricManagementClient';
+import { ServiceFabricClientAPIs } from './sdk/servicefabric/servicefabric/src/serviceFabricClientAPIs';
 
 export class SFMgr {
     private clientSecret = "";
@@ -23,6 +25,7 @@ export class SFMgr {
     public sfClusterView: serviceFabricClusterView;
     public sfClusterViewDD: serviceFabricClusterViewDragAndDrop;
     private sfRest: SFRest.SFRest;
+    private sfConfigs: Array<SFConfiguration.SFConfiguration> = [];
     private sfConfig: SFConfiguration.SFConfiguration;
     public sfClusters: any[] = [];
     private clientApiVersion = "6.3";
@@ -36,7 +39,6 @@ export class SFMgr {
         this.sfClusterView = new serviceFabricClusterView(context);
         this.sfClusterViewDD = new serviceFabricClusterViewDragAndDrop(context);
         this.sfRest = new SFRest.SFRest(context);
-        this.sfConfig = new SFConfiguration.SFConfiguration(context);
 
         context.secrets.get("sfRestSecret").then((value: string | undefined) => {
             if (value) {
@@ -53,22 +55,41 @@ export class SFMgr {
                 this.certificate = value;
             }
         });
-
+        
+        this.sfConfig = new SFConfiguration.SFConfiguration(this.context);
         //todo: https://github.com/Azure/azure-sdk-for-js/blob/main/documentation/MIGRATION-guide-for-next-generation-management-libraries.md
         // const credentials = new ClientSecretCredential(tenantId, clientId, this.clientSecret);
 
     }
 
     public async getCluster() {
-        //test
-        return await this.sfRest.connectToCluster();
-        //end test
+        await this.sfRest.connectToCluster();
 
-        this.sfRest.getClusterManifest()
-            .then((data: any) => {
+        await this.sfRest.getClusterManifest().then((data: any) => {
+                SFUtility.outputLog('sfMgr:getCluster:response:', data);
+                this.sfConfig = new SFConfiguration.SFConfiguration(this.context);
                 this.sfConfig.setManifest(data);
-                this.getNodes();
+                this.getNodes().then((nodes: sfModels.NodeInfo[]) => {
+                    nodes.forEach((node: sfModels.NodeInfo) => {
+                        this.sfConfig.addNode(node);
+                    });
+                    this.addSfConfig(this.sfConfig);
+                    this.sfClusterView.addTreeItem(new TreeItem(this.sfConfig.clusterName!, this.sfConfig.nodes, this.sfConfig));
+                });
             });
+    }
+
+    private addSfConfig(sfConfig: SFConfiguration.SFConfiguration) {
+        if (!this.sfConfigs.find((config: SFConfiguration.SFConfiguration) => config.clusterHttpEndpoint === sfConfig.clusterHttpEndpoint)) {
+            this.sfConfigs.push(sfConfig);
+        }
+    }
+
+    public removeSfConfig(sfConfig: SFConfiguration.SFConfiguration) {
+        const index = this.sfConfigs.findIndex((config: SFConfiguration.SFConfiguration) => config.clusterHttpEndpoint === sfConfig.clusterHttpEndpoint);
+        if (index > -1) {
+            this.sfConfigs.splice(index, 1);
+        }
     }
 
     public getClusters(): any {
@@ -84,23 +105,23 @@ export class SFMgr {
             .then((data: any) => {
                 for (const cluster of data) {
                     this.sfClusters.push(cluster);
+                    //todo test
+                    this.addSfConfig(new SFConfiguration.SFConfiguration(this.context));
                 }
-                //todo handle multiple clusters
-                this.sfConfig.clusterHttpEndpoint = this.sfClusters[0].httpGatewayEndpoint;
-                //this.sfClusterView.refresh();
             });
     }
 
-    public getNodes(): void {
-        this.sfRest.getNodes()
-            .then((data: any) => {
-                SFUtility.outputLog('sfMgr:getNodes:response:', data);
-                //const jObject = JSON.parse(data);
-                for (const node of data) {
-                    SFUtility.outputLog('sfMgr:getNodes:node:', node);
-                    this.sfConfig.addNode(node);
-                }
-            });
+    public async getNodes(): Promise<sfModels.NodeInfo[]> {
+        const nodeList = await this.sfRest.getNodes();
+        return nodeList;
+        // await this.sfRest.getNodes().then((data: any) => {
+        //         SFUtility.outputLog('sfMgr:getNodes:response:', data);
+        //         //const jObject = JSON.parse(data);
+        //         for (const node of data) {
+        //             SFUtility.outputLog('sfMgr:getNodes:node:', node);
+        //             this.sfConfig.addNode(node);
+        //         }
+        //     });
     }
 
     public async promptForClusterRestCall() {

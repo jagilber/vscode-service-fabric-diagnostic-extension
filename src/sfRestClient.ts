@@ -9,6 +9,7 @@ import { OperationArguments, OperationSpec } from '@azure/core-client';
 
 import { ServiceFabricManagementClient } from './sdk/servicefabric/arm-servicefabric/src/serviceFabricManagementClient';
 import { ServiceFabricClientAPIs } from './sdk/servicefabric/servicefabric/src/serviceFabricClientAPIs';
+import * as sfModels from './sdk/servicefabric/servicefabric/src/models';
 
 import * as url from 'url';
 import * as https from 'https';
@@ -48,7 +49,7 @@ export class SfRestClient {
         //return await this.pipeline.sendRequest(request);
         //const options = this.sfRest?.createHttpOptions(request.url.replace('http://', 'https://'));
         const options = this.sfRest?.createSfAutoRestHttpOptions(request.url.replace('http://', 'https://'));
-        return new Promise<PipelineResponse>((resolve,reject) => {
+        return new Promise<PipelineResponse>((resolve, reject) => {
             this.invokeRequest(options)
                 .then((response: any) => {
                     SFUtility.outputLog(`sendRequest:response:${response}`);
@@ -117,7 +118,7 @@ export class SfRestClient {
                         // }
                         // else {
                         //     SFUtility.outputLog(`invokeRequest:response Items:0`, null, debugLevel.info);
-                            data += chunk;
+                        data += chunk;
                         // }
                     });
 
@@ -131,55 +132,56 @@ export class SfRestClient {
                     SFUtility.outputLog(error);
                 }).on('timeout', () => {
                     SFUtility.outputLog("invokeRequest:request timed out", null, debugLevel.error);
-                }).on('connect', () => {
-                    SFUtility.outputLog("invokeRequest:request connected");
+                }).on('connect', (connect: any) => {
+                    SFUtility.outputLog("invokeRequest:request connected", connect);
+                // }).on('socket', (socket: any) => {
+                //     SFUtility.outputLog("invokeRequest:request socket", socket);
+                }).on('response', (response: any, socket: any, head: Buffer) => {
+                    SFUtility.outputLog(`invokeRequest:response status code:${response.statusCode}`, response);
+                    switch (response.statusCode) {
+                        case 200:
+                            SFUtility.outputLog("Request succeeded");
+                            break;
+                        case 201:
+                            SFUtility.outputLog("Request created");
+                            break;
+                        case 202:
+                            SFUtility.outputLog("Request accepted");
+                            break;
+                        case 204:
+                            SFUtility.outputLog("Request no content", null, debugLevel.warn);
+                            break;
+                        case 400:
+                            SFUtility.outputLog("Request bad request", null, debugLevel.error);
+                            break;
+                        case 401:
+                            SFUtility.outputLog("Request unauthorized", null, debugLevel.error);
+                            break;
+                        case 403:
+                            SFUtility.outputLog("Request forbidden", null, debugLevel.error);
+                            break;
+                        case 404:
+                            SFUtility.outputLog("Request not found", null, debugLevel.error);
+                            break;
+                        case 405:
+                            SFUtility.outputLog("Request method not allowed", null, debugLevel.error);
+                            break;
+                        case 409:
+                            SFUtility.outputLog("Request conflict", null, debugLevel.error);
+                            break;
+                        case 412:
+                            SFUtility.outputLog("Request precondition failed");
+                            break;
+                    }
+                    // }).on('data', (data: any) => {
+                    //     SFUtility.outputLog('invokeRestApi:data');
+                    //     SFUtility.outputLog(data);
+                }).on('finish', () => {
+                    SFUtility.outputLog("Request ended");
+                }).on('close', () => {
+                    SFUtility.outputLog("Request closed");
                 }).on('continue', () => {
                     SFUtility.outputLog("invokeRequest:request continue");
-                    //  }).on('response', (response: any) => {
-                    //     this.debuglog('invokeRestApi:response');
-                    //     this.debuglog(response);
-                    //     switch (response.statusCode) {
-                    //         case 200:
-                    //             this.debuglog("Request succeeded");
-                    //             break;
-                    //         case 201:
-                    //             this.debuglog("Request created");
-                    //             break;
-                    //         case 202:
-                    //             this.debuglog("Request accepted");
-                    //             break;
-                    //         case 204:
-                    //             this.debuglog("Request no content", debugLevel.warn);
-                    //             break;
-                    //         case 400:
-                    //             this.debuglog("Request bad request", debugLevel.error);
-                    //             break;
-                    //         case 401:
-                    //             this.debuglog("Request unauthorized", debugLevel.error);
-                    //             break;
-                    //         case 403:
-                    //             this.debuglog("Request forbidden", debugLevel.error);
-                    //             break;
-                    //         case 404:
-                    //             this.debuglog("Request not found", debugLevel.error);
-                    //             break;
-                    //         case 405:
-                    //             this.debuglog("Request method not allowed", debugLevel.error);
-                    //             break;
-                    //         case 409:
-                    //             this.debuglog("Request conflict", debugLevel.error);
-                    //             break;
-                    //         case 412:
-                    //             this.debuglog("Request precondition failed");
-                    //             break;
-                    //     }
-                    // // }).on('data', (data: any) => {
-                    // //     this.debuglog('invokeRestApi:data');
-                    // //     this.debuglog(data);
-                    //  }).on('finish', () => {
-                    //     this.debuglog("Request ended");
-                    // }).on('close', () => {
-                    //     this.debuglog("Request closed");
                 });
 
 

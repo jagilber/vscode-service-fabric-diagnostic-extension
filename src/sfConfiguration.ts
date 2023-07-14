@@ -17,8 +17,9 @@ export class SFConfiguration {
     public jsonManifest = "";
     public jObjectManifest: any;
     private context: any;
-    public clusterHttpEndpoint:string|undefined;
-    public clusterName:string|undefined;
+    public clusterHttpEndpoint?:string;
+    public clusterName?:string;
+    public nodes: any = [];
 
 
     constructor(context: any) {
@@ -26,15 +27,15 @@ export class SFConfiguration {
     }
 
     public addNode(node: any) {
-      //  this.nodes.push(node);
+        this.nodes.push(node);
     }
 
     public getManifest(): string {
         return this.xmlManifest;
     }
 
-    public setManifest(xmlManifest: string): void {
-        this.xmlManifest = JSON.parse(xmlManifest).Manifest;
+    public setManifest(xmlManifest: any|string): void {
+        this.xmlManifest = xmlManifest.manifest; //JSON.parse(xmlManifest).Manifest;
         SFUtility.outputLog(`xml manifest: \r\n${this.xmlManifest}`);
 
         this.jsonManifest = xmlConverter.xml2json(this.xmlManifest, { compact: true, spaces: 4 });

@@ -52,8 +52,13 @@ export class SFUtility {
     public static outputLog(message: string, messageObject: object | null = null, level: debugLevel = debugLevel.info): void {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         //console.log("SFRest:debuglog:" + message);
-        if (messageObject) {
-            message += JSON.stringify(messageObject, null, 2);
+        try{
+            if (messageObject) {
+                message += JSON.stringify(messageObject, null, 2);
+            }    
+        }
+        catch(error){
+            //this.channel.error(JSON.stringify(error, null, 2));
         }
 
         try {

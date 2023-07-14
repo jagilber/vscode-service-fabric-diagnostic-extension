@@ -45,7 +45,7 @@ import * as serviceFabric from '@azure/servicefabric';
 import { ServiceFabricManagementClient } from './sdk/servicefabric/arm-servicefabric/src/serviceFabricManagementClient';
 import { ServiceFabricClientAPIs } from './sdk/servicefabric/servicefabric/src/serviceFabricClientAPIs';
 
-import {ServiceFabricClientAPIsOptionalParams } from './sdk/servicefabric/servicefabric/src/models';
+import * as sfModels from './sdk/servicefabric/servicefabric/src/models';
 
 import * as url from 'url';
 import * as https from 'https';
@@ -53,22 +53,12 @@ import * as tls from 'tls';
 import * as vscode from 'vscode';
 import * as os from 'os';
 import { serviceFabricClusterView } from './serviceFabricClusterView';
+import * as SFConfiguration from './sfConfiguration';
 import { SFUtility, debugLevel } from './sfUtility';
-import {SfRestClient} from './sfRestClient';
+import { SfRestClient } from './sfRestClient';
 import { ClientRequest, RequestOptions } from 'http';
 import { ServiceClient } from '@azure/core-client';
-
-export const enum nodeStatusFilterEnum {
-    default = "default",
-    all = "all",
-    up = "up",
-    down = "down",
-    enabling = "enabling",
-    disabling = "disabling",
-    disabled = "disabled",
-    unknown = "unknown",
-    removed = "removed"
-}
+import { DeactivationIntentDescription } from '@azure/servicefabric/esm/models/mappers';
 
 export class SFRest {
     //https://www.npmjs.com/package/keytar
@@ -87,6 +77,7 @@ export class SFRest {
     private channel: vscode.LogOutputChannel;
     private clusterView: serviceFabricClusterView | null = null;
     private resourceManagerEndpoint = "https://management.azure.com";
+    private sfApi: ServiceFabricClientAPIs;
 
     constructor(
         context: vscode.ExtensionContext,
@@ -105,6 +96,8 @@ export class SFRest {
                 this.certificate = value;
             }
         });
+
+        this.sfApi = this.initializeClusterConnection();
     }
 
     public async azureConnect(secret: string | null = null): Promise<any> {
@@ -133,31 +126,37 @@ export class SFRest {
         return azureAccount;
     }
 
-    public async clusterConnect(): Promise<boolean> {
-        // uses cluster server certificate to connect to cluster
-        // todo: get and verify cluster server certificate
-        let result = false;
-        if (!this.clusterHttpEndpoint) {
-            SFUtility.showError("Cluster endpoint not set");
-            return false;
+    // public async clusterConnect(): Promise<boolean> {
+    //     // uses cluster server certificate to connect to cluster
+    //     // todo: get and verify cluster server certificate
+    //     let result = false;
+    //     if (!this.clusterHttpEndpoint) {
+    //         SFUtility.showError("Cluster endpoint not set");
+    //         return false;
+    //     }
+    //     await this.invokeRestApi("GET", this.clusterHttpEndpoint!, "/$/GetClusterVersion")
+    //         .then((data: any) => {
+    //             SFUtility.outputLog(data);
+    //             result = true;
+    //         })
+    //         .catch((error: any) => {
+    //             SFUtility.outputLog(error);
+    //             SFUtility.showError("Error invoking rest api");
+    //             result = false;
+    //         });
+    //     return result;
+    // }
+
+    private initializeClusterConnection(endpoint = ''): ServiceFabricClientAPIs {
+        if (endpoint) {
+            this.clusterHttpEndpoint = endpoint;
         }
-        await this.invokeRestApi("GET", this.clusterHttpEndpoint!, "/$/GetClusterVersion")
-            .then((data: any) => {
-                SFUtility.outputLog(data);
-                result = true;
-            })
-            .catch((error: any) => {
-                SFUtility.outputLog(error);
-                SFUtility.showError("Error invoking rest api");
-                result = false;
-            });
-        return result;
-    }
-
-    public async connectToCluster() {
-        //serviceFabric.ClusterClient.open(this.sfConfig.clusterHttpEndpoint!);
-
-         const optionalParams: ServiceFabricClientAPIsOptionalParams = {
+        SFUtility.outputLog('sfMgr:initializeClusterConnection:clusterHttpEndpoint:' + this.clusterHttpEndpoint);
+        if(!this.clusterHttpEndpoint){
+            SFUtility.showWarning("Cluster endpoint not set");
+            //return null;
+        }
+        const optionalParams: sfModels.ServiceFabricClientAPIsOptionalParams = {
             $host: this.clusterHttpEndpoint!,
             apiVersion: this.clientApiVersion,
             allowInsecureConnection: true,
@@ -165,30 +164,19 @@ export class SFRest {
             //credentials: credentials
         };
 
-        // const optionalParams = this.createSfAutoRestHttpOptions();
-        // optionalParams.allowInsecureConnection = true;
-        // optionalParams.apiVersion = this.clientApiVersion;
-        // optionalParams.httpClient = new SfRestClient();
-        
-        const sfApi = new ServiceFabricClientAPIs(optionalParams);
-
-        //const sfApi = new SfApi.ServiceFabricClientAPIs(optionalParams);
-        // const optionalParams = new sfApi.ServiceFabricClientAPIsOptionalParams({
-        //     baseUri: this.sfConfig.clusterHttpEndpoint!,
-        //     //credentials: credentials
-        // });
-        // const sfApi = new ServiceFabricClientAPIs(optionalParams);
-        //SFUtility.outputLog('sfMgr:connectToCluster:sfApi:', sfApi);
-        const clusterHealth = await sfApi.getClusterHealth();
-        SFUtility.outputLog('sfMgr:connectToCluster:clusterHealth:', clusterHealth);
-        const custerVersion = await sfApi.getClusterVersion();
-        SFUtility.outputLog('sfMgr:connectToCluster:custerVersion:', custerVersion);
-        const nodes = await sfApi.getNodeInfoList();
-        SFUtility.outputLog('sfMgr:connectToCluster:nodes:', nodes);
-
+        this.sfApi = new ServiceFabricClientAPIs(optionalParams);
+        return this.sfApi;
     }
 
-    public createSfAutoRestHttpOptions(uri:string): any | tls.ConnectionOptions | RequestOptions {
+    public async connectToCluster(endpoint = ''): Promise<any> {
+        if (!this.sfApi || (endpoint && this.clusterHttpEndpoint !== endpoint)) {
+            this.initializeClusterConnection(endpoint);
+        }
+
+        await this.getClusterVersion();
+    }
+
+    public createSfAutoRestHttpOptions(uri: string): any | tls.ConnectionOptions | RequestOptions {
         //const parsedUri = url.parse(this.clusterHttpEndpoint!);
         const parsedUri = url.parse(uri);
 
@@ -249,108 +237,142 @@ export class SFRest {
         };
     }
 
-    public async getClusters(secret: string | null = null, subscriptionId: string | null = null): Promise<any> {
-        // uses azure account to enumerate clusters
-        return new Promise<any>((resolve, reject) => {
-            if (!secret || !subscriptionId) {
-                //vscode.commands.executeCommand('azure-account.selectSubscriptions', { allowChanging: true, showCreatingTreeItem: true });
-                SFUtility.showWarning("Cluster secret or subscription id not set");
-                if (!this.azureConnect()) {
-                    SFUtility.showError("Azure account not connected");
-                    return null;
-                }
-            }
+    public async disableNode(nodeName: string, description: sfModels.DeactivationIntentDescription): Promise<any> {
+        await this.sfApi.disableNode(nodeName, description);
 
-            const httpOptions: https.RequestOptions | tls.ConnectionOptions = {
-                hostname: "management.azure.com",
-                method: "GET",
-                path: `/subscriptions/${subscriptionId}/providers/Microsoft.ServiceFabric/clusters?api-version=${this.resourceApiVersion}`,
-                headers: {
-                    "Content-Type": "application/json",
-                    "Accept": "application/json"
-                },
-                port: 443,
-                timeout: this.timeOut,
-                // key: this.key,
-                // cert: this.certificate,
-                // enableTrace: true,
-                rejectUnauthorized: false
-            };
-
-            this.invokeRequest(httpOptions)
-                .then((data: any) => {
-                    SFUtility.outputLog(data);
-                    resolve(data);
-                })
-                .catch((error: any) => {
-                    SFUtility.outputLog(error);
-                    SFUtility.showError("Error invoking rest api");
-                    reject(error);
-                });
-        });
+        const nodeState = await this.getNode(nodeName);
+        if(nodeState.nodeDeactivationInfo?.nodeDeactivationStatus?.toLowerCase() !== "none") {
+            SFUtility.showInformation(`Node: ${nodeName} is disabled`);
+        }
+        else{
+            SFUtility.showError(`Node: ${nodeName} is not disabled`);
+        }
+        return;
     }
 
-    public async getClusterManifest(): Promise<string | null> {
-        // uses cluster server certificate to connect to cluster
-        let clusterManifest = '';
+    public async enableNode(nodeName: string): Promise<any> {
+        await this.sfApi.enableNode(nodeName);
 
-        if (!this.clusterConnect()) {
-            return null;
+        const nodeState = await this.getNode(nodeName);
+        if(nodeState.nodeDeactivationInfo?.nodeDeactivationStatus?.toLowerCase() === "none") {
+            SFUtility.showInformation(`Node: ${nodeName} is enabled`);
         }
+        else{
+            SFUtility.showError(`Node: ${nodeName} is not enabled`);
+        }
+        return;
+    }
 
-        await this.invokeRestApi("GET", this.clusterHttpEndpoint!, "/$/GetClusterManifest")
-            .then((data: any) => {
-                SFUtility.outputLog(data);
-                clusterManifest = data;
-            })
-            .catch((error: any) => {
-                SFUtility.outputLog(error);
-                SFUtility.showError("Error invoking rest api");
-                return null;
+    public async getApplicationTypes(): Promise<sfModels.ApplicationTypeInfo[]> {
+        const applicationTypes: Array<sfModels.ApplicationTypeInfo> = [];
+        const applicationInfos = await this.sfApi.getApplicationTypeInfoList();
+        SFUtility.outputLog('sfRest:getApplicationTypes:', applicationInfos);
+        //todo: continuation token
+        applicationInfos.items?.forEach((element: any) => {
+            this.sfApi.getApplicationInfo(element.id).then((applicationInfo: any) => {
+                SFUtility.outputLog('sfRest:getApplicationTypes:applicationType:', applicationInfo);
+                applicationTypes.push(element);
             });
+        });
+
+        return applicationTypes;
+    }
+
+    public async getClusterManifest(): Promise<sfModels.GetClusterManifestResponse> {
+        const clusterManifest = await this.sfApi.getClusterManifest();
+        SFUtility.outputLog('sfMgr:connectToCluster:clusterManifest:', clusterManifest);
         return clusterManifest;
     }
 
-    public async getNode(name: string): Promise<string | null> {
-        // uses cluster server certificate to connect to cluster
-        let node = '';
-        const uriParameters = this.createUriParameters();
-        //uriParameters.maxResults = this.maxResults;
-        //uriParameters.nodeStatusFilter = nodeStatusFilter;
-        const options = this.createHttpOptions(`/Nodes/${name}`, uriParameters);
+    public async getClusterHealth(): Promise<sfModels.ClusterHealth> {
+        const clusterHealth = await this.sfApi.getClusterHealth();
+        SFUtility.outputLog('sfMgr:connectToCluster:clusterHealth:', clusterHealth);
+        return clusterHealth;
+    }
 
-        await this.invokeRequest(options)
-            .then((data: any) => {
-                SFUtility.outputLog('node:', data);
-                node = data;
-            })
-            .catch((error: any) => {
-                SFUtility.outputLog(error);
-                SFUtility.showError("getNode:error invoking rest api");
-                return null;
-            });
+    public async getClusterVersion(): Promise<sfModels.ClusterVersion> {
+        const custerVersion = await this.sfApi.getClusterVersion();
+        SFUtility.outputLog('sfMgr:connectToCluster:custerVersion:', custerVersion);
+        return custerVersion;
+    }
+
+    public async getClusters(): Promise<sfModels.GetClusterManifestResponse[]> {
+        return new Promise<sfModels.GetClusterManifestResponse[]>((resolve, reject) => {
+            this.getClusterManifest();
+        });
+        //const clusters = await this.sfApi.getClusterInfoList();
+        // public async getClusters(secret: string | null = null, subscriptionId: string | null = null): Promise<any> {
+        //     // uses azure account to enumerate clusters
+        //     return new Promise<any>((resolve, reject) => {
+        //         if (!secret || !subscriptionId) {
+        //             //vscode.commands.executeCommand('azure-account.selectSubscriptions', { allowChanging: true, showCreatingTreeItem: true });
+        //             SFUtility.showWarning("Cluster secret or subscription id not set");
+        //             if (!this.azureConnect()) {
+        //                 SFUtility.showError("Azure account not connected");
+        //                 return null;
+        //             }
+        //         }
+
+        //         const httpOptions: https.RequestOptions | tls.ConnectionOptions = {
+        //             hostname: "management.azure.com",
+        //             method: "GET",
+        //             path: `/subscriptions/${subscriptionId}/providers/Microsoft.ServiceFabric/clusters?api-version=${this.resourceApiVersion}`,
+        //             headers: {
+        //                 "Content-Type": "application/json",
+        //                 "Accept": "application/json"
+        //             },
+        //             port: 443,
+        //             timeout: this.timeOut,
+        //             // key: this.key,
+        //             // cert: this.certificate,
+        //             // enableTrace: true,
+        //             rejectUnauthorized: false
+        //         };
+
+        //         this.invokeRequest(httpOptions)
+        //             .then((data: any) => {
+        //                 SFUtility.outputLog(data);
+        //                 resolve(data);
+        //             })
+        //             .catch((error: any) => {
+        //                 SFUtility.outputLog(error);
+        //                 SFUtility.showError("Error invoking rest api");
+        //                 reject(error);
+        //             });
+        //     });
+    }
+
+    public async getNode(nodeName: string): Promise<sfModels.NodeInfo> {
+        const node = await this.sfApi.getNodeInfo(nodeName);
+        SFUtility.outputLog('sfRest:getNode:complete', node);
         return node;
     }
 
-    public async getNodes(nodeStatusFilter: nodeStatusFilterEnum = nodeStatusFilterEnum.default): Promise<string | null> {
-        // uses cluster server certificate to connect to cluster
-        let nodes = '';
-        const uriParameters = this.createUriParameters();
-        uriParameters.maxResults = this.maxResults;
-        uriParameters.nodeStatusFilter = nodeStatusFilter;
-        const options = this.createHttpOptions("/Nodes", uriParameters);
+    public async getNodeHealth(nodeName: string): Promise<sfModels.NodeHealthState> {
+        const nodeState = await this.sfApi.getNodeHealth(nodeName);
+        SFUtility.outputLog('sfRest:getNodeState:complete', nodeState);
+        return nodeState;
+    }
 
-        await this.invokeRequest(options)
-            .then((data: any) => {
-                SFUtility.outputLog('nodes:', data);
-                nodes = data;
-            })
-            .catch((error: any) => {
-                SFUtility.outputLog(error);
-                SFUtility.showError("getNodes:error invoking rest api");
-                return null;
-            });
-        return nodes;
+    public async getNodes(nodeStatusFilter: sfModels.KnownNodeStatusFilter = sfModels.KnownNodeStatusFilter.Default): Promise<sfModels.NodeInfo[]> {
+        const nodeInfos: Array<sfModels.NodeInfo> = [];
+        const nodes = await this.sfApi.getNodeInfoList();
+    
+        //todo: continuation token
+        if(nodes.items?.length === 0){
+            SFUtility.showWarning("No nodes found");
+            return nodeInfos;
+        }
+        await nodes.items?.forEach((element: any) => {
+            // this.sfApi.getNodeInfo(element.name).then((node: any) => {
+            //     SFUtility.outputLog('sfRest:getNodes:node:', node);
+            //     nodeInfos.push(node);
+            // });
+            nodeInfos.push(element);
+        });
+        SFUtility.outputLog('sfRest:getNodes:nodes:', nodes);
+
+        return nodeInfos;
     }
 
     public async invokeRequest(httpOptions: any | https.RequestOptions | tls.ConnectionOptions): Promise<ClientRequest | string | undefined> {
@@ -486,5 +508,15 @@ export class SFRest {
         catch (error) {
             SFUtility.showError(`invokeRestApi:error:${JSON.stringify(error)}`);
         }
+    }
+
+    public async restartNode(nodeName: string, nodeInstanceId: string | null = null, createFabricDump: boolean | null = null): Promise<any> {
+        const restartNodeDescription: sfModels.RestartNodeDescription = {
+            nodeInstanceId: nodeInstanceId ? nodeInstanceId : "0",
+            createFabricDump: createFabricDump ? 'true' : 'false'
+        };
+        await this.sfApi.restartNode(nodeName, restartNodeDescription);
+        SFUtility.outputLog('sfRest:restartNode:complete');
+        return;
     }
 }

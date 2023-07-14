@@ -9,7 +9,7 @@ param(
     $certSubjectName = 'CN=ServiceFabricDevClusterCert',
     $certPassword = '1234', #'N0tSecure123',
    # $certPfxFile = '',
-    $certPemFile = "$PSScriptRoot\..\test-certs\$($env:computername)\cert.pem"
+    $certPemFile = "$PSScriptRoot\..\test-certs\$($env:computername)\ServiceFabricDevClusterCert.pem"
 )
 
 $certPfx = $null
@@ -17,8 +17,8 @@ function main(){
     $error.Clear()
     openssl | out-null
     if($error){
-        write-error "download and install openssl from https://slproweb.com/download/Win64OpenSSL_Light-3_1_1.exe"
-        write-error "add path to environment variables"
+        write-error "download and install openssl from https://slproweb.com/download/Win64OpenSSL_Light-3_1_1.exe
+        add path to environment variables"
         return
     }
 
@@ -47,7 +47,7 @@ $destPath = "$PSScriptRoot\..\test-certs\$($env:computername)"
     }
 
     $certNoKeyPemFile = $certPemFile -replace '\.pem$', '.nokey.pem'
-    $certWithKeyPemFile = $certPemFile -replace '\.pem$', '.withkey.pem'
+    #$certWithKeyPemFile = $certPemFile -replace '\.pem$', '.withkey.pem'
     $certKeyFile = $certPemFile -replace '\.pem$', '.key'
     # $certComboPemFile = $certPemFile -replace '\.pem$', '.combo.pem'
 
@@ -55,13 +55,13 @@ $destPath = "$PSScriptRoot\..\test-certs\$($env:computername)"
     write-host "enter password: $certPassword" -ForegroundColor Cyan
     openssl pkcs12 -in $certPfxFile -out $certNoKeyPemFile -nokeys
 
-    write-host "openssl pkcs12 -in $certPfxFile -out $certWithKeyPemFile" -ForegroundColor Green
+    write-host "openssl pkcs12 -in $certPfxFile -out $certPemFile" -ForegroundColor Green
     write-host "enter password: $certPassword" -ForegroundColor Cyan
     openssl pkcs12 -in $certPfxFile -out $certWithKeyPemFile
 
-    write-host "openssl rsa -in $certWithKeyPemFile -out $certKeyFile" -ForegroundColor Green
+    write-host "openssl rsa -in $certPemFile -out $certKeyFile" -ForegroundColor Green
     write-host "enter password: $certPassword" -ForegroundColor Cyan
-    openssl rsa -in $certWithKeyPemFile -out $certKeyFile
+    openssl rsa -in $certPemFile -out $certKeyFile
 
     # write-host "get-content $certNoKeyPemFile $certKeyFile > $certComboPemFile"
     # get-content $certNoKeyPemFile $certKeyFile > $certComboPemFile
