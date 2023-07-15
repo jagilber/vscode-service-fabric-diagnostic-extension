@@ -1,16 +1,16 @@
 
 import * as xmlConverter from 'xml-js';
 import { SFUtility } from './sfUtility';
+import * as SfApi from './sdk/servicefabric/servicefabric/src/serviceFabricClientAPIs';
+import * as sfModels from './sdk/servicefabric/servicefabric/src/models';
+//import { TreeItem } from './serviceFabricClusterView';
 
-type nodeTypes = {
+type nodeTypes = [
     nodeType: {
-        nodes: {
-            node: {
-                name: string;
-            }
-        }
+        name: string;
+        nodes: sfModels.NodeInfo[];
     }
-};
+];
 
 export class SFConfiguration {
     public xmlManifest = "";
@@ -19,15 +19,18 @@ export class SFConfiguration {
     private context: any;
     public clusterHttpEndpoint?:string;
     public clusterName?:string;
-    public nodes: any = [];
+    public nodes: sfModels.NodeInfo[] = [];
+    public nodeTypes: nodeTypes[] = [];
+    public applicationTypes: sfModels.ApplicationTypeInfo[] = [];
 
 
     constructor(context: any) {
         this.context = context;
     }
 
-    public addNode(node: any) {
+    public addNode(node: sfModels.NodeInfo) {
         this.nodes.push(node);
+        //this.nodeTypes.push(node);
     }
 
     public getManifest(): string {
@@ -43,10 +46,4 @@ export class SFConfiguration {
         this.jObjectManifest = JSON.parse(this.jsonManifest);
         this.clusterName = this.jObjectManifest.ClusterManifest._attributes.Name;
     }
-
-    public setNodeType(nodeType: string, nodeTypeName: string): void {
-      //  this.nodeTypes[nodeType] = nodeTypeName;
-    }
-    
-
 }

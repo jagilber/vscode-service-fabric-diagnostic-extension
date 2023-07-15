@@ -74,6 +74,7 @@ export class SFMgr {
                         this.sfConfig.addNode(node);
                     });
                     this.addSfConfig(this.sfConfig);
+                    SFUtility.outputLog('sfMgr:getCluster:config:', this.sfConfig);
                     this.sfClusterView.addTreeItem(new TreeItem(this.sfConfig.clusterName!, this.sfConfig.nodes, this.sfConfig));
                 });
             });
@@ -92,7 +93,7 @@ export class SFMgr {
         }
     }
 
-    public getClusters(): any {
+    public async getClusters(): Promise<any> {
         // uses azure account to enumerate clusters
         if (!this.sfConfig.clusterHttpEndpoint && !this.clientSecret || !this.subscriptionId) {
             SFUtility.showWarning("Cluster secret or subscription id not set");
@@ -101,7 +102,7 @@ export class SFMgr {
                 return null;
             }
         }
-        this.sfRest.getClusters()
+       await this.sfRest.getClusters()
             .then((data: any) => {
                 for (const cluster of data) {
                     this.sfClusters.push(cluster);

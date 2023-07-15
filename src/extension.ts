@@ -31,7 +31,6 @@ export async function activate(context: vscode.ExtensionContext) {
     // Samples of `window.registerTreeDataProvider`
     const nodeDependenciesProvider = new DepNodeProvider(rootPath);
     vscode.window.registerTreeDataProvider('nodeDependencies', nodeDependenciesProvider);
-    //    vscode.commands.registerCommand('nodeDependencies.sfcluster', () => sfRest.getClusters());
     vscode.commands.registerCommand('nodeDependencies.refreshEntry', () => nodeDependenciesProvider.refresh());
     vscode.commands.registerCommand('extension.openPackageOnNpm', moduleName => vscode.commands.executeCommand('vscode.open', vscode.Uri.parse(`https://www.npmjs.com/package/${moduleName}`)));
     vscode.commands.registerCommand('nodeDependencies.addEntry', () => vscode.window.showInformationMessage(`Successfully called add entry.`));

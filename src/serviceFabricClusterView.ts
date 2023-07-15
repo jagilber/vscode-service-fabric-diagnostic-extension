@@ -1,11 +1,13 @@
 import * as vscode from 'vscode';
 import { SFConfiguration } from './sfConfiguration';
 import { SFUtility, debugLevel } from './sfUtility';
-import { get } from 'http';
+//import * as SfApi from './sdk/servicefabric/servicefabric/src/serviceFabricClientAPIs';
+import * as sfModels from './sdk/servicefabric/servicefabric/src/models';
+
 
 export class serviceFabricClusterView implements vscode.TreeDataProvider<TreeItem> {
-    private _onDidChangeTreeData: vscode.EventEmitter<number | undefined> = new vscode.EventEmitter<number | undefined>();
-    //readonly onDidChangeTreeData: vscode.Event<number | undefined> = this._onDidChangeTreeData.event;
+    private _onDidChangeTreeData: vscode.EventEmitter<TreeItem | undefined> = new vscode.EventEmitter<TreeItem | undefined>();
+    readonly onDidChangeTreeData: vscode.Event<TreeItem | undefined> = this._onDidChangeTreeData.event;
 
     private view: vscode.TreeView<TreeItem>;
     private tree: Array<TreeItem> = [];
@@ -26,17 +28,7 @@ export class serviceFabricClusterView implements vscode.TreeDataProvider<TreeIte
                 this.view.title = title;
             }
         });
-        this.addTreeRoot(new TreeItem('clusters'));
     }
-
-    public addTreeRoot(treeItem: TreeItem): void {
-        this.tree = [(treeItem)];
-        this.refresh();
-    }
-
-    // public getTreeRoot(treeItem: TreeItem): TreeItem {
-    //     return this.getTreeItem(treeItem);
-    // }
 
     public addTreeItem(treeItem: TreeItem): void {
         const existingItem = this.findTreeItem(treeItem); //todo test
@@ -45,9 +37,9 @@ export class serviceFabricClusterView implements vscode.TreeDataProvider<TreeIte
             this.removeTreeItem(treeItem);
         }
 
-        //this.removeTreeItem(treeItem);
         SFUtility.outputLog(`serviceFabricClusterView:addTreeItem:treeItem:${treeItem.label}`);
         this.tree.push(treeItem);
+        //this.refresh(treeItem);
         this.refresh();
     }
 
@@ -79,10 +71,10 @@ export class serviceFabricClusterView implements vscode.TreeDataProvider<TreeIte
         return element;
     }
 
-    public refresh(offset?: number): void {
-        //this.parseTree();
-        if (offset) {
-            this._onDidChangeTreeData.fire(offset);
+    public refresh(treeItem?: TreeItem): void {
+        if (treeItem) {
+            //todo may not work
+            this._onDidChangeTreeData.fire(treeItem);
         } else {
             this._onDidChangeTreeData.fire(undefined);
         }
@@ -90,14 +82,25 @@ export class serviceFabricClusterView implements vscode.TreeDataProvider<TreeIte
 }
 
 export class TreeItem extends vscode.TreeItem {
-    children?: TreeItem[];
+    children: TreeItem[] = [];
     sfConfig?: SFConfiguration;
 
-    constructor(label: string, children?: TreeItem[], sfConfig?: SFConfiguration) {
-        super(
-            label,
-            children === undefined ? vscode.TreeItemCollapsibleState.None :
-                vscode.TreeItemCollapsibleState.Expanded);
-        this.children = children;
+    constructor(label: string, children?: sfModels.NodeInfo[] | TreeItem[], sfConfig?: SFConfiguration) {
+        super(label, children === undefined ? vscode.TreeItemCollapsibleState.None : vscode.TreeItemCollapsibleState.Expanded);
+        this.sfConfig = sfConfig;
+        
+        if (children && <sfModels.NodeInfo[]>children !== undefined) {
+            if (label.toLocaleLowerCase() === 'nodes') {
+                for (const child of children) {
+                    this.children.push(new TreeItem((<sfModels.NodeInfo>child).name ?? 'undefined', undefined, sfConfig));
+                }
+            }
+            else{
+                this.children = [new TreeItem('nodes', children, sfConfig)];
+            }
+        }
+        else if (children && <TreeItem[]>children !== undefined) {
+            this.children = (children as TreeItem[]) ?? [];
+        }
     }
 }
