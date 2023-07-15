@@ -74,12 +74,9 @@
             }
         ],
         "menus": {
-            "commandPalette": [
-            ],
-            "view/title": [
-            ],
-            "view/item/context": [
-            ]
+            "commandPalette": [],
+            "view/title": [],
+            "view/item/context": []
         },
         "configuration": [
             {
@@ -117,6 +114,7 @@
         "@azure/core-client": "^1.7.3",
         "@azure/core-rest-pipeline": "^1.11.0",
         "@azure/identity": "^3.2.3",
+        "@azure/logger": "^1.0.4",
         "@azure/servicefabric": "^5.0.0",
         "@microsoft/vscode-azext-utils": "^2.0.1",
         "ftp": "^0.3.10",

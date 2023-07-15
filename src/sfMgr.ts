@@ -10,6 +10,8 @@ import * as armServiceFabric from '@azure/arm-servicefabric';
 
 import * as serviceFabric from '@azure/servicefabric';
 import { ClientSecretCredential } from "@azure/identity";
+import { AzureLogger, setLogLevel } from "@azure/logger";
+
 
 //import * as SfApi from './sdk/servicefabric/servicefabric/src/serviceFabricClientAPIs';
 import * as sfModels from './sdk/servicefabric/servicefabric/src/models';
@@ -55,7 +57,18 @@ export class SFMgr {
                 this.certificate = value;
             }
         });
-        
+
+        // set azure log level and output
+        setLogLevel("verbose");
+
+        // override logging to output to console.log (default location is stderr)
+        AzureLogger.log = (...args) => {
+            SFUtility.outputLog(args.join(" "));
+        };
+
+
+
+
         this.sfConfig = new SFConfiguration.SFConfiguration(this.context);
         //todo: https://github.com/Azure/azure-sdk-for-js/blob/main/documentation/MIGRATION-guide-for-next-generation-management-libraries.md
         // const credentials = new ClientSecretCredential(tenantId, clientId, this.clientSecret);
@@ -66,18 +79,18 @@ export class SFMgr {
         await this.sfRest.connectToCluster();
 
         await this.sfRest.getClusterManifest().then((data: any) => {
-                SFUtility.outputLog('sfMgr:getCluster:response:', data);
-                this.sfConfig = new SFConfiguration.SFConfiguration(this.context);
-                this.sfConfig.setManifest(data);
-                this.getNodes().then((nodes: sfModels.NodeInfo[]) => {
-                    nodes.forEach((node: sfModels.NodeInfo) => {
-                        this.sfConfig.addNode(node);
-                    });
-                    this.addSfConfig(this.sfConfig);
-                    SFUtility.outputLog('sfMgr:getCluster:config:', this.sfConfig);
-                    this.sfClusterView.addTreeItem(new TreeItem(this.sfConfig.clusterName!, this.sfConfig.nodes, this.sfConfig));
+            SFUtility.outputLog('sfMgr:getCluster:response:', data);
+            this.sfConfig = new SFConfiguration.SFConfiguration(this.context);
+            this.sfConfig.setManifest(data);
+            this.getNodes().then((nodes: sfModels.NodeInfo[]) => {
+                nodes.forEach((node: sfModels.NodeInfo) => {
+                    this.sfConfig.addNode(node);
                 });
+                this.addSfConfig(this.sfConfig);
+                SFUtility.outputLog('sfMgr:getCluster:config:', this.sfConfig);
+                this.sfClusterView.addTreeItem(new TreeItem(this.sfConfig.clusterName!, this.sfConfig.nodes, this.sfConfig));
             });
+        });
     }
 
     private addSfConfig(sfConfig: SFConfiguration.SFConfiguration) {
@@ -102,7 +115,7 @@ export class SFMgr {
                 return null;
             }
         }
-       await this.sfRest.getClusters()
+        await this.sfRest.getClusters()
             .then((data: any) => {
                 for (const cluster of data) {
                     this.sfClusters.push(cluster);

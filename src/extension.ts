@@ -22,6 +22,8 @@ import { FtpExplorer } from './ftpExplorer';
 import { FileExplorer } from './fileExplorer';
 // import { serviceFabricClusterViewDragAndDrop } from './serviceFabricClusterViewDragAndDrop';
 // import { serviceFabricClusterView } from './serviceFabricClusterView';
+import { SFUtility } from './sfUtility';
+
 
 export async function activate(context: vscode.ExtensionContext) {
     const rootPath = (vscode.workspace.workspaceFolders && (vscode.workspace.workspaceFolders.length > 0))
@@ -65,6 +67,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // sf
     //const sfRest = new SFRest(context, sfClusterView);
+
     const sfMgr = new SFMgr(context);
     registerCommand(context, 'jsonOutline.sfGetClusters', () => sfMgr.getClusters());
     registerCommand(context, 'jsonOutline.sfGetCluster', () => sfMgr.getCluster());
