@@ -2,7 +2,7 @@
 import * as vscode from 'vscode';
 import * as SFConfiguration from './sfConfiguration';
 import * as SFRest from './sfRest';
-import { serviceFabricClusterViewDragAndDrop } from './serviceFabricClusterViewDragAndDrop';
+//import { serviceFabricClusterViewDragAndDrop } from './serviceFabricClusterViewDragAndDrop';
 import { serviceFabricClusterView, TreeItem } from './serviceFabricClusterView';
 import { SFUtility } from './sfUtility';
 import * as armServiceFabric from '@azure/arm-servicefabric';
@@ -23,7 +23,7 @@ export class SFMgr {
     private subscriptionId = "";
     private context: any;
     public sfClusterView: serviceFabricClusterView;
-    public sfClusterViewDD: serviceFabricClusterViewDragAndDrop;
+    //public sfClusterViewDD: serviceFabricClusterViewDragAndDrop;
     private sfRest: SFRest.SFRest;
     private sfConfigs: Array<SFConfiguration.SFConfiguration> = [];
     private sfConfig: SFConfiguration.SFConfiguration;
@@ -37,7 +37,7 @@ export class SFMgr {
     constructor(context: any) {
         this.context = context;
         this.sfClusterView = new serviceFabricClusterView(context);
-        this.sfClusterViewDD = new serviceFabricClusterViewDragAndDrop(context);
+        //this.sfClusterViewDD = new serviceFabricClusterViewDragAndDrop(context);
         this.sfRest = new SFRest.SFRest(context);
 
         context.secrets.get("sfRestSecret").then((value: string | undefined) => {
