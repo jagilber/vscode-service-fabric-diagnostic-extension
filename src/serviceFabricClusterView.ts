@@ -3,6 +3,7 @@ import { SFConfiguration } from './sfConfiguration';
 import { SFUtility, debugLevel } from './sfUtility';
 //import * as SfApi from './sdk/servicefabric/servicefabric/src/serviceFabricClientAPIs';
 import * as sfModels from './sdk/servicefabric/servicefabric/src/models';
+import { Url } from 'url';
 
 
 export class serviceFabricClusterView implements vscode.TreeDataProvider<TreeItem> {
@@ -34,13 +35,15 @@ export class serviceFabricClusterView implements vscode.TreeDataProvider<TreeIte
         const existingItem = this.findTreeItem(treeItem); //todo test
         if (existingItem) {
             SFUtility.outputLog(`serviceFabricClusterView:addTreeItem:treeItem:${treeItem.label} exists. removing`, null, debugLevel.warn);
-            this.removeTreeItem(treeItem);
+            //this.removeTreeItem(treeItem);
+            this.refresh(treeItem);
         }
 
         SFUtility.outputLog(`serviceFabricClusterView:addTreeItem:treeItem:${treeItem.label}`);
         this.tree.push(treeItem);
         //this.refresh(treeItem);
         this.refresh();
+        SFUtility.outputLog(`serviceFabricClusterView:addTreeItem:treeItem:${treeItem.label} added`);
     }
 
     private removeTreeItem(treeItem: TreeItem) {
@@ -82,25 +85,15 @@ export class serviceFabricClusterView implements vscode.TreeDataProvider<TreeIte
 }
 
 export class TreeItem extends vscode.TreeItem {
-    children: TreeItem[] = [];
-    sfConfig?: SFConfiguration;
+    children?: TreeItem[] = [];
+    iconPath?: string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri; } | vscode.ThemeIcon | undefined;
 
-    constructor(label: string, children?: sfModels.NodeInfo[] | TreeItem[], sfConfig?: SFConfiguration) {
+    constructor(label: string, children?: TreeItem[], resourceUri?: vscode.Uri, status?:string) {
         super(label, children === undefined ? vscode.TreeItemCollapsibleState.None : vscode.TreeItemCollapsibleState.Expanded);
-        this.sfConfig = sfConfig;
-        
-        if (children && <sfModels.NodeInfo[]>children !== undefined) {
-            if (label.toLocaleLowerCase() === 'nodes') {
-                for (const child of children) {
-                    this.children.push(new TreeItem((<sfModels.NodeInfo>child).name ?? 'undefined', undefined, sfConfig));
-                }
-            }
-            else{
-                this.children = [new TreeItem('nodes', children, sfConfig)];
-            }
-        }
-        else if (children && <TreeItem[]>children !== undefined) {
-            this.children = (children as TreeItem[]) ?? [];
-        }
+        super.resourceUri = resourceUri;
+        super.tooltip = status ?? label;
+        //super.command = { command: 'serviceFabricClusterView.reveal', title: 'Reveal', arguments: [this] };
+        //super(label, children === undefined ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.Expanded);
+        this.children = children;
     }
 }

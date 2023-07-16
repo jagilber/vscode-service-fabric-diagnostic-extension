@@ -1,7 +1,11 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 
 /*
-todo: autorest https://github.com/Azure/azure-rest-api-specs/tree/main/specification/servicefabric/data-plane
+todo: https://github.com/ukoloff/win-ca
+
+https://github.com/ukoloff/win-ca/tree/master/vscode
+
+autorest https://github.com/Azure/azure-rest-api-specs/tree/main/specification/servicefabric/data-plane
 https://github.com/MicrosoftDocs/azure-docs-sdk-node/blob/main/docs-ref-services/latest/arm-servicefabric-readme.md
 https://github.com/Azure/azure-sdk-for-js/tree/main/sdk/servicefabric/servicefabric
 https://github.com/Azure/ms-rest-nodeauth/blob/master/migrate-to-identity-v2.md

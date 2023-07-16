@@ -17,9 +17,14 @@ import { AzureLogger, setLogLevel } from "@azure/logger";
 import * as sfModels from './sdk/servicefabric/servicefabric/src/models';
 import { ServiceFabricManagementClient } from './sdk/servicefabric/arm-servicefabric/src/serviceFabricManagementClient';
 import { ServiceFabricClientAPIs } from './sdk/servicefabric/servicefabric/src/serviceFabricClientAPIs';
+import { get } from 'http';
+
 
 export class SFMgr {
+    private configurationSection = "servicefabric";
+    private configurationSettings: vscode.WorkspaceConfiguration;
     private clientSecret = "";
+    private exampleClusterEndpoint = "https://sftestcluster.eastus.cloudapp.azure.com:19080";
     private key = "";
     private certificate = "";
     private subscriptionId = "";
@@ -34,13 +39,68 @@ export class SFMgr {
     private resourceApiVersion = "2018-02-01";
     private timeOut = 9000;
     private maxResults = 100;
+    private clusterEndpoints: string[] = [];
 
 
-    constructor(context: any) {
+    constructor(context: vscode.ExtensionContext) {
         this.context = context;
         this.sfClusterView = new serviceFabricClusterView(context);
-        //this.sfClusterViewDD = new serviceFabricClusterViewDragAndDrop(context);
+
+        // set azure log level and output
+        setLogLevel("verbose");
+
+        // get settings
+        this.configurationSettings = this.getSettings();
+
+        // get secrets
+        this.getSecrets(context);
+
+        // override logging to output to console.log (default location is stderr)
+        AzureLogger.log = (...args) => {
+            SFUtility.outputLog(args.join(" "));
+        };
+
+        this.sfConfig = new SFConfiguration.SFConfiguration(this.context);
         this.sfRest = new SFRest.SFRest(context);
+
+        //todo: https://github.com/Azure/azure-sdk-for-js/blob/main/documentation/MIGRATION-guide-for-next-generation-management-libraries.md
+        // const credentials = new ClientSecretCredential(tenantId, clientId, this.clientSecret);
+    }
+
+    public updateSetting(setting: string, value: any) {
+        const settings = vscode.workspace.getConfiguration(this.configurationSection);
+        SFUtility.outputLog('sfMgr:updateSetting:setting:' + setting + ' value:' + value);
+        return settings.update(setting, value);
+    }
+
+    public getSetting(setting: string) {
+        const settings = vscode.workspace.getConfiguration(this.configurationSection);
+        SFUtility.outputLog('sfMgr:getSetting:setting:' + setting + ' value:' + settings.get(setting));
+        return settings.get(setting);
+    }
+
+    public getSettings(): vscode.WorkspaceConfiguration {
+        const settings = vscode.workspace.getConfiguration(this.configurationSection);
+        SFUtility.outputLog('sfMgr:getSettings:settings:' + settings);
+        return settings;
+    }
+
+    public removeSetting(setting: string, value: any) {
+        const settings = vscode.workspace.getConfiguration(this.configurationSection);
+        if(value){
+            // child setting/array
+            //todo test
+            SFUtility.outputLog('sfMgr:removeSetting:setting:' + setting + ' value:' + value);
+            const settingValue = (this.getSetting(setting) as string[])?.filter((item: any) => item !== value);
+
+            return settings.update(setting, value);
+        }
+
+        SFUtility.outputLog('sfMgr:removeSetting:setting:' + setting);
+        return settings.update(setting, undefined);
+    }
+
+    public getSecrets(context: vscode.ExtensionContext) {
 
         context.secrets.get("sfRestSecret").then((value: string | undefined) => {
             if (value) {
@@ -57,22 +117,6 @@ export class SFMgr {
                 this.certificate = value;
             }
         });
-
-        // set azure log level and output
-        setLogLevel("verbose");
-
-        // override logging to output to console.log (default location is stderr)
-        AzureLogger.log = (...args) => {
-            SFUtility.outputLog(args.join(" "));
-        };
-
-
-
-
-        this.sfConfig = new SFConfiguration.SFConfiguration(this.context);
-        //todo: https://github.com/Azure/azure-sdk-for-js/blob/main/documentation/MIGRATION-guide-for-next-generation-management-libraries.md
-        // const credentials = new ClientSecretCredential(tenantId, clientId, this.clientSecret);
-
     }
 
     public async getCluster() {
@@ -88,7 +132,8 @@ export class SFMgr {
                 });
                 this.addSfConfig(this.sfConfig);
                 SFUtility.outputLog('sfMgr:getCluster:config:', this.sfConfig);
-                this.sfClusterView.addTreeItem(new TreeItem(this.sfConfig.clusterName!, this.sfConfig.nodes, this.sfConfig));
+                //this.sfClusterView.addTreeItem(new TreeItem(this.sfConfig.clusterName!));//, this.sfConfig.nodes, this.sfConfig));
+                this.sfClusterView.addTreeItem(this.sfConfig.createClusterViewTreeItem());
             });
         });
     }
@@ -99,12 +144,21 @@ export class SFMgr {
         }
     }
 
-    public removeSfConfig(sfConfig: SFConfiguration.SFConfiguration) {
-        const index = this.sfConfigs.findIndex((config: SFConfiguration.SFConfiguration) => config.clusterHttpEndpoint === sfConfig.clusterHttpEndpoint);
+    public getSfConfig(clusterHttpEndpoint: string): SFConfiguration.SFConfiguration | undefined {
+        return this.sfConfigs.find((config: SFConfiguration.SFConfiguration) => config.clusterHttpEndpoint === clusterHttpEndpoint);
+    }
+
+    public removeSfConfig(clusterHttpEndpoint: string) {
+        const index = this.sfConfigs.findIndex((config: SFConfiguration.SFConfiguration) => config.clusterHttpEndpoint === clusterHttpEndpoint);
         if (index > -1) {
             this.sfConfigs.splice(index, 1);
+            SFUtility.outputLog('sfMgr:removeSfConfig:clusterHttpEndpoint removed:' + clusterHttpEndpoint);
+        }
+        else {
+            SFUtility.outputLog('sfMgr:removeSfConfig:clusterHttpEndpoint not found:' + clusterHttpEndpoint);
         }
     }
+
 
     public async getClusters(): Promise<any> {
         // uses azure account to enumerate clusters
@@ -145,7 +199,10 @@ export class SFMgr {
         });
 
         if (!adhocRestCall) { return; }
-        if (!this.sfConfig.clusterHttpEndpoint) await this.getClusters();
+        if (!this.sfConfig.clusterHttpEndpoint) await this.getCluster();
+        if (!this.sfConfig.clusterHttpEndpoint) await this.promptForClusterEndpoint();
+        if (!this.sfConfig.clusterHttpEndpoint) return;
+
         this.sfRest.invokeRestApi("GET", this.sfConfig.clusterHttpEndpoint!, adhocRestCall)
             .then((data: any) => {
                 SFUtility.outputLog(data);
@@ -154,10 +211,20 @@ export class SFMgr {
 
     public async promptForClusterEndpoint() {
         const clusterEndpoint: string | undefined = await vscode.window.showInputBox({
-            prompt: "Enter cluster endpoint",
-            placeHolder: "https://sftestcluster.eastus.cloudapp.azure.com:19080"
+            prompt: "Enter cluster endpoint to add",
+            placeHolder: this.exampleClusterEndpoint
         });
         this.sfConfig.clusterHttpEndpoint = clusterEndpoint;
+        this.updateSetting("clusterHttpEndpoint", clusterEndpoint);
+    }
+
+    public async promptForRemoveClusterEndpoint() {
+        const clusterEndpoint: string | undefined = await vscode.window.showInputBox({
+            prompt: "Enter cluster endpoint to remove",
+            placeHolder: this.exampleClusterEndpoint
+        });
+        this.sfConfig.clusterHttpEndpoint = clusterEndpoint;
+        this.removeSetting("clusterHttpEndpoint", clusterEndpoint);
     }
 
 }
