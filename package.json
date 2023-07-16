@@ -41,7 +41,7 @@
         },
         "commands": [
             {
-                "command": "jsonOutline.refresh",
+                "command": "sfClusterExplorer.refresh",
                 "title": "Refresh",
                 "icon": {
                     "light": "resources/light/refresh.svg",
@@ -49,19 +49,23 @@
                 }
             },
             {
-                "command": "jsonOutline.sfGetClusters",
+                "command": "sfClusterExplorer.sfGetClusters",
                 "title": "service fabric: get clusters from subscription"
             },
             {
-                "command": "jsonOutline.sfGetCluster",
+                "command": "sfClusterExplorer.sfGetCluster",
                 "title": "service fabric: get cluster"
             },
             {
-                "command": "jsonOutline.sfSetClusterEndpoint",
+                "command": "sfClusterExplorer.sfSetClusterEndpoint",
                 "title": "service fabric: set cluster endpoint ('https://localhost:19080')"
             },
             {
-                "command": "jsonOutline.sfSetClusterRestCall",
+                "command": "sfClusterExplorer.sfRemoveClusterEndpoint",
+                "title": "service fabric: set cluster endpoint ('https://localhost:19080')"
+            },
+            {
+                "command": "sfClusterExplorer.sfSetClusterRestCall",
                 "title": "service fabric: adhoc REST query ('/$/GetClusterHealth')"
             },
             {
@@ -82,7 +86,7 @@
             {
                 "title": "JSON Outline",
                 "properties": {
-                    "jsonOutline.autorefresh": {
+                    "sfClusterExplorer.autorefresh": {
                         "type": "boolean",
                         "default": false
                     }

@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as json from 'jsonc-parser';
 import * as path from 'path';
 
-export class JsonOutlineProvider implements vscode.TreeDataProvider<number> {
+export class sfClusterExplorerProvider implements vscode.TreeDataProvider<number> {
 
     private _onDidChangeTreeData: vscode.EventEmitter<number | undefined> = new vscode.EventEmitter<number | undefined>();
     readonly onDidChangeTreeData: vscode.Event<number | undefined> = this._onDidChangeTreeData.event;

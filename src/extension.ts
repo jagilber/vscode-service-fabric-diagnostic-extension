@@ -17,7 +17,7 @@ import * as vscode from 'vscode';
 //import { SFRest } from './sfRest';
 import { SFMgr } from './sfMgr';
 import { DepNodeProvider, Dependency } from './nodeDependencies';
-import { JsonOutlineProvider } from './jsonOutline';
+import { sfClusterExplorerProvider } from './sfClusterExplorer';
 import { FtpExplorer } from './ftpExplorer';
 import { FileExplorer } from './fileExplorer';
 // import { serviceFabricClusterViewDragAndDrop } from './serviceFabricClusterViewDragAndDrop';
@@ -54,7 +54,7 @@ export async function activate(context: vscode.ExtensionContext) {
     //         jsonOutlineProvider.rename(offset);
     //     }
     // });
-    // vscode.commands.registerCommand('extension.openJsonSelection', range => jsonOutlineProvider.select(range));
+    // vscode.commands.registerCommand('extension.openJsonSelection', range => sfClusterExplorerProvider.select(range));
 
 
     // Samples of `window.createView`
@@ -69,10 +69,11 @@ export async function activate(context: vscode.ExtensionContext) {
     //const sfRest = new SFRest(context, sfClusterView);
 
     const sfMgr = new SFMgr(context);
-    registerCommand(context, 'jsonOutline.sfGetClusters', () => sfMgr.getClusters());
-    registerCommand(context, 'jsonOutline.sfGetCluster', () => sfMgr.getCluster());
-    registerCommand(context, 'jsonOutline.sfSetClusterEndpoint', () => sfMgr.promptForClusterEndpoint());
-    registerCommand(context, 'jsonOutline.sfSetClusterRestCall', () => sfMgr.promptForClusterRestCall());
+    registerCommand(context, 'sfClusterExplorer.sfGetClusters', () => sfMgr.getClusters());
+    registerCommand(context, 'sfClusterExplorer.sfGetCluster', () => sfMgr.getCluster());
+    registerCommand(context, 'sfClusterExplorer.sfSetClusterEndpoint', () => sfMgr.promptForClusterEndpoint());
+    registerCommand(context, 'sfClusterExplorer.sfRemoveClusterEndpoint', () => sfMgr.promptForRemoveClusterEndpoint());
+    registerCommand(context, 'sfClusterExplorer.sfSetClusterRestCall', () => sfMgr.promptForClusterRestCall());
 
 }
 
