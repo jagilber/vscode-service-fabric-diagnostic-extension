@@ -21,7 +21,7 @@ import { get } from 'http';
 
 
 export class SFMgr {
-    private configurationSection = "servicefabric";
+    private configurationSection = "sfClusterExplorer"; //servicefabric
     private configurationSettings: vscode.WorkspaceConfiguration;
     private clientSecret = "";
     private exampleClusterEndpoint = "https://sftestcluster.eastus.cloudapp.azure.com:19080";
@@ -70,34 +70,59 @@ export class SFMgr {
     public updateSetting(setting: string, value: any) {
         const settings = vscode.workspace.getConfiguration(this.configurationSection);
         SFUtility.outputLog('sfMgr:updateSetting:setting:' + setting + ' value:' + value);
-        return settings.update(setting, value);
+        const currentSetting = this.getSetting(setting);
+        if (Array.isArray(currentSetting)) {
+            if (value) {
+                // child setting/array
+                if (!currentSetting.includes(value)) {
+                    SFUtility.outputLog('sfMgr:updateSetting:adding array:' + setting + ' value:' + value);
+                    currentSetting.push(value);
+                }
+                else {
+                    SFUtility.outputLog('sfMgr:updateSetting:array already exists:' + setting + ' value:' + value);
+                    return;
+                }
+            }
+            value = currentSetting;
+        }
+    
+        SFUtility.outputLog('sfMgr:updateSetting:setting:' + setting + ' value:' + value, settings);
+        return settings.update(setting, value, vscode.ConfigurationTarget.Global);
+
+
     }
 
     public getSetting(setting: string) {
         const settings = vscode.workspace.getConfiguration(this.configurationSection);
-        SFUtility.outputLog('sfMgr:getSetting:setting:' + setting + ' value:' + settings.get(setting));
-        return settings.get(setting);
+        const value = settings.get(setting);
+        SFUtility.outputLog('sfMgr:getSetting returning:setting:' + setting + ' value:' + value, settings);
+        return value;
     }
 
     public getSettings(): vscode.WorkspaceConfiguration {
         const settings = vscode.workspace.getConfiguration(this.configurationSection);
-        SFUtility.outputLog('sfMgr:getSettings:settings:' + settings);
+        SFUtility.outputLog('sfMgr:getSettings:settings:', settings);
         return settings;
     }
 
-    public removeSetting(setting: string, value: any) {
+    public removeSetting(setting: string, value?: any) {
         const settings = vscode.workspace.getConfiguration(this.configurationSection);
-        if(value){
-            // child setting/array
-            //todo test
-            SFUtility.outputLog('sfMgr:removeSetting:setting:' + setting + ' value:' + value);
-            const settingValue = (this.getSetting(setting) as string[])?.filter((item: any) => item !== value);
-
-            return settings.update(setting, value);
+        SFUtility.outputLog('sfMgr:removeSetting:setting:' + setting + ' value:' + value);
+        const currentSetting = this.getSetting(setting);
+        if (Array.isArray(currentSetting)) {
+            if (currentSetting.includes(value)) {
+                SFUtility.outputLog('sfMgr:removeSetting:setting is array:' + setting);
+                currentSetting.splice(currentSetting.indexOf(value), 1);
+            }
+            else {
+                SFUtility.outputLog('sfMgr:removeSetting:setting not array:' + setting);
+                const settingValue = (this.getSetting(setting) as string[])?.filter((item: any) => item === value);
+            }
+            value = currentSetting;
         }
 
-        SFUtility.outputLog('sfMgr:removeSetting:setting:' + setting);
-        return settings.update(setting, undefined);
+        SFUtility.outputLog('sfMgr:removeSetting:setting:' + setting, settings);
+        return settings.update(setting, value, vscode.ConfigurationTarget.Global);
     }
 
     public getSecrets(context: vscode.ExtensionContext) {
@@ -215,7 +240,7 @@ export class SFMgr {
             placeHolder: this.exampleClusterEndpoint
         });
         this.sfConfig.clusterHttpEndpoint = clusterEndpoint;
-        this.updateSetting("clusterHttpEndpoint", clusterEndpoint);
+        this.updateSetting('clusters', clusterEndpoint);
     }
 
     public async promptForRemoveClusterEndpoint() {
@@ -224,7 +249,7 @@ export class SFMgr {
             placeHolder: this.exampleClusterEndpoint
         });
         this.sfConfig.clusterHttpEndpoint = clusterEndpoint;
-        this.removeSetting("clusterHttpEndpoint", clusterEndpoint);
+        this.removeSetting('clusters', clusterEndpoint);
     }
 
 }

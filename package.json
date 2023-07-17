@@ -58,11 +58,11 @@
             },
             {
                 "command": "sfClusterExplorer.sfSetClusterEndpoint",
-                "title": "service fabric: set cluster endpoint ('https://localhost:19080')"
+                "title": "service fabric: add cluster endpoint ('https://localhost:19080')"
             },
             {
                 "command": "sfClusterExplorer.sfRemoveClusterEndpoint",
-                "title": "service fabric: set cluster endpoint ('https://localhost:19080')"
+                "title": "service fabric: remove cluster endpoint ('https://localhost:19080')"
             },
             {
                 "command": "sfClusterExplorer.sfSetClusterRestCall",
@@ -84,11 +84,19 @@
         },
         "configuration": [
             {
-                "title": "JSON Outline",
+                "title": "Service Fabric Cluster Explorer",
                 "properties": {
                     "sfClusterExplorer.autorefresh": {
                         "type": "boolean",
                         "default": false
+                    },
+                    "sfClusterExplorer.refreshInterval": {
+                        "type": "number",
+                        "default": 30000
+                    },
+                    "sfClusterExplorer.clusters": {
+                        "type": "array",
+                        "default": []
                     }
                 }
             }
