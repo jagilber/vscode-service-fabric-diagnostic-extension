@@ -15,9 +15,10 @@ import { AzureLogger, setLogLevel } from "@azure/logger";
 
 //import * as SfApi from './sdk/servicefabric/servicefabric/src/serviceFabricClientAPIs';
 import * as sfModels from './sdk/servicefabric/servicefabric/src/models';
-import { ServiceFabricManagementClient } from './sdk/servicefabric/arm-servicefabric/src/serviceFabricManagementClient';
-import { ServiceFabricClientAPIs } from './sdk/servicefabric/servicefabric/src/serviceFabricClientAPIs';
-import { get } from 'http';
+//import { ServiceFabricManagementClient } from './sdk/servicefabric/arm-servicefabric/src/serviceFabricManagementClient';
+//import { ServiceFabricClientAPIs } from './sdk/servicefabric/servicefabric/src/serviceFabricClientAPIs';
+//import { get } from 'http';
+import { SFPs } from './sfPs';
 
 
 export class SFMgr {
@@ -85,7 +86,7 @@ export class SFMgr {
             }
             value = currentSetting;
         }
-    
+
         SFUtility.outputLog('sfMgr:updateSetting:setting:' + setting + ' value:' + value, settings);
         return settings.update(setting, value, vscode.ConfigurationTarget.Global);
 
@@ -144,7 +145,34 @@ export class SFMgr {
         });
     }
 
+    public async deployDevCluster() {
+        // check for binaries
+        const result = await this.runPsCommand('whoami');
+        SFUtility.outputLog('sfMgr:deployDevCluster:whoami:', result);
+        // download binaries
+
+        // install binaries
+    }
+
+    public async deployDevSecureCluster() {
+        //todo implement
+    }
+
+    public async runPsCommand(command: string): Promise<string[]> {
+        SFUtility.outputLog('runPsCommand: ' + command);
+        const ps: SFPs = new SFPs();
+        const results = await ps.send([command]);
+        SFUtility.outputLog('runPsCommand output: ', results);
+        return results;
+    }
+
     public async getCluster() {
+
+        //test
+        //const test = await vscode.commands.executeCommand('workbench.action.terminal.sendSequence', { text: "write-output $psversiontable\u000D" });
+        //SFUtility.outputLog('test: ' + test);
+        //end test
+
         await this.sfRest.connectToCluster();
 
         await this.sfRest.getClusterManifest().then((data: any) => {

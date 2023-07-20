@@ -1,5 +1,7 @@
 'use strict';
 
+// vs Tyler Leonhardt vs extension discussions https://github.com/microsoft/vscode-discussions
+
 //import { WebSiteManagementClient } from '@azure/arm-appservice';
 
 // import { ResourceManagementClient } from '@azure/arm-resources';
