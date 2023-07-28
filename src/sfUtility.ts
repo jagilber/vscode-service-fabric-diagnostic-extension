@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 import * as vscode from 'vscode';
+import * as fs from 'fs';
 
 export const enum debugLevel {
     error = 0,
@@ -49,7 +50,11 @@ export class SFUtility {
         return;
     }
 
-    public static outputLog(message: string, messageObject: object | null = null, level: debugLevel = debugLevel.info): void {
+    public static fileExists(path: string): boolean {
+        return fs.existsSync(path);
+    }
+
+    public static outputLog(message: string, messageObject: string | object | null = null, level: debugLevel = debugLevel.info): void {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         //console.log("SFRest:debuglog:" + message);
         try{

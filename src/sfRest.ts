@@ -379,7 +379,7 @@ export class SFRest {
         return nodeInfos;
     }
 
-    public async invokeRequest(httpOptions: any | https.RequestOptions | tls.ConnectionOptions): Promise<ClientRequest | string | undefined> {
+    public async invokeRequestOptions(httpOptions: any | https.RequestOptions | tls.ConnectionOptions): Promise<ClientRequest | string | undefined> {
         SFUtility.outputLog(`invokeRequest:httpOptions:${httpOptions.method} https://${httpOptions.host}:${httpOptions.port}${httpOptions.path}`);
         try {
             const promise: Promise<ClientRequest | string> = new Promise<ClientRequest | string>((resolve, reject) => {
@@ -398,7 +398,7 @@ export class SFRest {
                         if (jObject.CancellationToken) {
                             SFUtility.outputLog(`invokeRequest:response CancellationToken:${jObject.CancellationToken}`, null, debugLevel.info);
                             httpOptions.CancellationToken = jObject.CancellationToken;
-                            data += this.invokeRequest(httpOptions);
+                            data += this.invokeRequestOptions(httpOptions);
                         }
                         else {
                             httpOptions.CancellationToken = null;
@@ -487,6 +487,28 @@ export class SFRest {
         }
     }
 
+    public async invokeRequest(stringUri:string): Promise<ClientRequest | string | undefined> {
+        const parsedUri = url.parse(stringUri);
+        
+        const httpOptions: tls.ConnectionOptions | RequestOptions = {
+            host: parsedUri!.hostname ? parsedUri.hostname : "localhost",
+            method: "GET",
+            path: parsedUri.path?.replace(/(&|\?)$/, ""),
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            port: parsedUri.port ? parseInt(parsedUri.port) : 19080,
+            //timeout: this.timeOut,
+            key: this.key,
+            cert: this.certificate,
+            enableTrace: true,
+            rejectUnauthorized: false
+        };
+
+        return await this.invokeRequestOptions(httpOptions);
+
+    }
     public async invokeRestApi(
         //deprecated
         method = "GET",
@@ -507,7 +529,7 @@ export class SFRest {
             options.path = restQuery;
             options.port = parsedUri.port ? parseInt(parsedUri.port) : 19080;
 
-            return await this.invokeRequest(options);
+            return await this.invokeRequestOptions(options);
         }
         catch (error) {
             SFUtility.showError(`invokeRestApi:error:${JSON.stringify(error)}`);

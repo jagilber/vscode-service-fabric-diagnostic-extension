@@ -73,6 +73,7 @@ export async function activate(context: vscode.ExtensionContext) {
     const sfMgr = new SFMgr(context);
     registerCommand(context, 'sfClusterExplorer.sfGetClusters', () => sfMgr.getClusters());
     registerCommand(context, 'sfClusterExplorer.sfGetCluster', () => sfMgr.getCluster());
+    registerCommand(context, 'sfClusterExplorer.sfDeployDevCluster', () => sfMgr.deployDevCluster());
     registerCommand(context, 'sfClusterExplorer.sfSetClusterEndpoint', () => sfMgr.promptForClusterEndpoint());
     registerCommand(context, 'sfClusterExplorer.sfRemoveClusterEndpoint', () => sfMgr.promptForRemoveClusterEndpoint());
     registerCommand(context, 'sfClusterExplorer.sfSetClusterRestCall', () => sfMgr.promptForClusterRestCall());

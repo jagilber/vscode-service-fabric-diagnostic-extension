@@ -2,11 +2,18 @@
 import * as vscode from 'vscode';
 import * as SFConfiguration from './sfConfiguration';
 import * as SFRest from './sfRest';
+import * as SFRestClient from './sfRestClient';
+import * as xmlConverter from 'xml-js';
 //import { serviceFabricClusterViewDragAndDrop } from './serviceFabricClusterViewDragAndDrop';
 import { serviceFabricClusterView, TreeItem } from './serviceFabricClusterView';
-import { SFUtility } from './sfUtility';
-import * as armServiceFabric from '@azure/arm-servicefabric';
+import { debugLevel, SFUtility } from './sfUtility';
+import { SFConstants } from './sfConstants';
+import * as http from 'http';
+import * as https from 'https';
+import * as fs from 'fs';
 
+import * as armServiceFabric from '@azure/arm-servicefabric';
+import { DOMParser, XMLSerializer } from '@xmldom/xmldom';
 
 import * as serviceFabric from '@azure/servicefabric';
 import { ClientSecretCredential } from "@azure/identity";
@@ -19,6 +26,7 @@ import * as sfModels from './sdk/servicefabric/servicefabric/src/models';
 //import { ServiceFabricClientAPIs } from './sdk/servicefabric/servicefabric/src/serviceFabricClientAPIs';
 //import { get } from 'http';
 import { SFPs } from './sfPs';
+import { resolve } from 'path';
 
 
 export class SFMgr {
@@ -33,6 +41,7 @@ export class SFMgr {
     public sfClusterView: serviceFabricClusterView;
     //public sfClusterViewDD: serviceFabricClusterViewDragAndDrop;
     private sfRest: SFRest.SFRest;
+    private sfRestClient: SFRestClient.SfRestClient;
     private sfConfigs: Array<SFConfiguration.SFConfiguration> = [];
     private sfConfig: SFConfiguration.SFConfiguration;
     public sfClusters: any[] = [];
@@ -41,7 +50,8 @@ export class SFMgr {
     private timeOut = 9000;
     private maxResults = 100;
     private clusterEndpoints: string[] = [];
-
+    private ps: SFPs = new SFPs();
+    private globalStorage = "";
 
     constructor(context: vscode.ExtensionContext) {
         this.context = context;
@@ -63,6 +73,8 @@ export class SFMgr {
 
         this.sfConfig = new SFConfiguration.SFConfiguration(this.context);
         this.sfRest = new SFRest.SFRest(context);
+        this.sfRestClient = new SFRestClient.SfRestClient(this.sfRest);
+        this.globalStorage = context.globalStoragePath;
 
         //todo: https://github.com/Azure/azure-sdk-for-js/blob/main/documentation/MIGRATION-guide-for-next-generation-management-libraries.md
         // const credentials = new ClientSecretCredential(tenantId, clientId, this.clientSecret);
@@ -148,22 +160,127 @@ export class SFMgr {
     public async deployDevCluster() {
         // check for binaries
         const result = await this.runPsCommand('whoami');
-        SFUtility.outputLog('sfMgr:deployDevCluster:whoami:', result);
-        // download binaries
+        SFUtility.outputLog(`sfMgr:deployDevCluster:whoami:${result}`);
+        await this.runPsCommand('$psversiontable');
+        if (SFUtility.fileExists(SFConstants.SF_SDK_DIR)) {
+            SFUtility.outputLog(`sfMgr:deployDevCluster:SF_SDK_DIR exists:${SFConstants.SF_SDK_DIR}`);
 
-        // install binaries
+        }
+        else {
+            SFUtility.outputLog(`sfMgr:deployDevCluster:SF_SDK_DIR does not exist:${SFConstants.SF_SDK_DIR}`);
+            // download binaries
+            //const result = await this.sfRestClient.invokeRequest(SFConstants.SF_SDK_DOWNLOAD_URL) as string;
+            const result = await this.httpGet(SFConstants.SF_SDK_DOWNLOAD_URL);
+
+            if (!result) {
+                SFUtility.showError('sfMgr:deployDevCluster:SF_SDK_DOWNLOAD_URL:failed');
+                return;
+            }
+
+            // parse result for real download url
+            const downloadUrl: string = result.toString().match(SFConstants.SF_SDK_URI_REGEX)![0];
+            SFUtility.outputLog(`sfMgr:deployDevCluster:SF_SDK_DOWNLOAD_URL:downloadUrl:${downloadUrl}`);
+            if(!fs.existsSync(this.globalStorage)) {
+                fs.mkdirSync(this.globalStorage, { recursive: true });
+            }
+
+            const outputFile = `${this.globalStorage}\\${downloadUrl.split('/').pop()!}`;
+
+            if (await this.httpDownload(downloadUrl, outputFile)) {
+                SFUtility.outputLog(`sfMgr:deployDevCluster:SF_SDK_DOWNLOAD_URL:outputFile:${outputFile}`);
+
+                // install binaries
+                await this.runPsCommand(`invoke-expression -command ${outputFile}`);
+                if (SFUtility.fileExists(SFConstants.SF_SDK_DIR)) {
+                    SFUtility.outputLog(`sfMgr:deployDevCluster:SF_SDK_DIR exists:${SFConstants.SF_SDK_DIR}`);
+                    await this.runPsCommand(`${SFConstants.SF_DEV_CLUSTER_SETUP}`);
+                }
+                else {
+                    SFUtility.outputLog(`sfMgr:deployDevCluster:SF_SDK_DIR does not exist:${SFConstants.SF_SDK_DIR}`, null, debugLevel.error);
+                }
+            }
+            else {
+                SFUtility.outputLog(`sfMgr:deployDevCluster:SF_SDK_DOWNLOAD_URL:outputFile:${outputFile}`, null, debugLevel.error);
+            }
+        }
     }
 
     public async deployDevSecureCluster() {
         //todo implement
     }
 
-    public async runPsCommand(command: string): Promise<string[]> {
+    private async httpDownload(url: string, outputFile: string): Promise<boolean> {
+        const file = fs.createWriteStream(outputFile);
+        
+        const result = await new Promise<boolean>((resolve, reject) => {
+            //https.get(url, (response: http.IncomingMessage) => {
+            https.get(url, (response: any) => {
+              //  SFUtility.outputLog(`sfMgr:httpDownload:statusCode:${response.statusCode}`);
+               // SFUtility.outputLog(`sfMgr:httpDownload:headers:${response.headers}`);
+                response.pipe(file);
+                    response.on('error', (err: any) => {
+                        SFUtility.outputLog(`sfMgr:httpDownload:error:${err}`);
+                        reject(err);
+                    });
+
+                    // response.on('data', (chunk: any) => {
+                    //     SFUtility.outputLog(`sfMgr:httpGet:chunk:${chunk}`);
+                    // });
+                    response.on('end', () => {
+                        SFUtility.outputLog(`sfMgr:httpGet:end`);
+                    });
+
+                file.on('finish', () => {
+                    file.close();
+                    SFUtility.outputLog(`sfMgr:httpGet:file:close`);
+                    resolve(true);
+                });
+            }).on('error', (err: any) => {
+                SFUtility.outputLog(`sfMgr:httpDownload:error:${err}`);
+                fs.unlink(outputFile, () => {
+                    SFUtility.outputLog(`sfMgr:httpDownload:file:unlink`);
+                    reject(err);
+                }
+                );
+            });
+
+        });
+
+        SFUtility.outputLog(`sfMgr:httpGet:result:${result}`);
+        return result;
+    }
+
+    private async httpGet(url: string): Promise<string> {
+        const result = await new Promise<string>((resolve, reject) => {
+            https.get(url, (response: http.IncomingMessage) => {
+                const output: string[] = [];
+                SFUtility.outputLog(`sfMgr:httpGet:statusCode:${response.statusCode}`);
+                SFUtility.outputLog(`sfMgr:httpGet:headers:${response.headers}`);
+                response.on('error', (err: any) => {
+                    SFUtility.outputLog(`sfMgr:httpGet:error:${err}`);
+                    reject(err);
+                });
+                response.on('data', (chunk: any) => {
+                    output.push(chunk);
+                    SFUtility.outputLog(`sfMgr:httpGet:chunk:${chunk}`);
+                });
+                response.on('close', () => {
+                    SFUtility.outputLog(`sfMgr:httpGet:end`);
+                    resolve(output.join(''));
+                });
+            });
+        });
+        SFUtility.outputLog(`sfMgr:httpGet:result:${result}`);
+        return result;
+    }
+
+    public async runPsCommand(command: string): Promise<string> {
         SFUtility.outputLog('runPsCommand: ' + command);
-        const ps: SFPs = new SFPs();
-        const results = await ps.send([command]);
-        SFUtility.outputLog('runPsCommand output: ', results);
-        return results;
+        const results = await this.ps.send(command);
+        const response = JSON.parse(results);
+
+        SFUtility.outputLog(`runPsCommand output:`, response);
+        return response;
     }
 
     public async getCluster() {

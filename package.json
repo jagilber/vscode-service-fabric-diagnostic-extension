@@ -49,6 +49,10 @@
                 }
             },
             {
+                "command": "sfClusterExplorer.sfDeployDevCluster",
+                "title": "service fabric: deploy development cluster"
+            },
+            {
                 "command": "sfClusterExplorer.sfGetClusters",
                 "title": "service fabric: get clusters from subscription"
             },
