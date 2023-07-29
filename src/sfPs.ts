@@ -11,10 +11,9 @@ export class SFPs {
     private out: string[] = [];
     private err: string[] = [];
     private pwsh = 'pwsh.exe';
-    private powershell = 'powershell.exe';
-    private ps = this.pwsh;
+    private powershell = 'powershell.exe'; 
+    private ps = this.powershell;// required for sf scripts to work .net 4.7.2
     private psSession: ChildProcessWithoutNullStreams | undefined = undefined;
-
 
     constructor() {
         SFUtility.outputLog(`sfPs constructor: ${vscode.version}`);
@@ -28,34 +27,32 @@ export class SFPs {
     }
 
     private isPwshInstalled(): Promise<boolean> {
-        return this.sendOnce(['$PSVersionTable.PSVersion.Major']).then((result) => {
-            this.ps = this.pwsh;
-            SFUtility.outputLog(`sfPs using: ${this.ps}`);
+        return this.sendOnce(this.pwsh,['$PSVersionTable.PSVersion.Major']).then((result) => {
+            SFUtility.outputLog(`pwsh installed:sfPs using: ${this.ps}`);
             return true;
         }).catch((err) => {
-            this.ps = this.powershell;
-            SFUtility.outputLog(`sfPs using: ${this.ps}`);
+            SFUtility.outputLog(`powershell installed:sfPs using: ${this.ps}`);
             return false;
         });
     }
 
     public async init(): Promise<void> {
         //if (this.psSession === undefined) {
-            SFUtility.outputLog(`sfPs init using: ${this.ps}`);
-            await this.session().then((session) => {
-                this.psSession = session;
-            }).catch((err) => {
-                SFUtility.outputLog(`sfPs init error: ${err}`);
-            });
+        SFUtility.outputLog(`sfPs init using: ${this.ps}`);
+        await this.session().then((session) => {
+            this.psSession = session;
+        }).catch((err) => {
+            SFUtility.outputLog(`sfPs init error: ${err}`);
+        });
         //}
     }
 
-    public async sendOnce(commands: string[], jsonDepth = 2, end = true): Promise<string[]> {
+    public async sendOnce(ps:string = this.ps, commands: string[], jsonDepth = 2, end = true): Promise<string[]> {
         const promise = new Promise<string[]>((resolve, reject) => {
             //const results: any[] = [];
             const out: string[] = [];
             const err: string[] = [];
-            const child = spawn(this.ps, ['-Command', '-']);
+            const child = spawn(ps, ['-ExecutionPolicy', 'RemoteSigned', '-Command', '-']);
 
             child.stdin.setDefaultEncoding('utf-8');
             child.stdout.setEncoding('utf-8');
@@ -75,7 +72,7 @@ export class SFPs {
             });
 
             commands.forEach(function (cmd) {
-                const command = `convertto-json -inputobject (${cmd}) -depth ${jsonDepth} -compress`;
+                const command = `convertto-json -inputobject "[$(${cmd})]" -depth ${jsonDepth} -compress`;
                 SFUtility.outputLog(`sfPs send command: ${command}`);
                 child.stdin.write(command + '\n');
             });
@@ -104,6 +101,7 @@ export class SFPs {
                 //out.push(data.toString());
                 //resolve([data.toString() + '\n']);
                 resolve(data.toString());
+                //resolve(JSON.stringify(JSON.parse(data.toString().result)));
             });
             this.psSession?.stderr.on('data', function (data) {
                 // err.push(data.toString());
@@ -111,7 +109,7 @@ export class SFPs {
             });
             this.psSession?.stdout.on('close', function () {
                 SFUtility.outputLog(`sfPs send close:`);
-              //  resolve(out.join(''));
+                //  resolve(out.join(''));
             });
             // this.psSession?.stdout.on('readable', function () {
             //     SFUtility.outputLog(`sfPs send readable:`);
@@ -136,7 +134,7 @@ export class SFPs {
             //     //resolve(out);
             // });
 
-            const cmd = `convertto-json -inputobject (${command}) -depth ${jsonDepth} -compress`;
+            const cmd = `convertto-json -inputobject @{result=(${command})} -depth ${jsonDepth} -compress`;
             SFUtility.outputLog(`sfPs send command: ${cmd}`);
             this.psSession?.stdin.write(cmd + '\n');
         });
@@ -148,7 +146,7 @@ export class SFPs {
             //const results: any[] = [];
             // const out: string[] = [];
             // const err: string[] = [];
-            const child = spawn(this.ps, ['-Command', '-']);
+            const child = spawn(this.ps, ['-ExecutionPolicy', 'RemoteSigned', '-Command', '-']);
 
             child.stdin.setDefaultEncoding('utf-8');
             child.stdout.setEncoding('utf-8');

@@ -80,62 +80,156 @@ export class SFMgr {
         // const credentials = new ClientSecretCredential(tenantId, clientId, this.clientSecret);
     }
 
-    public updateSetting(setting: string, value: any) {
-        const settings = vscode.workspace.getConfiguration(this.configurationSection);
-        SFUtility.outputLog('sfMgr:updateSetting:setting:' + setting + ' value:' + value);
-        const currentSetting = this.getSetting(setting);
-        if (Array.isArray(currentSetting)) {
-            if (value) {
-                // child setting/array
-                if (!currentSetting.includes(value)) {
-                    SFUtility.outputLog('sfMgr:updateSetting:adding array:' + setting + ' value:' + value);
-                    currentSetting.push(value);
-                }
-                else {
-                    SFUtility.outputLog('sfMgr:updateSetting:array already exists:' + setting + ' value:' + value);
-                    return;
-                }
-            }
-            value = currentSetting;
+    private addSfConfig(sfConfig: SFConfiguration.SFConfiguration) {
+        if (!this.sfConfigs.find((config: SFConfiguration.SFConfiguration) => config.clusterHttpEndpoint === sfConfig.clusterHttpEndpoint)) {
+            this.sfConfigs.push(sfConfig);
         }
-
-        SFUtility.outputLog('sfMgr:updateSetting:setting:' + setting + ' value:' + value, settings);
-        return settings.update(setting, value, vscode.ConfigurationTarget.Global);
-
-
     }
 
-    public getSetting(setting: string) {
-        const settings = vscode.workspace.getConfiguration(this.configurationSection);
-        const value = settings.get(setting);
-        SFUtility.outputLog('sfMgr:getSetting returning:setting:' + setting + ' value:' + value, settings);
-        return value;
-    }
+    public async deployDevCluster() {
+        // check for binaries
+        const result = await this.runPsCommand('whoami');
+        SFUtility.outputLog(`sfMgr:deployDevCluster:whoami:${result}`);
+        await this.runPsCommand('$psversiontable');
+        if (SFUtility.fileExists(SFConstants.SF_SDK_DIR)) {
+            SFUtility.outputLog(`sfMgr:deployDevCluster:SF_SDK_DIR exists:${SFConstants.SF_SDK_DIR}`);
+        }
+        else {
+            SFUtility.outputLog(`sfMgr:deployDevCluster:SF_SDK_DIR does not exist:${SFConstants.SF_SDK_DIR}`);
 
-    public getSettings(): vscode.WorkspaceConfiguration {
-        const settings = vscode.workspace.getConfiguration(this.configurationSection);
-        SFUtility.outputLog('sfMgr:getSettings:settings:', settings);
-        return settings;
-    }
-
-    public removeSetting(setting: string, value?: any) {
-        const settings = vscode.workspace.getConfiguration(this.configurationSection);
-        SFUtility.outputLog('sfMgr:removeSetting:setting:' + setting + ' value:' + value);
-        const currentSetting = this.getSetting(setting);
-        if (Array.isArray(currentSetting)) {
-            if (currentSetting.includes(value)) {
-                SFUtility.outputLog('sfMgr:removeSetting:setting is array:' + setting);
-                currentSetting.splice(currentSetting.indexOf(value), 1);
+            await this.downloadSFSDK();
+            // dev cluster
+            if (!SFUtility.fileExists(SFConstants.SF_DEV_CLUSTER_SETUP)) {
+                await this.runPsCommand(`start-process -verb runas -wait -filePath '${SFConstants.SF_DEV_CLUSTER_SETUP}'`);
             }
             else {
-                SFUtility.outputLog('sfMgr:removeSetting:setting not array:' + setting);
-                const settingValue = (this.getSetting(setting) as string[])?.filter((item: any) => item === value);
+                SFUtility.outputLog(`sfMgr:deployDevCluster:file does not exist:${SFConstants.SF_DEV_CLUSTER_SETUP}`, null, debugLevel.error);
             }
-            value = currentSetting;
+        }
+    }
+
+    public async deployDevSecureCluster() {
+        //todo implement
+    }
+
+    public async downloadAndExecute(downloadUrl: string, outputFile: string | null = null, command: string | null = null, args: string[] | null = []): Promise<string | undefined> {
+        SFUtility.outputLog(`sfMgr:downloadAndExecute:downloadUrl:${downloadUrl}`);
+        if (!fs.existsSync(this.globalStorage)) {
+            fs.mkdirSync(this.globalStorage, { recursive: true });
         }
 
-        SFUtility.outputLog('sfMgr:removeSetting:setting:' + setting, settings);
-        return settings.update(setting, value, vscode.ConfigurationTarget.Global);
+        if (!outputFile) {
+            outputFile = `${this.globalStorage}\\${downloadUrl.split('/').pop()!}`;
+        }
+
+        if (!command) {
+            command = outputFile;
+        }
+
+        const psCommand = `start-process -wait -filePath '${command}' -argumentList '${args?.join(' ')}'`;
+
+        if (!SFUtility.fileExists(outputFile)) {
+            if (await this.httpDownload(downloadUrl, outputFile)) {
+                SFUtility.outputLog(`sfMgr:downloadAndExecute:outputFile:${outputFile}`);
+
+                // install binaries
+                if (SFUtility.fileExists(outputFile)) {
+                    SFUtility.outputLog(`sfMgr:deployDevCluster:file exists:${outputFile}`);
+                    return await this.runPsCommand(psCommand);
+                }
+                else {
+                    SFUtility.outputLog(`sfMgr:downloadAndExecute:file does not exist:${outputFile}`, null, debugLevel.error);
+                }
+            }
+            else {
+                SFUtility.outputLog(`sfMgr:downloadAndExecute:error:outputFile:${outputFile}`, null, debugLevel.error);
+            }
+        }
+        else {
+            SFUtility.outputLog(`sfMgr:downloadAndExecute:outputFile already exists:${outputFile}`);
+            return await this.runPsCommand(psCommand);
+        }
+    }
+
+    public async downloadSFSDK(): Promise<void> {
+        // download binaries
+        //const result = await this.sfRestClient.invokeRequest(SFConstants.SF_SDK_DOWNLOAD_URL) as string;
+        const result = await this.httpGet(SFConstants.SF_SDK_DOWNLOAD_URL);
+
+        if (!result) {
+            SFUtility.showError('sfMgr:deployDevCluster:SF_SDK_DOWNLOAD_URL:failed');
+            return;
+        }
+
+
+        // parse result for real download urls
+        // runtime
+        let downloadUrl: string = result.toString().match(SFConstants.SF_RUNTIME_URI_REGEX)![0];
+        let outputFile = `${this.globalStorage}\\${downloadUrl.split('/').pop()!}`;
+        await this.downloadAndExecute(downloadUrl, outputFile, outputFile, ['/accepteula', '/quiet', '/force']);
+
+        // sdk
+        downloadUrl = result.toString().match(SFConstants.SF_SDK_URI_REGEX)![0];
+        outputFile = `${this.globalStorage}\\${downloadUrl.split('/').pop()!}`;
+        const args = ['/package', outputFile, '/norestart', '/quiet', '/log', `${this.globalStorage}\\sf-sdk.log`];
+        await this.downloadAndExecute(downloadUrl, outputFile, 'msiexec.exe', args);
+    }
+
+    public async getCluster() {
+
+        //test
+        //const test = await vscode.commands.executeCommand('workbench.action.terminal.sendSequence', { text: "write-output $psversiontable\u000D" });
+        //SFUtility.outputLog('test: ' + test);
+        //end test
+
+        await this.sfRest.connectToCluster();
+
+        await this.sfRest.getClusterManifest().then((data: any) => {
+            SFUtility.outputLog('sfMgr:getCluster:response:', data);
+            this.sfConfig = new SFConfiguration.SFConfiguration(this.context);
+            this.sfConfig.setManifest(data);
+            this.getNodes().then((nodes: sfModels.NodeInfo[]) => {
+                nodes.forEach((node: sfModels.NodeInfo) => {
+                    this.sfConfig.addNode(node);
+                });
+                this.addSfConfig(this.sfConfig);
+                SFUtility.outputLog('sfMgr:getCluster:config:', this.sfConfig);
+                //this.sfClusterView.addTreeItem(new TreeItem(this.sfConfig.clusterName!));//, this.sfConfig.nodes, this.sfConfig));
+                this.sfClusterView.addTreeItem(this.sfConfig.createClusterViewTreeItem());
+            });
+        });
+    }
+
+    public async getClusters(): Promise<any> {
+        // uses azure account to enumerate clusters
+        if (!this.sfConfig.clusterHttpEndpoint && !this.clientSecret || !this.subscriptionId) {
+            SFUtility.showWarning("Cluster secret or subscription id not set");
+            if (!this.sfRest.azureConnect()) {
+                SFUtility.showError("Azure account not connected");
+                return null;
+            }
+        }
+        await this.sfRest.getClusters()
+            .then((data: any) => {
+                for (const cluster of data) {
+                    this.sfClusters.push(cluster);
+                    //todo test
+                    this.addSfConfig(new SFConfiguration.SFConfiguration(this.context));
+                }
+            });
+    }
+
+    public async getNodes(): Promise<sfModels.NodeInfo[]> {
+        const nodeList = await this.sfRest.getNodes();
+        return nodeList;
+        // await this.sfRest.getNodes().then((data: any) => {
+        //         SFUtility.outputLog('sfMgr:getNodes:response:', data);
+        //         //const jObject = JSON.parse(data);
+        //         for (const node of data) {
+        //             SFUtility.outputLog('sfMgr:getNodes:node:', node);
+        //             this.sfConfig.addNode(node);
+        //         }
+        //     });
     }
 
     public getSecrets(context: vscode.ExtensionContext) {
@@ -157,78 +251,44 @@ export class SFMgr {
         });
     }
 
-    public async deployDevCluster() {
-        // check for binaries
-        const result = await this.runPsCommand('whoami');
-        SFUtility.outputLog(`sfMgr:deployDevCluster:whoami:${result}`);
-        await this.runPsCommand('$psversiontable');
-        if (SFUtility.fileExists(SFConstants.SF_SDK_DIR)) {
-            SFUtility.outputLog(`sfMgr:deployDevCluster:SF_SDK_DIR exists:${SFConstants.SF_SDK_DIR}`);
 
-        }
-        else {
-            SFUtility.outputLog(`sfMgr:deployDevCluster:SF_SDK_DIR does not exist:${SFConstants.SF_SDK_DIR}`);
-            // download binaries
-            //const result = await this.sfRestClient.invokeRequest(SFConstants.SF_SDK_DOWNLOAD_URL) as string;
-            const result = await this.httpGet(SFConstants.SF_SDK_DOWNLOAD_URL);
-
-            if (!result) {
-                SFUtility.showError('sfMgr:deployDevCluster:SF_SDK_DOWNLOAD_URL:failed');
-                return;
-            }
-
-            // parse result for real download url
-            const downloadUrl: string = result.toString().match(SFConstants.SF_SDK_URI_REGEX)![0];
-            SFUtility.outputLog(`sfMgr:deployDevCluster:SF_SDK_DOWNLOAD_URL:downloadUrl:${downloadUrl}`);
-            if(!fs.existsSync(this.globalStorage)) {
-                fs.mkdirSync(this.globalStorage, { recursive: true });
-            }
-
-            const outputFile = `${this.globalStorage}\\${downloadUrl.split('/').pop()!}`;
-
-            if (await this.httpDownload(downloadUrl, outputFile)) {
-                SFUtility.outputLog(`sfMgr:deployDevCluster:SF_SDK_DOWNLOAD_URL:outputFile:${outputFile}`);
-
-                // install binaries
-                await this.runPsCommand(`invoke-expression -command ${outputFile}`);
-                if (SFUtility.fileExists(SFConstants.SF_SDK_DIR)) {
-                    SFUtility.outputLog(`sfMgr:deployDevCluster:SF_SDK_DIR exists:${SFConstants.SF_SDK_DIR}`);
-                    await this.runPsCommand(`${SFConstants.SF_DEV_CLUSTER_SETUP}`);
-                }
-                else {
-                    SFUtility.outputLog(`sfMgr:deployDevCluster:SF_SDK_DIR does not exist:${SFConstants.SF_SDK_DIR}`, null, debugLevel.error);
-                }
-            }
-            else {
-                SFUtility.outputLog(`sfMgr:deployDevCluster:SF_SDK_DOWNLOAD_URL:outputFile:${outputFile}`, null, debugLevel.error);
-            }
-        }
+    public getSetting(setting: string) {
+        const settings = vscode.workspace.getConfiguration(this.configurationSection);
+        const value = settings.get(setting);
+        SFUtility.outputLog('sfMgr:getSetting returning:setting:' + setting + ' value:' + value, settings);
+        return value;
     }
 
-    public async deployDevSecureCluster() {
-        //todo implement
+    public getSettings(): vscode.WorkspaceConfiguration {
+        const settings = vscode.workspace.getConfiguration(this.configurationSection);
+        SFUtility.outputLog('sfMgr:getSettings:settings:', settings);
+        return settings;
+    }
+
+    public getSfConfig(clusterHttpEndpoint: string): SFConfiguration.SFConfiguration | undefined {
+        return this.sfConfigs.find((config: SFConfiguration.SFConfiguration) => config.clusterHttpEndpoint === clusterHttpEndpoint);
     }
 
     private async httpDownload(url: string, outputFile: string): Promise<boolean> {
         const file = fs.createWriteStream(outputFile);
-        
+
         const result = await new Promise<boolean>((resolve, reject) => {
             //https.get(url, (response: http.IncomingMessage) => {
             https.get(url, (response: any) => {
-              //  SFUtility.outputLog(`sfMgr:httpDownload:statusCode:${response.statusCode}`);
-               // SFUtility.outputLog(`sfMgr:httpDownload:headers:${response.headers}`);
+                //  SFUtility.outputLog(`sfMgr:httpDownload:statusCode:${response.statusCode}`);
+                // SFUtility.outputLog(`sfMgr:httpDownload:headers:${response.headers}`);
                 response.pipe(file);
-                    response.on('error', (err: any) => {
-                        SFUtility.outputLog(`sfMgr:httpDownload:error:${err}`);
-                        reject(err);
-                    });
+                response.on('error', (err: any) => {
+                    SFUtility.outputLog(`sfMgr:httpDownload:error:${err}`);
+                    reject(err);
+                });
 
-                    // response.on('data', (chunk: any) => {
-                    //     SFUtility.outputLog(`sfMgr:httpGet:chunk:${chunk}`);
-                    // });
-                    response.on('end', () => {
-                        SFUtility.outputLog(`sfMgr:httpGet:end`);
-                    });
+                // response.on('data', (chunk: any) => {
+                //     SFUtility.outputLog(`sfMgr:httpGet:chunk:${chunk}`);
+                // });
+                response.on('end', () => {
+                    SFUtility.outputLog(`sfMgr:httpGet:end`);
+                });
 
                 file.on('finish', () => {
                     file.close();
@@ -274,94 +334,6 @@ export class SFMgr {
         return result;
     }
 
-    public async runPsCommand(command: string): Promise<string> {
-        SFUtility.outputLog('runPsCommand: ' + command);
-        const results = await this.ps.send(command);
-        const response = JSON.parse(results);
-
-        SFUtility.outputLog(`runPsCommand output:`, response);
-        return response;
-    }
-
-    public async getCluster() {
-
-        //test
-        //const test = await vscode.commands.executeCommand('workbench.action.terminal.sendSequence', { text: "write-output $psversiontable\u000D" });
-        //SFUtility.outputLog('test: ' + test);
-        //end test
-
-        await this.sfRest.connectToCluster();
-
-        await this.sfRest.getClusterManifest().then((data: any) => {
-            SFUtility.outputLog('sfMgr:getCluster:response:', data);
-            this.sfConfig = new SFConfiguration.SFConfiguration(this.context);
-            this.sfConfig.setManifest(data);
-            this.getNodes().then((nodes: sfModels.NodeInfo[]) => {
-                nodes.forEach((node: sfModels.NodeInfo) => {
-                    this.sfConfig.addNode(node);
-                });
-                this.addSfConfig(this.sfConfig);
-                SFUtility.outputLog('sfMgr:getCluster:config:', this.sfConfig);
-                //this.sfClusterView.addTreeItem(new TreeItem(this.sfConfig.clusterName!));//, this.sfConfig.nodes, this.sfConfig));
-                this.sfClusterView.addTreeItem(this.sfConfig.createClusterViewTreeItem());
-            });
-        });
-    }
-
-    private addSfConfig(sfConfig: SFConfiguration.SFConfiguration) {
-        if (!this.sfConfigs.find((config: SFConfiguration.SFConfiguration) => config.clusterHttpEndpoint === sfConfig.clusterHttpEndpoint)) {
-            this.sfConfigs.push(sfConfig);
-        }
-    }
-
-    public getSfConfig(clusterHttpEndpoint: string): SFConfiguration.SFConfiguration | undefined {
-        return this.sfConfigs.find((config: SFConfiguration.SFConfiguration) => config.clusterHttpEndpoint === clusterHttpEndpoint);
-    }
-
-    public removeSfConfig(clusterHttpEndpoint: string) {
-        const index = this.sfConfigs.findIndex((config: SFConfiguration.SFConfiguration) => config.clusterHttpEndpoint === clusterHttpEndpoint);
-        if (index > -1) {
-            this.sfConfigs.splice(index, 1);
-            SFUtility.outputLog('sfMgr:removeSfConfig:clusterHttpEndpoint removed:' + clusterHttpEndpoint);
-        }
-        else {
-            SFUtility.outputLog('sfMgr:removeSfConfig:clusterHttpEndpoint not found:' + clusterHttpEndpoint);
-        }
-    }
-
-
-    public async getClusters(): Promise<any> {
-        // uses azure account to enumerate clusters
-        if (!this.sfConfig.clusterHttpEndpoint && !this.clientSecret || !this.subscriptionId) {
-            SFUtility.showWarning("Cluster secret or subscription id not set");
-            if (!this.sfRest.azureConnect()) {
-                SFUtility.showError("Azure account not connected");
-                return null;
-            }
-        }
-        await this.sfRest.getClusters()
-            .then((data: any) => {
-                for (const cluster of data) {
-                    this.sfClusters.push(cluster);
-                    //todo test
-                    this.addSfConfig(new SFConfiguration.SFConfiguration(this.context));
-                }
-            });
-    }
-
-    public async getNodes(): Promise<sfModels.NodeInfo[]> {
-        const nodeList = await this.sfRest.getNodes();
-        return nodeList;
-        // await this.sfRest.getNodes().then((data: any) => {
-        //         SFUtility.outputLog('sfMgr:getNodes:response:', data);
-        //         //const jObject = JSON.parse(data);
-        //         for (const node of data) {
-        //             SFUtility.outputLog('sfMgr:getNodes:node:', node);
-        //             this.sfConfig.addNode(node);
-        //         }
-        //     });
-    }
-
     public async promptForClusterRestCall() {
         const adhocRestCall: string | undefined = await vscode.window.showInputBox({
             prompt: "Enter cluster REST call",
@@ -397,4 +369,69 @@ export class SFMgr {
         this.removeSetting('clusters', clusterEndpoint);
     }
 
+    public removeSfConfig(clusterHttpEndpoint: string) {
+        const index = this.sfConfigs.findIndex((config: SFConfiguration.SFConfiguration) => config.clusterHttpEndpoint === clusterHttpEndpoint);
+        if (index > -1) {
+            this.sfConfigs.splice(index, 1);
+            SFUtility.outputLog('sfMgr:removeSfConfig:clusterHttpEndpoint removed:' + clusterHttpEndpoint);
+        }
+        else {
+            SFUtility.outputLog('sfMgr:removeSfConfig:clusterHttpEndpoint not found:' + clusterHttpEndpoint);
+        }
+    }
+
+    public removeSetting(setting: string, value?: any) {
+        const settings = vscode.workspace.getConfiguration(this.configurationSection);
+        SFUtility.outputLog('sfMgr:removeSetting:setting:' + setting + ' value:' + value);
+        const currentSetting = this.getSetting(setting);
+        if (Array.isArray(currentSetting)) {
+            if (currentSetting.includes(value)) {
+                SFUtility.outputLog('sfMgr:removeSetting:setting is array:' + setting);
+                currentSetting.splice(currentSetting.indexOf(value), 1);
+            }
+            else {
+                SFUtility.outputLog('sfMgr:removeSetting:setting not array:' + setting);
+                const settingValue = (this.getSetting(setting) as string[])?.filter((item: any) => item === value);
+            }
+            value = currentSetting;
+        }
+
+        SFUtility.outputLog('sfMgr:removeSetting:setting:' + setting, settings);
+        return settings.update(setting, value, vscode.ConfigurationTarget.Global);
+    }
+
+    public async runPsCommand(command: string): Promise<string> {
+        SFUtility.outputLog('runPsCommand: ' + command);
+        const results = await this.ps.send(command);
+        const response = JSON.parse(results);
+
+        SFUtility.outputLog(`runPsCommand output:`, response);
+        return response;
+    }
+
+    public updateSetting(setting: string, value: any) {
+        const settings = vscode.workspace.getConfiguration(this.configurationSection);
+        SFUtility.outputLog('sfMgr:updateSetting:setting:' + setting + ' value:' + value);
+        const currentSetting = this.getSetting(setting);
+        if (Array.isArray(currentSetting)) {
+            if (value) {
+                // child setting/array
+                if (!currentSetting.includes(value)) {
+                    SFUtility.outputLog('sfMgr:updateSetting:adding array:' + setting + ' value:' + value);
+                    currentSetting.push(value);
+                }
+                else {
+                    SFUtility.outputLog('sfMgr:updateSetting:array already exists:' + setting + ' value:' + value);
+                    return;
+                }
+            }
+            value = currentSetting;
+        }
+
+        SFUtility.outputLog('sfMgr:updateSetting:setting:' + setting + ' value:' + value, settings);
+        return settings.update(setting, value, vscode.ConfigurationTarget.Global);
+
+
+    }
 }
+
