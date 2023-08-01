@@ -340,10 +340,12 @@ export class SFMgr {
             placeHolder: "/$/GetClusterHealth"
         });
 
+        SFUtility.activateOutputChannel();
         if (!adhocRestCall) { return; }
         if (!this.sfConfig.clusterHttpEndpoint) await this.getCluster();
         if (!this.sfConfig.clusterHttpEndpoint) await this.promptForClusterEndpoint();
         if (!this.sfConfig.clusterHttpEndpoint) return;
+
 
         this.sfRest.invokeRestApi("GET", this.sfConfig.clusterHttpEndpoint!, adhocRestCall)
             .then((data: any) => {

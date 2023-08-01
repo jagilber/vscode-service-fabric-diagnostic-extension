@@ -21,6 +21,13 @@ export class SFUtility {
         SFUtility.createTelemetryClient();
     }
 
+    public static activateOutputChannel(): void {
+        if (!this.channel) {
+            this.createDebugLogChannel();
+        }
+        this.channel.show();
+    }
+
     private static createTelemetryClient(): any {
         // @ts-ignore - telemetry is not yet exposed in the vscode api
         const sender = {
