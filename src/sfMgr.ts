@@ -1,15 +1,17 @@
 
 import * as vscode from 'vscode';
-import * as SFConfiguration from './sfConfiguration';
-import * as SFRest from './sfRest';
+import * as SfConfiguration from './sfConfiguration';
+import { SfConstants } from './sfConstants';
+import { SfPs } from './sfPs';
+import { SfRest } from './sfRest';
+import { sfExtSecretList, SfExtSecrets } from './sfExtSecrets';
+import { SfExtSettings } from './sfExtSettings';
+import { SfRestClient } from './sfRestClient';
+import { debugLevel, SfUtility } from './sfUtility';
 
-import * as SFRestClient from './sfRestClient';
 import * as xmlConverter from 'xml-js';
 //import { serviceFabricClusterViewDragAndDrop } from './serviceFabricClusterViewDragAndDrop';
 import { serviceFabricClusterView, TreeItem } from './serviceFabricClusterView';
-import { debugLevel, SfUtility } from './sfUtility';
-import { SfPs } from './sfPs';
-import { SfConstants } from './sfConstants';
 import * as http from 'http';
 import * as https from 'https';
 import * as fs from 'fs';
@@ -31,10 +33,9 @@ import { AzureLogger, setLogLevel } from "@azure/logger";
 import { resolve } from 'path';
 
 
+
 export class SfMgr {
-    private configurationSection = "sfClusterExplorer"; //servicefabric
-    private configurationSettings: vscode.WorkspaceConfiguration;
-    private clientSecret = "";
+    private sfExtSecrets: SfExtSecrets;
     private exampleClusterEndpoint = "https://sftestcluster.eastus.cloudapp.azure.com:19080";
     private key = "";
     private certificate = "";
@@ -42,10 +43,10 @@ export class SfMgr {
     private context: any;
     public sfClusterView: serviceFabricClusterView;
     //public sfClusterViewDD: serviceFabricClusterViewDragAndDrop;
-    private sfRest: SFRest.SfRest;
-    private sfRestClient: SFRestClient.SfRestClient;
-    private sfConfigs: Array<SFConfiguration.SfConfiguration> = [];
-    private sfConfig: SFConfiguration.SfConfiguration;
+    private sfRest: SfRest;
+    private sfRestClient: SfRestClient;
+    private sfConfigs: Array<SfConfiguration.SfConfiguration> = [];
+    private sfConfig: SfConfiguration.SfConfiguration;
 
     public sfClusters: any[] = [];
     private clientApiVersion = "6.3";
@@ -64,20 +65,17 @@ export class SfMgr {
         // set azure log level and output
         setLogLevel("verbose");
 
-        // get settings
-        this.configurationSettings = this.getSettings();
-
         // get secrets
-        this.getSecrets(context);
+        this.sfExtSecrets = new SfExtSecrets(context);
 
         // override logging to output to console.log (default location is stderr)
         AzureLogger.log = (...args) => {
             SfUtility.outputLog(args.join(" "));
         };
 
-        this.sfConfig = new SFConfiguration.SfConfiguration(this.context);
-        this.sfRest = new SFRest.SfRest(context);
-        this.sfRestClient = new SFRestClient.SfRestClient(this.sfRest);
+        this.sfConfig = new SfConfiguration.SfConfiguration(this.context);
+        this.sfRest = new SfRest(context);
+        this.sfRestClient = new SfRestClient(this.sfRest);
 
         this.globalStorage = context.globalStorageUri.fsPath;
         this.clusterFileStorage = `${this.globalStorage}\\clusters`;
@@ -89,8 +87,8 @@ export class SfMgr {
         // const credentials = new ClientSecretCredential(tenantId, clientId, this.clientSecret);
     }
 
-    private addSfConfig(sfConfig: SFConfiguration.SfConfiguration) {
-        if (!this.sfConfigs.find((config: SFConfiguration.SfConfiguration) => config.clusterHttpEndpoint === sfConfig.clusterHttpEndpoint)) {
+    private addSfConfig(sfConfig: SfConfiguration.SfConfiguration) {
+        if (!this.sfConfigs.find((config: SfConfiguration.SfConfiguration) => config.clusterHttpEndpoint === sfConfig.clusterHttpEndpoint)) {
             this.sfConfigs.push(sfConfig);
         }
     }
@@ -195,7 +193,7 @@ export class SfMgr {
 
         await this.sfRest.getClusterManifest().then((data: any) => {
             SfUtility.outputLog('sfMgr:getCluster:response:', data);
-            this.sfConfig = new SFConfiguration.SfConfiguration(this.context, data);
+            this.sfConfig = new SfConfiguration.SfConfiguration(this.context, data);
             // this.sfRest.getNodes().then((nodes: sfModels.NodeInfo[]) => {
             //     nodes.forEach((node: sfModels.NodeInfo) => {
             //         this.sfConfig.addNode(node);
@@ -214,7 +212,7 @@ export class SfMgr {
     public async getClusters(): Promise<any> {
         //todo test
         // uses azure account to enumerate clusters
-        if (!this.sfConfig.clusterHttpEndpoint && !this.clientSecret || !this.subscriptionId) {
+        if (!this.sfConfig.clusterHttpEndpoint && !this.sfExtSecrets.getSecret(sfExtSecretList.sfRestCertificate) || !this.subscriptionId) {
             SfUtility.showWarning("Cluster secret or subscription id not set");
             if (!this.sfRest.azureConnect()) {
                 SfUtility.showError("Azure account not connected");
@@ -226,47 +224,13 @@ export class SfMgr {
                 for (const cluster of data) {
                     this.sfClusters.push(cluster);
                     //todo test
-                    this.addSfConfig(new SFConfiguration.SfConfiguration(this.context));
+                    this.addSfConfig(new SfConfiguration.SfConfiguration(this.context));
                 }
             });
     }
 
-
-    public getSecrets(context: vscode.ExtensionContext) {
-
-        context.secrets.get("sfRestSecret").then((value: string | undefined) => {
-            if (value) {
-                this.clientSecret = value;
-            }
-        });
-        context.secrets.get("sfRestKey").then((value: any) => {
-            if (value) {
-                this.key = value;
-            }
-        });
-        context.secrets.get("sfRestCertificate").then((value: any) => {
-            if (value) {
-                this.certificate = value;
-            }
-        });
-    }
-
-
-    public getSetting(setting: string) {
-        const settings = vscode.workspace.getConfiguration(this.configurationSection);
-        const value = settings.get(setting);
-        SfUtility.outputLog('sfMgr:getSetting returning:setting:' + setting + ' value:' + value, settings);
-        return value;
-    }
-
-    public getSettings(): vscode.WorkspaceConfiguration {
-        const settings = vscode.workspace.getConfiguration(this.configurationSection);
-        SfUtility.outputLog('sfMgr:getSettings:settings:', settings);
-        return settings;
-    }
-
-    public getSfConfig(clusterHttpEndpoint: string): SFConfiguration.SfConfiguration | undefined {
-        return this.sfConfigs.find((config: SFConfiguration.SfConfiguration) => config.clusterHttpEndpoint === clusterHttpEndpoint);
+    public getSfConfig(clusterHttpEndpoint: string): SfConfiguration.SfConfiguration | undefined {
+        return this.sfConfigs.find((config: SfConfiguration.SfConfiguration) => config.clusterHttpEndpoint === clusterHttpEndpoint);
     }
 
     private async httpDownload(url: string, outputFile: string): Promise<boolean> {
@@ -359,7 +323,7 @@ export class SfMgr {
             placeHolder: this.exampleClusterEndpoint
         });
         this.sfConfig.clusterHttpEndpoint = clusterEndpoint;
-        this.updateSetting('clusters', clusterEndpoint);
+        SfExtSettings.updateSetting('clusters', clusterEndpoint);
     }
 
     public async promptForRemoveClusterEndpoint() {
@@ -368,11 +332,11 @@ export class SfMgr {
             placeHolder: this.exampleClusterEndpoint
         });
         this.sfConfig.clusterHttpEndpoint = clusterEndpoint;
-        this.removeSetting('clusters', clusterEndpoint);
+        SfExtSettings.removeSetting('clusters', clusterEndpoint);
     }
 
     public removeSfConfig(clusterHttpEndpoint: string) {
-        const index = this.sfConfigs.findIndex((config: SFConfiguration.SfConfiguration) => config.clusterHttpEndpoint === clusterHttpEndpoint);
+        const index = this.sfConfigs.findIndex((config: SfConfiguration.SfConfiguration) => config.clusterHttpEndpoint === clusterHttpEndpoint);
         if (index > -1) {
             this.sfConfigs.splice(index, 1);
             SfUtility.outputLog('sfMgr:removeSfConfig:clusterHttpEndpoint removed:' + clusterHttpEndpoint);
@@ -382,26 +346,6 @@ export class SfMgr {
         }
     }
 
-    public removeSetting(setting: string, value?: any) {
-        const settings = vscode.workspace.getConfiguration(this.configurationSection);
-        SfUtility.outputLog('sfMgr:removeSetting:setting:' + setting + ' value:' + value);
-        const currentSetting = this.getSetting(setting);
-        if (Array.isArray(currentSetting)) {
-            if (currentSetting.includes(value)) {
-                SfUtility.outputLog('sfMgr:removeSetting:setting is array:' + setting);
-                currentSetting.splice(currentSetting.indexOf(value), 1);
-            }
-            else {
-                SfUtility.outputLog('sfMgr:removeSetting:setting not array:' + setting);
-                const settingValue = (this.getSetting(setting) as string[])?.filter((item: any) => item === value);
-            }
-            value = currentSetting;
-        }
-
-        SfUtility.outputLog('sfMgr:removeSetting:setting:' + setting, settings);
-        return settings.update(setting, value, vscode.ConfigurationTarget.Global);
-    }
-
     public async runPsCommand(command: string): Promise<string> {
         SfUtility.outputLog('runPsCommand: ' + command);
         const results = await this.ps.send(command);
@@ -409,31 +353,6 @@ export class SfMgr {
 
         SfUtility.outputLog(`runPsCommand output:`, response);
         return response;
-    }
-
-    public updateSetting(setting: string, value: any) {
-        const settings = vscode.workspace.getConfiguration(this.configurationSection);
-        SfUtility.outputLog('sfMgr:updateSetting:setting:' + setting + ' value:' + value);
-        const currentSetting = this.getSetting(setting);
-        if (Array.isArray(currentSetting)) {
-            if (value) {
-                // child setting/array
-                if (!currentSetting.includes(value)) {
-                    SfUtility.outputLog('sfMgr:updateSetting:adding array:' + setting + ' value:' + value);
-                    currentSetting.push(value);
-                }
-                else {
-                    SfUtility.outputLog('sfMgr:updateSetting:array already exists:' + setting + ' value:' + value);
-                    return;
-                }
-            }
-            value = currentSetting;
-        }
-
-        SfUtility.outputLog('sfMgr:updateSetting:setting:' + setting + ' value:' + value, settings);
-        return settings.update(setting, value, vscode.ConfigurationTarget.Global);
-
-
     }
 }
 

@@ -4,7 +4,7 @@ import { apiUtils } from '@microsoft/vscode-azext-utils';
 import * as armServiceFabric from '@azure/arm-servicefabric';
 import * as azureIdentity from '@azure/identity';
 import * as serviceFabric from '@azure/servicefabric';
-import { PipelineRequest, PipelineResponse, createPipelineRequest } from '@azure/core-rest-pipeline';
+import * as azRestPipeline from '@azure/core-rest-pipeline';
 import { OperationArguments, OperationSpec } from '@azure/core-client';
 
 import { ServiceFabricManagementClient } from './sdk/servicefabric/arm-servicefabric/src/serviceFabricManagementClient';
@@ -45,8 +45,8 @@ export class SfRestClient {
         this.sfRest = options;
     }
 
-    public async getServerCertificate(clusterHttpEndpoint:string): Promise<PipelineResponse> {
-        const pipelineRequest:PipelineRequest = createPipelineRequest({
+    public async getServerCertificate(clusterHttpEndpoint:string): Promise<azRestPipeline.PipelineResponse> {
+        const pipelineRequest:azRestPipeline.PipelineRequest = azRestPipeline.createPipelineRequest({
             url: clusterHttpEndpoint,
             headers: this.sfRest?.createSfAutoRestHttpHeaders()
         });
@@ -54,12 +54,12 @@ export class SfRestClient {
         const options = this.sfRest?.createSfAutoRestHttpOptions(clusterHttpEndpoint);
         options.requestCert = true;
 
-        return new Promise<PipelineResponse>((resolve, reject) => {
+        return new Promise<azRestPipeline.PipelineResponse>((resolve, reject) => {
             this.invokeRequest(options)
                 .then((response: any) => {
                     SfUtility.outputLog(`sendRequest:response:${response}`);
 
-                    const pipelineResponse: PipelineResponse = {
+                    const pipelineResponse: azRestPipeline.PipelineResponse = {
                         request: pipelineRequest,
                         status: 200,
                         headers: pipelineRequest.headers,
@@ -78,17 +78,17 @@ export class SfRestClient {
     }
 
 
-    public async sendRequest(request: PipelineRequest): Promise<PipelineResponse> {
+    public async sendRequest(request: azRestPipeline.PipelineRequest): Promise<azRestPipeline.PipelineResponse> {
         SfUtility.outputLog('SfRestClient:sendRequest');
         //return await this.pipeline.sendRequest(request);
         //const options = this.sfRest?.createHttpOptions(request.url.replace('http://', 'https://'));
         const options = this.sfRest?.createSfAutoRestHttpOptions(request.url.replace('http://', 'https://'));
-        return new Promise<PipelineResponse>((resolve, reject) => {
+        return new Promise<azRestPipeline.PipelineResponse>((resolve, reject) => {
             this.invokeRequest(options)
                 .then((response: any) => {
                     SfUtility.outputLog(`sendRequest:response:${response}`);
 
-                    const pipelineResponse: PipelineResponse = {
+                    const pipelineResponse: azRestPipeline.PipelineResponse = {
                         request: request,
                         status: 200,
                         headers: request.headers,
