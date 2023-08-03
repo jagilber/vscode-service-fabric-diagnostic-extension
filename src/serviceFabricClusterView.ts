@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
-import { SFConfiguration } from './sfConfiguration';
-import { SFUtility, debugLevel } from './sfUtility';
+import { SfConfiguration } from './sfConfiguration';
+import { SfUtility, debugLevel } from './sfUtility';
 //import * as SfApi from './sdk/servicefabric/servicefabric/src/serviceFabricClientAPIs';
 import * as sfModels from './sdk/servicefabric/servicefabric/src/models';
 import { Url } from 'url';
@@ -34,32 +34,32 @@ export class serviceFabricClusterView implements vscode.TreeDataProvider<TreeIte
     public addTreeItem(treeItem: TreeItem): void {
         const existingItem = this.findTreeItem(treeItem); //todo test
         if (existingItem) {
-            SFUtility.outputLog(`serviceFabricClusterView:addTreeItem:treeItem:${treeItem.label} exists. removing`, null, debugLevel.warn);
+            SfUtility.outputLog(`serviceFabricClusterView:addTreeItem:treeItem:${treeItem.label} exists. removing`, null, debugLevel.warn);
             //this.removeTreeItem(treeItem);
             this.refresh(treeItem);
         }
 
-        SFUtility.outputLog(`serviceFabricClusterView:addTreeItem:treeItem:${treeItem.label}`);
+        SfUtility.outputLog(`serviceFabricClusterView:addTreeItem:treeItem:${treeItem.label}`);
         this.tree.push(treeItem);
         //this.refresh(treeItem);
         this.refresh();
-        SFUtility.outputLog(`serviceFabricClusterView:addTreeItem:treeItem:${treeItem.label} added`);
+        SfUtility.outputLog(`serviceFabricClusterView:addTreeItem:treeItem:${treeItem.label} added`);
     }
 
     private removeTreeItem(treeItem: TreeItem) {
         if (this.findTreeItem(treeItem)) {
-            SFUtility.outputLog(`serviceFabricClusterView:addTreeItem:treeItem:${treeItem.label} exists. removing`);
+            SfUtility.outputLog(`serviceFabricClusterView:addTreeItem:treeItem:${treeItem.label} exists. removing`);
             //todo test
             this.tree.splice(this.tree.findIndex((item: TreeItem) => item.label === treeItem.label), 1);
         }
         else {
-            SFUtility.outputLog(`serviceFabricClusterView:addTreeItem:treeItem:${treeItem.label} does not exist`, null, debugLevel.warn);
+            SfUtility.outputLog(`serviceFabricClusterView:addTreeItem:treeItem:${treeItem.label} does not exist`, null, debugLevel.warn);
         }
     }
 
     private findTreeItem(treeItem: TreeItem): TreeItem | undefined | null {
         const results = this.tree.find((item: TreeItem) => item.label === treeItem.label);
-        SFUtility.outputLog(`serviceFabricClusterView:findTreeItem:treeItem:${treeItem.label} results:${results}`);
+        SfUtility.outputLog(`serviceFabricClusterView:findTreeItem:treeItem:${treeItem.label} results:${results}`);
         return results;
     }
 

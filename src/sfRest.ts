@@ -58,13 +58,14 @@ import * as vscode from 'vscode';
 import * as os from 'os';
 import { serviceFabricClusterView } from './serviceFabricClusterView';
 import * as SFConfiguration from './sfConfiguration';
-import { SFUtility, debugLevel } from './sfUtility';
+import { SfUtility, debugLevel } from './sfUtility';
 import { SfRestClient } from './sfRestClient';
 import { ClientRequest, RequestOptions } from 'http';
-import { ServiceClient } from '@azure/core-client';
+import { DictionaryMapper, ServiceClient } from '@azure/core-client';
 import { DeactivationIntentDescription } from '@azure/servicefabric/esm/models/mappers';
+import { Hash } from 'crypto';
 
-export class SFRest {
+export class SfRest {
     //https://www.npmjs.com/package/keytar
     private extensionContext: vscode.ExtensionContext | undefined;
     private clientApiVersion = "6.3";
@@ -85,10 +86,10 @@ export class SFRest {
 
     constructor(
         context: vscode.ExtensionContext,
-        apiVersion: string | null = null,
+        apiVersion?: string,
     ) {
         this.extensionContext = context;
-        SFUtility.outputLog("SFRest:constructor:context.extensionPath:" + context.extensionPath);
+        SfUtility.outputLog("SFRest:constructor:context.extensionPath:" + context.extensionPath);
 
         vscode.workspace.fs.readFile(vscode.Uri.file(`${this.extensionContext?.extensionPath}\\test-certs\\${os.hostname().toUpperCase()}\\ServiceFabricDevClusterCert.key`)).then((value: any) => {
             if (value) {
@@ -108,7 +109,7 @@ export class SFRest {
         let azureAccount: any | null = null;
         try {
             if (!secret) {
-                SFUtility.showWarning("azure ad subscription secret not set");
+                SfUtility.showWarning("azure ad subscription secret not set");
 
                 //await apiUtils.getAzureExtensionApi(context, 'ms-vscode.azure-account','0.0.1').then((api) => {console.log(api);});
                 azureAccount = await (<apiUtils.AzureExtensionApiProvider>vscode.extensions.getExtension('ms-vscode.azure-account')!.exports).getApi('1.0.0');
@@ -117,14 +118,14 @@ export class SFRest {
                 //subscriptions.push(commands.registerCommand('azure-account-sample.showAppServices', showAppServices(azureAccount)));
                 //sfRest.getClusters();
                 if (!azureAccount()) {
-                    SFUtility.showError("Azure account not connected");
+                    SfUtility.showError("Azure account not connected");
                     return false;
                 }
             }
 
         }
         catch (error) {
-            SFUtility.showError(JSON.stringify(error));
+            SfUtility.showError(JSON.stringify(error));
             return null;
         }
         return azureAccount;
@@ -155,9 +156,9 @@ export class SFRest {
         if (endpoint) {
             this.clusterHttpEndpoint = endpoint;
         }
-        SFUtility.outputLog('sfMgr:initializeClusterConnection:clusterHttpEndpoint:' + this.clusterHttpEndpoint);
+        SfUtility.outputLog('sfMgr:initializeClusterConnection:clusterHttpEndpoint:' + this.clusterHttpEndpoint);
         if(!this.clusterHttpEndpoint){
-            SFUtility.showWarning("Cluster endpoint not set");
+            SfUtility.showWarning("Cluster endpoint not set");
             //return null;
         }
         const optionalParams: sfModels.ServiceFabricClientAPIsOptionalParams = {
@@ -180,6 +181,12 @@ export class SFRest {
         await this.getClusterVersion();
     }
 
+    public createSfAutoRestHttpHeaders(): any {
+        return {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        };
+    }
     public createSfAutoRestHttpOptions(uri: string): any | tls.ConnectionOptions | RequestOptions {
         //const parsedUri = url.parse(this.clusterHttpEndpoint!);
         const parsedUri = url.parse(uri);
@@ -188,10 +195,7 @@ export class SFRest {
             host: parsedUri!.hostname ? parsedUri.hostname : "localhost",
             path: parsedUri!.path,
             method: "GET",
-            headers: {
-                "Content-Type": "application/json",
-                "Accept": "application/json"
-            },
+            headers: this.createSfAutoRestHttpHeaders(),
             port: parsedUri.port ? parseInt(parsedUri.port) : 19080,
             //timeout: this.timeOut,
             key: this.key,
@@ -215,10 +219,7 @@ export class SFRest {
             host: parsedUri!.hostname ? parsedUri.hostname : "localhost",
             method: "GET",
             path: path.replace(/(&|\?)$/, ""),
-            headers: {
-                "Content-Type": "application/json",
-                "Accept": "application/json"
-            },
+            headers: this.createSfAutoRestHttpHeaders(),
             port: parsedUri.port ? parseInt(parsedUri.port) : 19080,
             //timeout: this.timeOut,
             key: this.key,
@@ -246,10 +247,10 @@ export class SFRest {
 
         const nodeState = await this.getNode(nodeName);
         if(nodeState.nodeDeactivationInfo?.nodeDeactivationStatus?.toLowerCase() !== "none") {
-            SFUtility.showInformation(`Node: ${nodeName} is disabled`);
+            SfUtility.showInformation(`Node: ${nodeName} is disabled`);
         }
         else{
-            SFUtility.showError(`Node: ${nodeName} is not disabled`);
+            SfUtility.showError(`Node: ${nodeName} is not disabled`);
         }
         return;
     }
@@ -259,10 +260,10 @@ export class SFRest {
 
         const nodeState = await this.getNode(nodeName);
         if(nodeState.nodeDeactivationInfo?.nodeDeactivationStatus?.toLowerCase() === "none") {
-            SFUtility.showInformation(`Node: ${nodeName} is enabled`);
+            SfUtility.showInformation(`Node: ${nodeName} is enabled`);
         }
         else{
-            SFUtility.showError(`Node: ${nodeName} is not enabled`);
+            SfUtility.showError(`Node: ${nodeName} is not enabled`);
         }
         return;
     }
@@ -270,11 +271,11 @@ export class SFRest {
     public async getApplicationTypes(): Promise<sfModels.ApplicationTypeInfo[]> {
         const applicationTypes: Array<sfModels.ApplicationTypeInfo> = [];
         const applicationInfos = await this.sfApi.getApplicationTypeInfoList();
-        SFUtility.outputLog('sfRest:getApplicationTypes:', applicationInfos);
+        SfUtility.outputLog('sfRest:getApplicationTypes:', applicationInfos);
         //todo: continuation token
         applicationInfos.items?.forEach((element: any) => {
             this.sfApi.getApplicationInfo(element.id).then((applicationInfo: any) => {
-                SFUtility.outputLog('sfRest:getApplicationTypes:applicationType:', applicationInfo);
+                SfUtility.outputLog('sfRest:getApplicationTypes:applicationType:', applicationInfo);
                 applicationTypes.push(element);
             });
         });
@@ -284,19 +285,19 @@ export class SFRest {
 
     public async getClusterManifest(): Promise<sfModels.GetClusterManifestResponse> {
         const clusterManifest = await this.sfApi.getClusterManifest();
-        SFUtility.outputLog('sfMgr:connectToCluster:clusterManifest:', clusterManifest);
+        SfUtility.outputLog('sfMgr:connectToCluster:clusterManifest:', clusterManifest);
         return clusterManifest;
     }
 
     public async getClusterHealth(): Promise<sfModels.ClusterHealth> {
         const clusterHealth = await this.sfApi.getClusterHealth();
-        SFUtility.outputLog('sfMgr:connectToCluster:clusterHealth:', clusterHealth);
+        SfUtility.outputLog('sfMgr:connectToCluster:clusterHealth:', clusterHealth);
         return clusterHealth;
     }
 
     public async getClusterVersion(): Promise<sfModels.ClusterVersion> {
         const custerVersion = await this.sfApi.getClusterVersion();
-        SFUtility.outputLog('sfMgr:connectToCluster:custerVersion:', custerVersion);
+        SfUtility.outputLog('sfMgr:connectToCluster:custerVersion:', custerVersion);
         return custerVersion;
     }
 
@@ -345,16 +346,17 @@ export class SFRest {
         //             });
         //     });
     }
+    
 
     public async getNode(nodeName: string): Promise<sfModels.NodeInfo> {
         const node = await this.sfApi.getNodeInfo(nodeName);
-        SFUtility.outputLog('sfRest:getNode:complete', node);
+        SfUtility.outputLog('sfRest:getNode:complete', node);
         return node;
     }
 
     public async getNodeHealth(nodeName: string): Promise<sfModels.NodeHealthState> {
         const nodeState = await this.sfApi.getNodeHealth(nodeName);
-        SFUtility.outputLog('sfRest:getNodeState:complete', nodeState);
+        SfUtility.outputLog('sfRest:getNodeState:complete', nodeState);
         return nodeState;
     }
 
@@ -363,8 +365,8 @@ export class SFRest {
         const nodes = await this.sfApi.getNodeInfoList();
     
         //todo: continuation token
-        if(nodes.items?.length === 0){
-            SFUtility.showWarning("No nodes found");
+        if(!nodes.items! || nodes.items?.length === 0){
+            SfUtility.showWarning("No nodes found");
             return nodeInfos;
         }
         await nodes.items?.forEach((element: any) => {
@@ -374,29 +376,29 @@ export class SFRest {
             // });
             nodeInfos.push(element);
         });
-        SFUtility.outputLog('sfRest:getNodes:nodes:', nodes);
+        SfUtility.outputLog('sfRest:getNodes:nodes:', nodes);
 
         return nodeInfos;
     }
 
     public async invokeRequestOptions(httpOptions: any | https.RequestOptions | tls.ConnectionOptions): Promise<ClientRequest | string | undefined> {
-        SFUtility.outputLog(`invokeRequest:httpOptions:${httpOptions.method} https://${httpOptions.host}:${httpOptions.port}${httpOptions.path}`);
+        SfUtility.outputLog(`invokeRequest:httpOptions:${httpOptions.method} https://${httpOptions.host}:${httpOptions.port}${httpOptions.path}`);
         try {
             const promise: Promise<ClientRequest | string> = new Promise<ClientRequest | string>((resolve, reject) => {
                 const result: ClientRequest = https.request(httpOptions, (response) => {
                     let data = '';
 
                     response.on('error', (error: any) => {
-                        SFUtility.outputLog(error, null, debugLevel.error);
+                        SfUtility.outputLog(error, null, debugLevel.error);
                         reject(error);
                     });
 
                     response.on('data', (chunk: any) => {
-                        SFUtility.outputLog(`invokeRequest:response data length:${chunk.length}`, null, debugLevel.info);
+                        SfUtility.outputLog(`invokeRequest:response data length:${chunk.length}`, null, debugLevel.info);
                         const jObject = JSON.parse(chunk);
 
                         if (jObject.CancellationToken) {
-                            SFUtility.outputLog(`invokeRequest:response CancellationToken:${jObject.CancellationToken}`, null, debugLevel.info);
+                            SfUtility.outputLog(`invokeRequest:response CancellationToken:${jObject.CancellationToken}`, null, debugLevel.info);
                             httpOptions.CancellationToken = jObject.CancellationToken;
                             data += this.invokeRequestOptions(httpOptions);
                         }
@@ -405,31 +407,31 @@ export class SFRest {
                         }
 
                         if (jObject.Items) {
-                            SFUtility.outputLog(`invokeRequest:response Items:${jObject.Items.length}`, null, debugLevel.info);
+                            SfUtility.outputLog(`invokeRequest:response Items:${jObject.Items.length}`, null, debugLevel.info);
                             for (const item of jObject.Items) {
-                                SFUtility.outputLog(`invokeRequest:response Item:`, item, debugLevel.info);
+                                SfUtility.outputLog(`invokeRequest:response Item:`, item, debugLevel.info);
                                 data += item;
                             }
                         }
                         else {
-                            SFUtility.outputLog(`invokeRequest:response Items:0`, null, debugLevel.info);
+                            SfUtility.outputLog(`invokeRequest:response Items:0`, null, debugLevel.info);
                             data += chunk;
                         }
                     });
 
                     response.on('end', () => {
-                        SFUtility.outputLog('invokeRequest:request end', null, debugLevel.info);
+                        SfUtility.outputLog('invokeRequest:request end', null, debugLevel.info);
                         resolve(data);
                     });
                 }).on('error', (error: any) => {
-                    SFUtility.outputLog('invokeRequest:request error:', error, debugLevel.error);
-                    SFUtility.outputLog(error);
+                    SfUtility.outputLog('invokeRequest:request error:', error, debugLevel.error);
+                    SfUtility.outputLog(error);
                 }).on('timeout', () => {
-                    SFUtility.outputLog("invokeRequest:request timed out", null, debugLevel.error);
+                    SfUtility.outputLog("invokeRequest:request timed out", null, debugLevel.error);
                 }).on('connect', () => {
-                    SFUtility.outputLog("invokeRequest:request connected");
+                    SfUtility.outputLog("invokeRequest:request connected");
                 }).on('continue', () => {
-                    SFUtility.outputLog("invokeRequest:request continue");
+                    SfUtility.outputLog("invokeRequest:request continue");
                     //  }).on('response', (response: any) => {
                     //     this.debuglog('invokeRestApi:response');
                     //     this.debuglog(response);
@@ -483,7 +485,7 @@ export class SFRest {
             return promise;
         }
         catch (error) {
-            SFUtility.showError(`invokeRequest:error:${JSON.stringify(error)}`);
+            SfUtility.showError(`invokeRequest:error:${JSON.stringify(error)}`);
         }
     }
 
@@ -494,10 +496,7 @@ export class SFRest {
             host: parsedUri!.hostname ? parsedUri.hostname : "localhost",
             method: "GET",
             path: parsedUri.path?.replace(/(&|\?)$/, ""),
-            headers: {
-                "Content-Type": "application/json",
-                "Accept": "application/json"
-            },
+            headers: this.createSfAutoRestHttpHeaders(),
             port: parsedUri.port ? parseInt(parsedUri.port) : 19080,
             //timeout: this.timeOut,
             key: this.key,
@@ -522,7 +521,7 @@ export class SFRest {
             const parsedUri = url.parse(uri);
             //parsedUri.query = uriParameters ? JSON.stringify(uriParameters) : null;
             const restQuery = `${absolutePath}?api-version=${this.clientApiVersion}&timeout=${this.timeOut}`;
-            SFUtility.outputLog('restQuery:' + uri + restQuery);
+            SfUtility.outputLog('restQuery:' + uri + restQuery);
 
             const options = this.createHttpOptions(absolutePath);
             options.method = method;
@@ -533,7 +532,7 @@ export class SFRest {
             return await this.invokeRequestOptions(options);
         }
         catch (error) {
-            SFUtility.showError(`invokeRestApi:error:${JSON.stringify(error)}`);
+            SfUtility.showError(`invokeRestApi:error:${JSON.stringify(error)}`);
         }
     }
 
@@ -543,7 +542,7 @@ export class SFRest {
             createFabricDump: createFabricDump ? 'true' : 'false'
         };
         await this.sfApi.restartNode(nodeName, restartNodeDescription);
-        SFUtility.outputLog('sfRest:restartNode:complete');
+        SfUtility.outputLog('sfRest:restartNode:complete');
         return;
     }
 }

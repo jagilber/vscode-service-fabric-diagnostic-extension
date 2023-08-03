@@ -10,15 +10,15 @@ export const enum debugLevel {
     trace = 4
 }
 
-export class SFUtility {
+export class SfUtility {
     private static channel: vscode.LogOutputChannel;
     private static context: vscode.ExtensionContext;
     private static logger: any;
 
     static init() { // (context: vscode.ExtensionContext) {
         //SFUtility.context = context;
-        SFUtility.createDebugLogChannel();
-        SFUtility.createTelemetryClient();
+        SfUtility.createDebugLogChannel();
+        SfUtility.createTelemetryClient();
     }
 
     public static activateOutputChannel(): void {
@@ -27,7 +27,24 @@ export class SFUtility {
         }
         this.channel.show();
     }
+    
+    public static createFile(path:string, data?:string):void{
+        this.outputLog(`sfUtility:createFile:checking path:${path}`);
+        if(!fs.existsSync(path)){
+            this.outputLog(`sfUtility:createFile:creating path:${path}`);
+            fs.writeFileSync(path, data!);
+        }
+    }
 
+    public static createFolder(path:string):string {
+        this.outputLog(`sfUtility:createFolder:checking path:${path}`);
+        if (!fs.existsSync(path)) {
+            this.outputLog(`sfUtility:createFolder:creating path:${path}`);
+            fs.mkdirSync(path, { recursive: true });
+        }
+        return path;
+    }
+    
     private static createTelemetryClient(): any {
         // @ts-ignore - telemetry is not yet exposed in the vscode api
         const sender = {
@@ -104,6 +121,20 @@ export class SFUtility {
         return this.context.globalState.get(key);
     }
 
+    public  static removeFile(path:string):void{
+        this.outputLog(`sfUtility:removeFile:checking path:${path}`);
+        if(fs.existsSync(path)){
+            this.outputLog(`sfUtility:removeFile:removing path:${path}`);
+            fs.rmSync(path);
+        }
+    }
+
+    public static removeFolder(path:string):void{
+        if (fs.existsSync(path)) {
+            fs.rmdirSync(path, { recursive: true });
+        }
+    }
+
     public static saveExtensionConfig(key: string, value: any): void {
         this.context.globalState.update(key, value);
     }
@@ -124,4 +155,4 @@ export class SFUtility {
     }
 }
 
-SFUtility.init();
+SfUtility.init();

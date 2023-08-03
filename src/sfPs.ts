@@ -5,49 +5,65 @@ https://stackoverflow.com/questions/10179114/execute-powershell-script-from-node
 import { ChildProcessWithoutNullStreams, spawn } from 'child_process';
 import { Readable } from 'stream';
 import * as vscode from 'vscode';
-import { SFUtility } from './sfUtility';
+import { SfUtility } from './sfUtility';
 
-export class SFPs {
+export class SfPs {
     private out: string[] = [];
     private err: string[] = [];
     private pwsh = 'pwsh.exe';
-    private powershell = 'powershell.exe'; 
+    private powershell = 'powershell.exe';
     private ps = this.powershell;// required for sf scripts to work .net 4.7.2
     private psSession: ChildProcessWithoutNullStreams | undefined = undefined;
 
     constructor() {
-        SFUtility.outputLog(`sfPs constructor: ${vscode.version}`);
+        SfUtility.outputLog(`sfPs constructor: ${vscode.version}`);
         this.isPwshInstalled();
         //this.init();
     }
 
     destroy(): void {
-        SFUtility.outputLog(`sfPs destroy: ${vscode.version}`);
+        SfUtility.outputLog(`sfPs destroy: ${vscode.version}`);
         this.psSession?.kill();
     }
 
+    public async getPemFromLocalCertStore(thumbprint: string, password?: string): Promise<string> {
+        const command = `
+        $cert = get-item 'cert:\\CurrentUser\\My\\${thumbprint}';
+        $bytes = $cert.GetRawCertData();
+        write-output '-----BEGIN CERTIFICATE-----';
+        write-output ([convert]::ToBase64String($bytes));
+        write-output '-----END CERTIFICATE-----';
+        `;
+
+        return await this.send(command); //.replace(/(\n|^\s+|\s+$)/gm,''));
+    }
+
+    // public async getCertFromHttpEndpoint(httpEndpoint: string): Promise<string> {
+    //     return new Promise<string>();
+    // }
+
     private isPwshInstalled(): Promise<boolean> {
-        return this.sendOnce(this.pwsh,['$PSVersionTable.PSVersion.Major']).then((result) => {
-            SFUtility.outputLog(`pwsh installed:sfPs using: ${this.ps}`);
+        return this.sendOnce(this.pwsh, ['$PSVersionTable.PSVersion.Major']).then((result) => {
+            SfUtility.outputLog(`pwsh installed:sfPs using: ${this.ps}`);
             return true;
         }).catch((err) => {
-            SFUtility.outputLog(`powershell installed:sfPs using: ${this.ps}`);
+            SfUtility.outputLog(`powershell installed:sfPs using: ${this.ps}`);
             return false;
         });
     }
 
     public async init(): Promise<void> {
         //if (this.psSession === undefined) {
-        SFUtility.outputLog(`sfPs init using: ${this.ps}`);
+        SfUtility.outputLog(`sfPs init using: ${this.ps}`);
         await this.session().then((session) => {
             this.psSession = session;
         }).catch((err) => {
-            SFUtility.outputLog(`sfPs init error: ${err}`);
+            SfUtility.outputLog(`sfPs init error: ${err}`);
         });
         //}
     }
 
-    public async sendOnce(ps:string = this.ps, commands: string[], jsonDepth = 2, end = true): Promise<string[]> {
+    public async sendOnce(ps: string = this.ps, commands: string[], jsonDepth = 2, end = true): Promise<string[]> {
         const promise = new Promise<string[]>((resolve, reject) => {
             //const results: any[] = [];
             const out: string[] = [];
@@ -66,14 +82,14 @@ export class SFPs {
                 reject([data.toString() + '\n']);
             });
             child.on('exit', function (code, signal) {
-                SFUtility.outputLog(`sfPs send close: ${code} ${signal}`);
+                SfUtility.outputLog(`sfPs send close: ${code} ${signal}`);
                 //results.push({ command: commands, output: out, errors: err });
                 //resolve(out);
             });
 
             commands.forEach(function (cmd) {
                 const command = `convertto-json -inputobject "[$(${cmd})]" -depth ${jsonDepth} -compress`;
-                SFUtility.outputLog(`sfPs send command: ${command}`);
+                SfUtility.outputLog(`sfPs send command: ${command}`);
                 child.stdin.write(command + '\n');
             });
 
@@ -89,6 +105,8 @@ export class SFPs {
             await this.init();
         }
 
+        SfUtility.outputLog(`send:command:${command}`);
+        const compressedCommand = command.replace(/(\n|^\s+|\s+$)/gm,'');
         const promise = new Promise<string>((resolve, reject) => {
             //const results: any[] = [];
             //const out: string[] = [];
@@ -108,24 +126,24 @@ export class SFPs {
                 reject([data.toString() + '\n']);
             });
             this.psSession?.stdout.on('close', function () {
-                SFUtility.outputLog(`sfPs send close:`);
+                SfUtility.outputLog(`sfPs send close:`);
                 //  resolve(out.join(''));
             });
             // this.psSession?.stdout.on('readable', function () {
             //     SFUtility.outputLog(`sfPs send readable:`);
             // });
             this.psSession?.stdout.on('pause', function () {
-                SFUtility.outputLog(`sfPs send pause:`);
+                SfUtility.outputLog(`sfPs send pause:`);
             });
             this.psSession?.stdout.on('resume', function () {
-                SFUtility.outputLog(`sfPs send resume:`);
+                SfUtility.outputLog(`sfPs send resume:`);
             });
             this.psSession?.stdout.on('end', function () {
-                SFUtility.outputLog(`sfPs send end:`);
+                SfUtility.outputLog(`sfPs send end:`);
                 //resolve(out.join(''));
             });
             this.psSession?.stdout.on('error', function (data) {
-                SFUtility.outputLog(`sfPs send error: ${data}`);
+                SfUtility.outputLog(`sfPs send error: ${data}`);
             });
 
             // this.psSession?.on('exit', function (code, signal) {
@@ -134,8 +152,8 @@ export class SFPs {
             //     //resolve(out);
             // });
 
-            const cmd = `convertto-json -inputobject @{result=(${command})} -depth ${jsonDepth} -compress`;
-            SFUtility.outputLog(`sfPs send command: ${cmd}`);
+            const cmd = `convertto-json -inputobject @{result=(invoke-command -scriptblock {${compressedCommand}})} -depth ${jsonDepth} -compress`;
+            SfUtility.outputLog(`sfPs send command: ${cmd}`);
             this.psSession?.stdin.write(cmd + '\n');
         });
         return promise;
@@ -160,12 +178,12 @@ export class SFPs {
                 reject([data.toString() + '\n']);
             });
             child.on('exit', function (code, signal) {
-                SFUtility.outputLog(`sfPs send close: ${code} ${signal}`);
+                SfUtility.outputLog(`sfPs send close: ${code} ${signal}`);
                 //results.push({ command: commands, output: out, errors: err });
                 //resolve(out);
             });
             child.on('spawn', function () {
-                SFUtility.outputLog(`sfPs send spawn: ${child.pid}`);
+                SfUtility.outputLog(`sfPs send spawn: ${child.pid}`);
                 resolve(child);
             });
         });

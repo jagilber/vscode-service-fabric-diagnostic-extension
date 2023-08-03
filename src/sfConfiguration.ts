@@ -1,11 +1,13 @@
 import * as vscode from 'vscode';
 import * as xmlConverter from 'xml-js';
-import { SFUtility } from './sfUtility';
+import { SfUtility } from './sfUtility';
+import { SfClusterFolder } from './sfClusterFolder';
 import * as SfApi from './sdk/servicefabric/servicefabric/src/serviceFabricClientAPIs';
 import * as sfModels from './sdk/servicefabric/servicefabric/src/models';
 import { TreeItem } from './serviceFabricClusterView';
 import { url } from 'inspector';
-
+import { SfRestClient } from './sfRestClient';
+import { SfRest } from './sfRest';
 
 /*
         if (children && <sfModels.NodeInfo[]>children !== undefined) {
@@ -74,7 +76,7 @@ export type clusterViewTreeItemType = [
         ]
     }
 ];
-export class SFConfiguration {
+export class SfConfiguration {
     public xmlManifest = "";
     public jsonManifest = "";
     public jObjectManifest: any;
@@ -87,17 +89,57 @@ export class SFConfiguration {
     public applications: sfModels.ApplicationInfo[] = [];
     public services: sfModels.ServiceInfo[] = [];
     public systemServices: sfModels.ServiceInfo[] = [];
+    private sfClusterFolder: SfClusterFolder;
+    private sfRest: SfRest;
 
 
-
-    constructor(context: any, clusterHttpEndpoint?: string) {
+    constructor(context: any, manifest?: string, clusterHttpEndpoint?: string) {
         this.context = context;
         this.clusterHttpEndpoint = clusterHttpEndpoint!;
+        this.sfClusterFolder = new SfClusterFolder(context);
+        this.sfRest = new SfRest(context);
+
+        if (manifest) {
+            this.setManifest(manifest);
+            this.getNodes();
+        }
+
+    }
+
+    public async init(){
+        await this.sfRest.connectToCluster();
+    }
+
+    public addApplication(application: sfModels.ApplicationInfo) {
+        this.applications.push(application);
+    }
+
+    public addApplicationType(applicationType: sfModels.ApplicationTypeInfo) {
+        this.applicationTypes.push(applicationType);
+    }
+
+    private addApplicationTreeItems(resourceUri: vscode.Uri, clusterViewTreeItemChildren: TreeItem[]) {
+        const applicationItems: TreeItem[] = [];
+        this.applicationTypes.forEach((applicationType: sfModels.ApplicationTypeInfo) => {
+            const applicationTypeItems: TreeItem[] = [];
+            this.applications.forEach((application: sfModels.ApplicationInfo) => {
+                this.addServiceTreeItems(resourceUri, applicationTypeItems, application);
+            });
+            applicationItems.push(new TreeItem(applicationType.name ?? 'undefined', applicationTypeItems, resourceUri));
+        });
+        clusterViewTreeItemChildren.push(new TreeItem('applications', applicationItems, resourceUri));
     }
 
     public addNode(node: sfModels.NodeInfo) {
         this.nodes.push(node);
-        //this.nodeTypes.push(node);
+    }
+
+    private addNodeTreeItems(resourceUri: vscode.Uri, clusterViewTreeItemChildren: TreeItem[]) {
+        const nodeItems: TreeItem[] = [];
+        this.nodes.forEach((node: sfModels.NodeInfo) => {
+            nodeItems.push(new TreeItem(node.name ?? 'undefined', undefined, resourceUri, node.healthState));
+        });
+        clusterViewTreeItemChildren.push(new TreeItem('nodes', nodeItems, resourceUri));
     }
 
     private addNodeType(nodeTypeName: string, node: sfModels.NodeInfo) {
@@ -110,37 +152,37 @@ export class SFConfiguration {
         }
     }
 
-    public createClusterViewTreeItem(): TreeItem {
-        const resourceUri: vscode.Uri = vscode.Uri.parse(this.clusterHttpEndpoint!);
-        const clusterViewTreeItemChildren: TreeItem[] = [];
+    public addService(service: sfModels.ServiceInfo) {
+        this.services.push(service);
+    }
 
+    private addServiceTreeItems(resourceUri: vscode.Uri, applicationTypeItems: TreeItem[], application: sfModels.ApplicationInfo) {
         const applicationItems: TreeItem[] = [];
-        this.applicationTypes.forEach((applicationType: sfModels.ApplicationTypeInfo) => {
-            const applicationTypeItems: TreeItem[] = [];
-            this.applications.forEach((application: sfModels.ApplicationInfo) => {
-                const applicationItems: TreeItem[] = [];
-                this.services.forEach((service: sfModels.ServiceInfo) => {
-                    applicationItems.push(new TreeItem(service.serviceKind ?? 'undefined', undefined, resourceUri));
-                });
-                applicationTypeItems.push(new TreeItem(application.name ?? 'undefined', applicationItems, resourceUri));
-            });
-            applicationItems.push(new TreeItem(applicationType.name ?? 'undefined', applicationTypeItems, resourceUri));
+        this.services.forEach((service: sfModels.ServiceInfo) => {
+            applicationItems.push(new TreeItem(service.serviceKind ?? 'undefined', undefined, resourceUri));
         });
-        clusterViewTreeItemChildren.push(new TreeItem('applications', applicationItems, resourceUri));
+        applicationTypeItems.push(new TreeItem(application.name ?? 'undefined', applicationItems, resourceUri));
+    }
 
-        const nodeItems: TreeItem[] = [];
-        this.nodes.forEach((node: sfModels.NodeInfo) => {
-            nodeItems.push(new TreeItem(node.name ?? 'undefined', undefined, resourceUri, node.healthState));
-        });
-        clusterViewTreeItemChildren.push(new TreeItem('nodes', nodeItems, resourceUri));
-
+    private addSystemTreeItems(resourceUri: vscode.Uri, clusterViewTreeItemChildren: TreeItem[]) {
         const systemItems: TreeItem[] = [];
         this.systemServices.forEach((service: sfModels.ServiceInfo) => {
             systemItems.push(new TreeItem(service.serviceKind ?? 'undefined', undefined, resourceUri));
         });
         clusterViewTreeItemChildren.push(new TreeItem('system', systemItems, resourceUri));
+    }
+
+    public createClusterViewTreeItem(): TreeItem {
+        const resourceUri: vscode.Uri = vscode.Uri.parse(this.clusterHttpEndpoint!);
+        this.sfClusterFolder.createClusterFolder(this.clusterName!);
+        const clusterViewTreeItemChildren: TreeItem[] = [];
+
+        this.addApplicationTreeItems(resourceUri, clusterViewTreeItemChildren);
+        this.addNodeTreeItems(resourceUri, clusterViewTreeItemChildren);
+        this.addSystemTreeItems(resourceUri, clusterViewTreeItemChildren);
+
         const clusterViewTreeItem: TreeItem = new TreeItem(this.clusterName ?? 'undefined', clusterViewTreeItemChildren, resourceUri);
-        SFUtility.outputLog('clusterViewTreeItem:', clusterViewTreeItem);
+        SfUtility.outputLog('clusterViewTreeItem:', clusterViewTreeItem);
         return clusterViewTreeItem;
     }
 
@@ -148,12 +190,26 @@ export class SFConfiguration {
         return this.xmlManifest;
     }
 
+    public getNodes(): Array<sfModels.NodeInfo> {
+
+        this.sfRest.getNodes().then((nodes: sfModels.NodeInfo[]) => {
+            nodes.forEach((node: sfModels.NodeInfo) => {
+                this.addNode(node);
+            });
+            // this.addSfConfig(this.sfConfig);
+            // SFUtility.outputLog('sfMgr:getCluster:config:', this.sfConfig);
+            //this.sfClusterView.addTreeItem(new TreeItem(this.sfConfig.clusterName!));//, this.sfConfig.nodes, this.sfConfig));
+            //this.sfClusterView.addTreeItem(this.sfConfig.createClusterViewTreeItem());
+        });
+        return this.nodes;
+    }
+
     public setManifest(xmlManifest: any | string): void {
         this.xmlManifest = xmlManifest.manifest; //JSON.parse(xmlManifest).Manifest;
-        SFUtility.outputLog(`xml manifest: \r\n${this.xmlManifest}`);
+        SfUtility.outputLog(`xml manifest: \r\n${this.xmlManifest}`);
 
         this.jsonManifest = xmlConverter.xml2json(this.xmlManifest, { compact: true, spaces: 4 });
-        SFUtility.outputLog(`json manifest: \r\n${this.jsonManifest}`);
+        SfUtility.outputLog(`json manifest: \r\n${this.jsonManifest}`);
         this.jObjectManifest = JSON.parse(this.jsonManifest);
         this.clusterName = this.jObjectManifest.ClusterManifest._attributes.Name;
     }

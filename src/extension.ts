@@ -17,14 +17,14 @@
 //const vscode = require('vscode');
 import * as vscode from 'vscode';
 //import { SFRest } from './sfRest';
-import { SFMgr } from './sfMgr';
+import { SfMgr } from './sfMgr';
 import { DepNodeProvider, Dependency } from './nodeDependencies';
-import { sfClusterExplorerProvider } from './sfClusterExplorer';
+import { SfClusterExplorerProvider } from './sfClusterExplorer';
 import { FtpExplorer } from './ftpExplorer';
 import { FileExplorer } from './fileExplorer';
 // import { serviceFabricClusterViewDragAndDrop } from './serviceFabricClusterViewDragAndDrop';
 // import { serviceFabricClusterView } from './serviceFabricClusterView';
-import { SFUtility } from './sfUtility';
+import { SfUtility } from './sfUtility';
 
 
 export async function activate(context: vscode.ExtensionContext) {
@@ -70,7 +70,7 @@ export async function activate(context: vscode.ExtensionContext) {
     // sf
     //const sfRest = new SFRest(context, sfClusterView);
 
-    const sfMgr = new SFMgr(context);
+    const sfMgr = new SfMgr(context);
     registerCommand(context, 'sfClusterExplorer.sfGetClusters', () => sfMgr.getClusters());
     registerCommand(context, 'sfClusterExplorer.sfGetCluster', () => sfMgr.getCluster());
     registerCommand(context, 'sfClusterExplorer.sfDeployDevCluster', () => sfMgr.deployDevCluster());
