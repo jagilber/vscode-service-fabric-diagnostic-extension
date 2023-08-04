@@ -18,6 +18,7 @@
 import * as vscode from 'vscode';
 //import { SFRest } from './sfRest';
 import { SfMgr } from './sfMgr';
+import { SfPrompts } from './sfPrompts';
 import { DepNodeProvider, Dependency } from './nodeDependencies';
 import { SfClusterExplorerProvider } from './sfClusterExplorer';
 import { FtpExplorer } from './ftpExplorer';
@@ -71,12 +72,14 @@ export async function activate(context: vscode.ExtensionContext) {
     //const sfRest = new SFRest(context, sfClusterView);
 
     const sfMgr = new SfMgr(context);
+    const sfPrompts = new SfPrompts(context);
+
     registerCommand(context, 'sfClusterExplorer.sfGetClusters', () => sfMgr.getClusters());
     registerCommand(context, 'sfClusterExplorer.sfGetCluster', () => sfMgr.getCluster());
     registerCommand(context, 'sfClusterExplorer.sfDeployDevCluster', () => sfMgr.deployDevCluster());
-    registerCommand(context, 'sfClusterExplorer.sfSetClusterEndpoint', () => sfMgr.promptForClusterEndpoint());
-    registerCommand(context, 'sfClusterExplorer.sfRemoveClusterEndpoint', () => sfMgr.promptForRemoveClusterEndpoint());
-    registerCommand(context, 'sfClusterExplorer.sfSetClusterRestCall', () => sfMgr.promptForClusterRestCall());
+    registerCommand(context, 'sfClusterExplorer.sfSetClusterEndpoint', (sfMgr) => sfPrompts.promptForAddClusterEndpoint());
+    registerCommand(context, 'sfClusterExplorer.sfRemoveClusterEndpoint', () => sfPrompts.promptForRemoveClusterEndpoint());
+    registerCommand(context, 'sfClusterExplorer.sfSetClusterRestCall', () => sfPrompts.promptForClusterRestCall());
 
 }
 

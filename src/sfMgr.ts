@@ -5,7 +5,7 @@ import { SfConstants } from './sfConstants';
 import { SfPs } from './sfPs';
 import { SfRest } from './sfRest';
 import { sfExtSecretList, SfExtSecrets } from './sfExtSecrets';
-import { SfExtSettings } from './sfExtSettings';
+import { SfExtSettings, sfExtSettingsList } from './sfExtSettings';
 import { SfRestClient } from './sfRestClient';
 import { debugLevel, SfUtility } from './sfUtility';
 
@@ -36,24 +36,24 @@ import { resolve } from 'path';
 
 export class SfMgr {
     private sfExtSecrets: SfExtSecrets;
-    private exampleClusterEndpoint = "https://sftestcluster.eastus.cloudapp.azure.com:19080";
-    private key = "";
-    private certificate = "";
+
+    // private key = "";
+    // private certificate = "";
     private subscriptionId = "";
     private context: any;
     public sfClusterView: serviceFabricClusterView;
     //public sfClusterViewDD: serviceFabricClusterViewDragAndDrop;
     private sfRest: SfRest;
-    private sfRestClient: SfRestClient;
+    // private sfRestClient: SfRestClient;
     private sfConfigs: Array<SfConfiguration.SfConfiguration> = [];
     private sfConfig: SfConfiguration.SfConfiguration;
 
     public sfClusters: any[] = [];
-    private clientApiVersion = "6.3";
-    private resourceApiVersion = "2018-02-01";
-    private timeOut = 9000;
-    private maxResults = 100;
-    private clusterEndpoints: string[] = [];
+    // private clientApiVersion = "6.3";
+    // private resourceApiVersion = "2018-02-01";
+    // private timeOut = 9000;
+    // private maxResults = 100;
+    // private clusterEndpoints: string[] = [];
     private ps: SfPs = new SfPs();
     private globalStorage = "";
     private clusterFileStorage = "";
@@ -75,7 +75,7 @@ export class SfMgr {
 
         this.sfConfig = new SfConfiguration.SfConfiguration(this.context);
         this.sfRest = new SfRest(context);
-        this.sfRestClient = new SfRestClient(this.sfRest);
+        // this.sfRestClient = new SfRestClient(this.sfRest);
 
         this.globalStorage = context.globalStorageUri.fsPath;
         this.clusterFileStorage = `${this.globalStorage}\\clusters`;
@@ -296,43 +296,6 @@ export class SfMgr {
         });
         SfUtility.outputLog(`sfMgr:httpGet:result:${result}`);
         return result;
-    }
-
-    public async promptForClusterRestCall() {
-        const adhocRestCall: string | undefined = await vscode.window.showInputBox({
-            prompt: "Enter cluster REST call",
-            placeHolder: "/$/GetClusterHealth"
-        });
-
-        SfUtility.activateOutputChannel();
-        if (!adhocRestCall) { return; }
-        if (!this.sfConfig.clusterHttpEndpoint) await this.getCluster();
-        if (!this.sfConfig.clusterHttpEndpoint) await this.promptForClusterEndpoint();
-        if (!this.sfConfig.clusterHttpEndpoint) return;
-
-
-        this.sfRest.invokeRestApi("GET", this.sfConfig.clusterHttpEndpoint!, adhocRestCall)
-            .then((data: any) => {
-                SfUtility.outputLog(data);
-            });
-    }
-
-    public async promptForClusterEndpoint() {
-        const clusterEndpoint: string | undefined = await vscode.window.showInputBox({
-            prompt: "Enter cluster endpoint to add",
-            placeHolder: this.exampleClusterEndpoint
-        });
-        this.sfConfig.clusterHttpEndpoint = clusterEndpoint;
-        SfExtSettings.updateSetting('clusters', clusterEndpoint);
-    }
-
-    public async promptForRemoveClusterEndpoint() {
-        const clusterEndpoint: string | undefined = await vscode.window.showInputBox({
-            prompt: "Enter cluster endpoint to remove",
-            placeHolder: this.exampleClusterEndpoint
-        });
-        this.sfConfig.clusterHttpEndpoint = clusterEndpoint;
-        SfExtSettings.removeSetting('clusters', clusterEndpoint);
     }
 
     public removeSfConfig(clusterHttpEndpoint: string) {

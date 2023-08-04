@@ -9,29 +9,12 @@ import { url } from 'inspector';
 import { SfRestClient } from './sfRestClient';
 import { SfRest } from './sfRest';
 
-/*
-        if (children && <sfModels.NodeInfo[]>children !== undefined) {
-            if (label.toLocaleLowerCase() === 'nodes') {
-                for (const child of children) {
-                    this.children.push(new TreeItem((<sfModels.NodeInfo>child).name ?? 'undefined', undefined, sfConfig));
-                }
-            }
-            else{
-                this.children = [new TreeItem('nodes', children, sfConfig)];
-            }
-        }
-        else if (children && <TreeItem[]>children !== undefined) {
-            this.children = (children as TreeItem[]) ?? [];
-        }
-
-*/
-
 export type nodeType = {
     name: string;
     nodes: sfModels.NodeInfo[];
 };
 
-
+// schema
 export type clusterViewTreeItemType = [
     cluster: {
         label: string,
@@ -76,6 +59,18 @@ export type clusterViewTreeItemType = [
         ]
     }
 ];
+
+export type clusterCertificate = {
+    certificate?: string;
+    thumbprint?: string;
+    commonName?: string;
+};
+
+export type clusterEndpointInfo = {
+    endpoint: string;
+    clusterCertificate?: clusterCertificate;
+};
+
 export class SfConfiguration {
     public xmlManifest = "";
     public jsonManifest = "";
@@ -91,22 +86,27 @@ export class SfConfiguration {
     public systemServices: sfModels.ServiceInfo[] = [];
     private sfClusterFolder: SfClusterFolder;
     private sfRest: SfRest;
+    private clusterCertificate?: string;
+    private clusterCertificateThumbprint?: string;
+    private clusterCertificateCommonName?: string;
 
-
-    constructor(context: any, manifest?: string, clusterHttpEndpoint?: string) {
+    constructor(context: any, manifest?: string, clusterHttpEndpoint?: string, clusterCertificate?: string) {
         this.context = context;
         this.clusterHttpEndpoint = clusterHttpEndpoint!;
         this.sfClusterFolder = new SfClusterFolder(context);
         this.sfRest = new SfRest(context);
 
+        if (clusterCertificate) {
+            this.setClusterCertificate(clusterCertificate);
+        }
+
         if (manifest) {
             this.setManifest(manifest);
             this.getNodes();
         }
-
     }
 
-    public async init(){
+    public async init() {
         await this.sfRest.connectToCluster();
     }
 
@@ -186,6 +186,24 @@ export class SfConfiguration {
         return clusterViewTreeItem;
     }
 
+    public getClusterEndpointInfo(): clusterEndpointInfo|undefined {
+        if (this.clusterHttpEndpoint) {
+            return {
+                endpoint: this.clusterHttpEndpoint,
+                clusterCertificate: this.getClusterCertificate()
+            };
+        }
+        return undefined;
+    }
+
+    public getClusterCertificate(): clusterCertificate| undefined{
+        return {
+            certificate: this.clusterCertificate,
+            thumbprint: this.clusterCertificateThumbprint,
+            commonName: this.clusterCertificateCommonName
+        };
+    }
+
     public getManifest(): string {
         return this.xmlManifest;
     }
@@ -202,6 +220,21 @@ export class SfConfiguration {
             //this.sfClusterView.addTreeItem(this.sfConfig.createClusterViewTreeItem());
         });
         return this.nodes;
+    }
+
+    public setClusterCertificate(clusterCertificate: string) {
+        if (clusterCertificate.length === 32) {
+            SfUtility.outputLog('sfConfiguration:setClusterCertificate:thumbprint:', clusterCertificate);
+            this.clusterCertificateThumbprint = clusterCertificate;
+        }
+        else if (clusterCertificate.toUpperCase().includes('CERTIFICATE')) {
+            SfUtility.outputLog(`sfConfiguration:setClusterCertificate:certificate length:${clusterCertificate.length}`);
+            this.clusterCertificate = clusterCertificate;
+        }
+        else {
+            SfUtility.outputLog(`sfConfiguration:setClusterCertificate:common name:${clusterCertificate}`);
+            this.clusterCertificateCommonName = clusterCertificate;
+        }
     }
 
     public setManifest(xmlManifest: any | string): void {

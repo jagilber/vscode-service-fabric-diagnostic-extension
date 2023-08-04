@@ -1,11 +1,17 @@
 import * as vscode from 'vscode';
 import { debugLevel, SfUtility } from './sfUtility';
 
+export const  enum sfExtSettingsList {
+    clusters = 'clusters',
+    cluster = 'clusters.cluster',
+    clusterCertificate = 'clusters.cluster.certificate'
+}
+
 export class SfExtSettings {
     private static configurationSection = "sfClusterExplorer"; //servicefabric
     private static configurationSettings: vscode.WorkspaceConfiguration;
 
-    public static getSetting(setting: string) {
+    public static getSetting(setting: sfExtSettingsList) {
         const settings = vscode.workspace.getConfiguration(this.configurationSection);
         const value = settings.get(setting);
         SfUtility.outputLog('sfExtSettings:getSetting returning:setting:' + setting + ' value:' + value, settings);
@@ -18,7 +24,7 @@ export class SfExtSettings {
         return settings;
     }
 
-    public static removeSetting(setting: string, value?: any) {
+    public static removeSetting(setting: sfExtSettingsList, value?: any) {
         const settings = vscode.workspace.getConfiguration(this.configurationSection);
         SfUtility.outputLog('sfExtSettings:removeSetting:setting:' + setting + ' value:' + value);
         const currentSetting = SfExtSettings.getSetting(setting);
@@ -38,7 +44,7 @@ export class SfExtSettings {
         return settings.update(setting, value, vscode.ConfigurationTarget.Global);
     }
 
-    public static updateSetting(setting: string, value: any) {
+    public static updateSetting(setting: sfExtSettingsList, value: any) {
         const settings = vscode.workspace.getConfiguration(this.configurationSection);
         SfUtility.outputLog('sfExtSettings:updateSetting:setting:' + setting + ' value:' + value);
         const currentSetting = SfExtSettings.getSetting(setting);
