@@ -85,6 +85,7 @@ export class SfMgr {
 
         //todo: https://github.com/Azure/azure-sdk-for-js/blob/main/documentation/MIGRATION-guide-for-next-generation-management-libraries.md
         // const credentials = new ClientSecretCredential(tenantId, clientId, this.clientSecret);
+        this.loadSfConfigs();
     }
 
     private addSfConfig(sfConfig: SfConfiguration.SfConfiguration) {
@@ -179,33 +180,30 @@ export class SfMgr {
         await this.downloadAndExecute(downloadUrl, outputFile, 'msiexec.exe', args);
     }
 
-    public async getCluster() {
+    public async getCluster(clusterEndpoint: string): Promise<any> {
+        if (!this.getSfConfig(clusterEndpoint)) {
+            this.sfConfig = new SfConfiguration.SfConfiguration(this.context);
+            this.sfConfig.clusterHttpEndpoint = clusterEndpoint;
+            this.addSfConfig(this.sfConfig);
+        }
+        else {
+            this.sfConfig = this.getSfConfig(clusterEndpoint)!;
+        }
 
-        //test
-        //const test = await vscode.commands.executeCommand('workbench.action.terminal.sendSequence', { text: "write-output $psversiontable\u000D" });
-        //SFUtility.outputLog('test: ' + test);
+        const clusterCertificate: SfConfiguration.clusterCertificate | undefined = this.sfConfig.getClusterCertificate();
+        if (clusterCertificate && !clusterCertificate.certificate && (clusterCertificate.thumbprint || clusterCertificate.commonName)) {
+            clusterCertificate.certificate = [await this.ps.getPemFromLocalCertStore(clusterCertificate.thumbprint ?? clusterCertificate.commonName!)];
+        }
 
-        const certInfo = await this.ps.getPemFromLocalCertStore('94796BF9274B6D82F0406258D86F5967B4AD037D');
-        SfUtility.outputLog('sfMgr:getCluster:certInfo:', certInfo);
+        SfUtility.outputLog(`sfMgr:getCluster:certificate length:${clusterCertificate?.certificate?.length}`);
         //end test
 
-        await this.sfRest.connectToCluster();
+        await this.sfRest.connectToCluster(clusterEndpoint, clusterCertificate!.certificate!);
 
         await this.sfRest.getClusterManifest().then((data: any) => {
             SfUtility.outputLog('sfMgr:getCluster:response:', data);
-            this.sfConfig = new SfConfiguration.SfConfiguration(this.context, data);
-            // this.sfRest.getNodes().then((nodes: sfModels.NodeInfo[]) => {
-            //     nodes.forEach((node: sfModels.NodeInfo) => {
-            //         this.sfConfig.addNode(node);
-            //     });
-            //     this.addSfConfig(this.sfConfig);
-            //     SFUtility.outputLog('sfMgr:getCluster:config:', this.sfConfig);
-            //     //this.sfClusterView.addTreeItem(new TreeItem(this.sfConfig.clusterName!));//, this.sfConfig.nodes, this.sfConfig));
-            //     this.sfClusterView.addTreeItem(this.sfConfig.createClusterViewTreeItem());
-            // });
-            this.addSfConfig(this.sfConfig);
+            this.sfConfig.setManifest(data);
             SfUtility.outputLog('sfMgr:getCluster:config:', this.sfConfig);
-
         });
     }
 
@@ -231,6 +229,17 @@ export class SfMgr {
 
     public getSfConfig(clusterHttpEndpoint: string): SfConfiguration.SfConfiguration | undefined {
         return this.sfConfigs.find((config: SfConfiguration.SfConfiguration) => config.clusterHttpEndpoint === clusterHttpEndpoint);
+    }
+
+    public getSfConfigs(): Array<SfConfiguration.SfConfiguration> {
+        return this.sfConfigs;
+    }
+
+    public async loadSfConfigs(): Promise<void> {
+        //todo test
+        [SfExtSettings.getSetting(sfExtSettingsList.clusters)].forEach((cluster: any | SfConfiguration.clusterEndpointInfo) => {
+            this.addSfConfig(new SfConfiguration.SfConfiguration(this.context, cluster));
+        });
     }
 
     private async httpDownload(url: string, outputFile: string): Promise<boolean> {

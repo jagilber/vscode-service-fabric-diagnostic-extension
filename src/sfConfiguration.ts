@@ -8,6 +8,7 @@ import { TreeItem } from './serviceFabricClusterView';
 import { url } from 'inspector';
 import { SfRestClient } from './sfRestClient';
 import { SfRest } from './sfRest';
+import { SfPs } from './sfPs';
 
 export type nodeType = {
     name: string;
@@ -61,7 +62,7 @@ export type clusterViewTreeItemType = [
 ];
 
 export type clusterCertificate = {
-    certificate?: string;
+    certificate?: string[];
     thumbprint?: string;
     commonName?: string;
 };
@@ -86,9 +87,10 @@ export class SfConfiguration {
     public systemServices: sfModels.ServiceInfo[] = [];
     private sfClusterFolder: SfClusterFolder;
     private sfRest: SfRest;
-    private clusterCertificate?: string;
+    private clusterCertificate?: string[];
     private clusterCertificateThumbprint?: string;
     private clusterCertificateCommonName?: string;
+    private sfPs: SfPs = new SfPs();
 
     constructor(context: any, manifest?: string, clusterHttpEndpoint?: string, clusterCertificate?: string) {
         this.context = context;
@@ -106,9 +108,9 @@ export class SfConfiguration {
         }
     }
 
-    public async init() {
-        await this.sfRest.connectToCluster();
-    }
+    // public async init() {
+    //     await this.sfRest.connectToCluster();
+    // }
 
     public addApplication(application: sfModels.ApplicationInfo) {
         this.applications.push(application);
@@ -186,7 +188,7 @@ export class SfConfiguration {
         return clusterViewTreeItem;
     }
 
-    public getClusterEndpointInfo(): clusterEndpointInfo|undefined {
+    public getClusterEndpointInfo(): clusterEndpointInfo | undefined {
         if (this.clusterHttpEndpoint) {
             return {
                 endpoint: this.clusterHttpEndpoint,
@@ -196,7 +198,7 @@ export class SfConfiguration {
         return undefined;
     }
 
-    public getClusterCertificate(): clusterCertificate| undefined{
+    public getClusterCertificate(): clusterCertificate | undefined {
         return {
             certificate: this.clusterCertificate,
             thumbprint: this.clusterCertificateThumbprint,
@@ -222,19 +224,28 @@ export class SfConfiguration {
         return this.nodes;
     }
 
-    public setClusterCertificate(clusterCertificate: string) {
-        if (clusterCertificate.length === 32) {
+    public async setClusterCertificate(clusterCertificate: string): Promise<void> {
+        if (clusterCertificate.length >= 32 && clusterCertificate.length <= 40 && clusterCertificate.match(/^[0-9a-fA-F]+$/)) {
             SfUtility.outputLog('sfConfiguration:setClusterCertificate:thumbprint:', clusterCertificate);
             this.clusterCertificateThumbprint = clusterCertificate;
+            this.clusterCertificate = [await this.sfPs.getPemFromLocalCertStore(clusterCertificate)];
         }
         else if (clusterCertificate.toUpperCase().includes('CERTIFICATE')) {
             SfUtility.outputLog(`sfConfiguration:setClusterCertificate:certificate length:${clusterCertificate.length}`);
-            this.clusterCertificate = clusterCertificate;
+            this.clusterCertificate = [clusterCertificate];
         }
         else {
             SfUtility.outputLog(`sfConfiguration:setClusterCertificate:common name:${clusterCertificate}`);
             this.clusterCertificateCommonName = clusterCertificate;
+            this.clusterCertificate = [await this.sfPs.getPemFromLocalCertStore(clusterCertificate, undefined, true)];
         }
+
+        return Promise.resolve();
+    }
+
+    public setClusterEndpoint(clusterHttpEndpoint: string): void {
+        SfUtility.outputLog('sfConfiguration:setClusterEndpoint:', clusterHttpEndpoint);
+        this.clusterHttpEndpoint = clusterHttpEndpoint;
     }
 
     public setManifest(xmlManifest: any | string): void {

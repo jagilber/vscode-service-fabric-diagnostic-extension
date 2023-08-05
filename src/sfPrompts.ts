@@ -26,8 +26,13 @@ export class SfPrompts {
             placeHolder: this.exampleClusterCertificate
         });
 
-        this.sfConfig.clusterHttpEndpoint = clusterEndpoint;
-        this.sfConfig.setClusterCertificate(clusterCertificate!);
+        if (!clusterEndpoint) { return; }
+
+        this.sfConfig.setClusterEndpoint(clusterEndpoint);
+        
+        if (clusterCertificate) {
+            this.sfConfig.setClusterCertificate(clusterCertificate);
+        }
         SfExtSettings.updateSetting(sfExtSettingsList.clusters, this.sfConfig.getClusterEndpointInfo());
     }
 
@@ -39,14 +44,32 @@ export class SfPrompts {
 
         SfUtility.activateOutputChannel();
         if (!adhocRestCall) { return; }
-        if (!this.sfConfig.clusterHttpEndpoint) await sfMgr?.getCluster();
-        if (!this.sfConfig.clusterHttpEndpoint) await this.promptForAddClusterEndpoint();
-        if (!this.sfConfig.clusterHttpEndpoint) return;
+
+        if (!this.sfConfig.clusterHttpEndpoint) {
+            await this.promptForGetClusterEndpoint(sfMgr);
+        }
+        if (!this.sfConfig.clusterHttpEndpoint) {
+            await this.promptForAddClusterEndpoint();
+        }
+
+        if (!this.sfConfig.clusterHttpEndpoint) { return; }
 
         this.sfRest.invokeRestApi("GET", this.sfConfig.clusterHttpEndpoint!, adhocRestCall)
             .then((data: any) => {
                 SfUtility.outputLog(data);
             });
+    }
+
+    public async promptForGetClusterEndpoint(sfMgr?: SfMgr) {
+        const quickPicks:string[] = [await sfMgr?.getSfConfigs().keys] as unknown as string[];
+        const clusterEndpoint: string | undefined = await vscode.window.showQuickPick(quickPicks, {
+            title: "Enter cluster endpoint to enumerate",
+            placeHolder: this.exampleClusterEndpoint,
+            canPickMany: false
+        });
+
+        this.sfConfig.clusterHttpEndpoint = clusterEndpoint![0];
+        sfMgr?.getCluster(clusterEndpoint![0]);
     }
 
     public async promptForRemoveClusterEndpoint() {

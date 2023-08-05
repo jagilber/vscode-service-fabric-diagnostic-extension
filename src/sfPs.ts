@@ -6,6 +6,7 @@ import { ChildProcessWithoutNullStreams, spawn } from 'child_process';
 import { Readable } from 'stream';
 import * as vscode from 'vscode';
 import { SfUtility } from './sfUtility';
+import { get } from 'http';
 
 export class SfPs {
     private out: string[] = [];
@@ -26,9 +27,15 @@ export class SfPs {
         this.psSession?.kill();
     }
 
-    public async getPemFromLocalCertStore(thumbprint: string, password?: string): Promise<string> {
+    public async getPemFromLocalCertStore(thumbprint: string, password?: string, searchSubject = false): Promise<string> {
+        let getItem = `get-item 'cert:\\CurrentUser\\My\\${thumbprint}'`;
+
+        if (searchSubject) {
+            getItem = `get-item 'cert:\\CurrentUser\\My\\* | where-item Subject -imatch ${thumbprint}'`;
+        }
+
         const command = `
-        $cert = get-item 'cert:\\CurrentUser\\My\\${thumbprint}';
+        $cert = ${getItem};
         $bytes = $cert.GetRawCertData();
         write-output '-----BEGIN CERTIFICATE-----';
         write-output ([convert]::ToBase64String($bytes));

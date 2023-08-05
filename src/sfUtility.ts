@@ -78,7 +78,7 @@ export class SfUtility {
         return fs.existsSync(path);
     }
 
-    public static outputLog(message: string, messageObject: string | object | null = null, level: debugLevel = debugLevel.info): void {
+    public static outputLog(message: string, messageObject: string | object | string[] | null = null, level: debugLevel = debugLevel.info): void {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         //console.log("SFRest:debuglog:" + message);
         try{

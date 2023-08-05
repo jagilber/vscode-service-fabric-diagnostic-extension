@@ -75,7 +75,7 @@ export class SfRest {
     private subscriptionId = "";
     private clusterHttpEndpoint = "https://localhost:19080";
     private key: any | Uint8Array | Uint8ArrayConstructor | Buffer | undefined = undefined;
-    private certificate: any | string | Buffer | undefined = undefined;
+    private certificate: string|string[]|undefined; // any | string | Buffer | undefined = undefined;
     // @ts-ignore - telemetry is not yet exposed in the vscode api
     private logger: vscode.env.TelemetryLogger | undefined;
     // @ts-ignore - telemetry is not yet exposed in the vscode api
@@ -157,7 +157,7 @@ export class SfRest {
             this.clusterHttpEndpoint = endpoint;
         }
         SfUtility.outputLog('sfMgr:initializeClusterConnection:clusterHttpEndpoint:' + this.clusterHttpEndpoint);
-        if(!this.clusterHttpEndpoint){
+        if (!this.clusterHttpEndpoint) {
             SfUtility.showWarning("Cluster endpoint not set");
             //return null;
         }
@@ -173,7 +173,7 @@ export class SfRest {
         return this.sfApi;
     }
 
-    public async connectToCluster(endpoint = ''): Promise<any> {
+    public async connectToCluster(endpoint = '', certificate: string[] | string): Promise<any> {
         if (!this.sfApi || (endpoint && this.clusterHttpEndpoint !== endpoint)) {
             this.initializeClusterConnection(endpoint);
         }
@@ -246,10 +246,10 @@ export class SfRest {
         await this.sfApi.disableNode(nodeName, description);
 
         const nodeState = await this.getNode(nodeName);
-        if(nodeState.nodeDeactivationInfo?.nodeDeactivationStatus?.toLowerCase() !== "none") {
+        if (nodeState.nodeDeactivationInfo?.nodeDeactivationStatus?.toLowerCase() !== "none") {
             SfUtility.showInformation(`Node: ${nodeName} is disabled`);
         }
-        else{
+        else {
             SfUtility.showError(`Node: ${nodeName} is not disabled`);
         }
         return;
@@ -259,10 +259,10 @@ export class SfRest {
         await this.sfApi.enableNode(nodeName);
 
         const nodeState = await this.getNode(nodeName);
-        if(nodeState.nodeDeactivationInfo?.nodeDeactivationStatus?.toLowerCase() === "none") {
+        if (nodeState.nodeDeactivationInfo?.nodeDeactivationStatus?.toLowerCase() === "none") {
             SfUtility.showInformation(`Node: ${nodeName} is enabled`);
         }
-        else{
+        else {
             SfUtility.showError(`Node: ${nodeName} is not enabled`);
         }
         return;
@@ -346,7 +346,7 @@ export class SfRest {
         //             });
         //     });
     }
-    
+
 
     public async getNode(nodeName: string): Promise<sfModels.NodeInfo> {
         const node = await this.sfApi.getNodeInfo(nodeName);
@@ -363,9 +363,9 @@ export class SfRest {
     public async getNodes(nodeStatusFilter: sfModels.KnownNodeStatusFilter = sfModels.KnownNodeStatusFilter.Default): Promise<sfModels.NodeInfo[]> {
         const nodeInfos: Array<sfModels.NodeInfo> = [];
         const nodes = await this.sfApi.getNodeInfoList();
-    
+
         //todo: continuation token
-        if(!nodes.items! || nodes.items?.length === 0){
+        if (!nodes.items! || nodes.items?.length === 0) {
             SfUtility.showWarning("No nodes found");
             return nodeInfos;
         }
@@ -489,9 +489,9 @@ export class SfRest {
         }
     }
 
-    public async invokeRequest(stringUri:string): Promise<ClientRequest | string | undefined> {
+    public async invokeRequest(stringUri: string): Promise<ClientRequest | string | undefined> {
         const parsedUri = url.parse(stringUri);
-        
+
         const httpOptions: tls.ConnectionOptions | RequestOptions = {
             host: parsedUri!.hostname ? parsedUri.hostname : "localhost",
             method: "GET",
@@ -508,7 +508,7 @@ export class SfRest {
         return await this.invokeRequestOptions(httpOptions);
 
     }
-    
+
     public async invokeRestApi(
         //deprecated
         method = "GET",
