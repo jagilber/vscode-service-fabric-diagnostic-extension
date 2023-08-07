@@ -1,6 +1,6 @@
 
 import * as vscode from 'vscode';
-import * as SfConfiguration from './sfConfiguration';
+import { SfConfiguration, clusterEndpointInfo, clusterCertificate } from './sfConfiguration';
 import { SfConstants } from './sfConstants';
 import { SfPs } from './sfPs';
 import { SfRest } from './sfRest';
@@ -24,15 +24,6 @@ import { ClientSecretCredential } from "@azure/identity";
 import { AzureLogger, setLogLevel } from "@azure/logger";
 
 
-//import * as SfApi from './sdk/servicefabric/servicefabric/src/serviceFabricClientAPIs';
-
-//import { ServiceFabricManagementClient } from './sdk/servicefabric/arm-servicefabric/src/serviceFabricManagementClient';
-//import { ServiceFabricClientAPIs } from './sdk/servicefabric/servicefabric/src/serviceFabricClientAPIs';
-//import { get } from 'http';
-
-import { resolve } from 'path';
-
-
 
 export class SfMgr {
     private sfExtSecrets: SfExtSecrets;
@@ -45,8 +36,8 @@ export class SfMgr {
     //public sfClusterViewDD: serviceFabricClusterViewDragAndDrop;
     private sfRest: SfRest;
     // private sfRestClient: SfRestClient;
-    private sfConfigs: Array<SfConfiguration.SfConfiguration> = [];
-    private sfConfig: SfConfiguration.SfConfiguration;
+    private sfConfigs: Array<SfConfiguration> = [];
+    private sfConfig: SfConfiguration;
 
     public sfClusters: any[] = [];
     // private clientApiVersion = "6.3";
@@ -73,7 +64,7 @@ export class SfMgr {
             SfUtility.outputLog(args.join(" "));
         };
 
-        this.sfConfig = new SfConfiguration.SfConfiguration(this.context);
+        this.sfConfig = new SfConfiguration(this.context);
         this.sfRest = new SfRest(context);
         // this.sfRestClient = new SfRestClient(this.sfRest);
 
@@ -88,8 +79,8 @@ export class SfMgr {
         this.loadSfConfigs();
     }
 
-    private addSfConfig(sfConfig: SfConfiguration.SfConfiguration) {
-        if (!this.sfConfigs.find((config: SfConfiguration.SfConfiguration) => config.clusterHttpEndpoint === sfConfig.clusterHttpEndpoint)) {
+    private addSfConfig(sfConfig: SfConfiguration) {
+        if (!this.sfConfigs.find((config: SfConfiguration) => config.clusterHttpEndpoint === sfConfig.clusterHttpEndpoint)) {
             this.sfConfigs.push(sfConfig);
         }
     }
@@ -182,7 +173,7 @@ export class SfMgr {
 
     public async getCluster(clusterEndpoint: string): Promise<any> {
         if (!this.getSfConfig(clusterEndpoint)) {
-            this.sfConfig = new SfConfiguration.SfConfiguration(this.context);
+            this.sfConfig = new SfConfiguration(this.context);
             this.sfConfig.clusterHttpEndpoint = clusterEndpoint;
             this.addSfConfig(this.sfConfig);
         }
@@ -190,7 +181,7 @@ export class SfMgr {
             this.sfConfig = this.getSfConfig(clusterEndpoint)!;
         }
 
-        const clusterCertificate: SfConfiguration.clusterCertificate | undefined = this.sfConfig.getClusterCertificate();
+        const clusterCertificate: clusterCertificate | undefined = this.sfConfig.getClusterCertificate();
         if (clusterCertificate && !clusterCertificate.certificate && (clusterCertificate.thumbprint || clusterCertificate.commonName)) {
             clusterCertificate.certificate = [await this.ps.getPemFromLocalCertStore(clusterCertificate.thumbprint ?? clusterCertificate.commonName!)];
         }
@@ -222,24 +213,25 @@ export class SfMgr {
                 for (const cluster of data) {
                     this.sfClusters.push(cluster);
                     //todo test
-                    this.addSfConfig(new SfConfiguration.SfConfiguration(this.context));
+                    this.addSfConfig(new SfConfiguration(this.context));
                 }
             });
     }
 
-    public getSfConfig(clusterHttpEndpoint: string): SfConfiguration.SfConfiguration | undefined {
-        return this.sfConfigs.find((config: SfConfiguration.SfConfiguration) => config.clusterHttpEndpoint === clusterHttpEndpoint);
+    public getSfConfig(clusterHttpEndpoint: string): SfConfiguration | undefined {
+        return this.sfConfigs.find((config: SfConfiguration) => config.clusterHttpEndpoint === clusterHttpEndpoint);
     }
 
-    public getSfConfigs(): Array<SfConfiguration.SfConfiguration> {
+    public getSfConfigs(): Array<SfConfiguration> {
         return this.sfConfigs;
     }
 
     public async loadSfConfigs(): Promise<void> {
         //todo test
-        [SfExtSettings.getSetting(sfExtSettingsList.clusters)].forEach((cluster: any | SfConfiguration.clusterEndpointInfo) => {
-            this.addSfConfig(new SfConfiguration.SfConfiguration(this.context, cluster));
-        });
+        const clusters: clusterEndpointInfo[] | any = SfExtSettings.getSetting(sfExtSettingsList.clusters);
+        for (const cluster of clusters) {
+            this.addSfConfig(new SfConfiguration(this.context, undefined, cluster));
+        }
     }
 
     private async httpDownload(url: string, outputFile: string): Promise<boolean> {
@@ -308,7 +300,7 @@ export class SfMgr {
     }
 
     public removeSfConfig(clusterHttpEndpoint: string) {
-        const index = this.sfConfigs.findIndex((config: SfConfiguration.SfConfiguration) => config.clusterHttpEndpoint === clusterHttpEndpoint);
+        const index = this.sfConfigs.findIndex((config: SfConfiguration) => config.clusterHttpEndpoint === clusterHttpEndpoint);
         if (index > -1) {
             this.sfConfigs.splice(index, 1);
             SfUtility.outputLog('sfMgr:removeSfConfig:clusterHttpEndpoint removed:' + clusterHttpEndpoint);

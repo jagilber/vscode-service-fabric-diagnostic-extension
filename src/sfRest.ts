@@ -1,43 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
-
-/*
-todo: https://github.com/ukoloff/win-ca
-
-https://github.com/ukoloff/win-ca/tree/master/vscode
-
-autorest https://github.com/Azure/azure-rest-api-specs/tree/main/specification/servicefabric/data-plane
-https://github.com/MicrosoftDocs/azure-docs-sdk-node/blob/main/docs-ref-services/latest/arm-servicefabric-readme.md
-https://github.com/Azure/azure-sdk-for-js/tree/main/sdk/servicefabric/servicefabric
-https://github.com/Azure/ms-rest-nodeauth/blob/master/migrate-to-identity-v2.md
-https://www.npmjs.com/package/@azure/servicefabric
-
-https://github.com/Azure/autorest
-
-autorest --help
-autorest
-https://github.com/Azure/autorest/blob/main/docs/generate/readme.md
-
-https://github.com/Azure/azure-rest-api-specs
-https://github.com/Azure/azure-rest-api-specs/tree/main/specification/servicefabric
-I:\githubshared\azure\azure-rest-api-specs\specification\servicefabric\data-plane
-autorest --typescript --typescript-sdks-folder=I:\githubshared\jagilber\vscode-service-fabric-diagnostic-extension\src --generate-empty-classes=true
-I:\githubshared\azure\azure-rest-api-specs\specification\servicefabric\resource-manager
-autorest --typescript --typescript-sdks-folder=I:\githubshared\jagilber\vscode-service-fabric-diagnostic-extension\src --azure-arm --generate-empty-classes=true
-
-
-
-// https://learn.microsoft.com/en-us/rest/api/servicefabric/
-//https://code.visualstudio.com/api/get-started/your-first-extension
-//https://learn.microsoft.com/en-us/rest/api/azure/
-//https://github.com/microsoft/vscode-azure-account
-//import { AzureAccountExtensionApi, AzureSession } from '@azure/azure-account';
-//https://github.com/Microsoft/vscode-azuretools
-//C:\Users\user\.vscode\extensions
-//https://code.visualstudio.com/api
-//https://code.visualstudio.com/api/advanced-topics/extension-host
-//https://code.visualstudio.com/api/references/vscode-api
-
-*/
 
 import { ResourceManagementClient } from '@azure/arm-resources';
 import { SubscriptionClient } from '@azure/arm-subscriptions';
@@ -61,9 +21,7 @@ import * as SFConfiguration from './sfConfiguration';
 import { SfUtility, debugLevel } from './sfUtility';
 import { SfRestClient } from './sfRestClient';
 import { ClientRequest, RequestOptions } from 'http';
-import { DictionaryMapper, ServiceClient } from '@azure/core-client';
-import { DeactivationIntentDescription } from '@azure/servicefabric/esm/models/mappers';
-import { Hash } from 'crypto';
+import { SfConstants } from './sfConstants';
 
 export class SfRest {
     //https://www.npmjs.com/package/keytar
@@ -73,9 +31,9 @@ export class SfRest {
     private timeOut = 9000;
     private maxResults = 100;
     private subscriptionId = "";
-    private clusterHttpEndpoint = "https://localhost:19080";
+    private clusterHttpEndpoint = SfConstants.SF_HTTP_GATEWAY_ENDPOINT;
     private key: any | Uint8Array | Uint8ArrayConstructor | Buffer | undefined = undefined;
-    private certificate: string|string[]|undefined; // any | string | Buffer | undefined = undefined;
+    private certificate: string | string[] | undefined; // any | string | Buffer | undefined = undefined;
     // @ts-ignore - telemetry is not yet exposed in the vscode api
     private logger: vscode.env.TelemetryLogger | undefined;
     // @ts-ignore - telemetry is not yet exposed in the vscode api
@@ -90,18 +48,6 @@ export class SfRest {
     ) {
         this.extensionContext = context;
         SfUtility.outputLog("SFRest:constructor:context.extensionPath:" + context.extensionPath);
-
-        vscode.workspace.fs.readFile(vscode.Uri.file(`${this.extensionContext?.extensionPath}\\test-certs\\${os.hostname().toUpperCase()}\\ServiceFabricDevClusterCert.key`)).then((value: any) => {
-            if (value) {
-                this.key = value;
-            }
-        });
-        vscode.workspace.fs.readFile(vscode.Uri.file(`${this.extensionContext?.extensionPath}\\test-certs\\${os.hostname().toUpperCase()}\\ServiceFabricDevClusterCert.pem`)).then((value: any) => {
-            if (value) {
-                this.certificate = value;
-            }
-        });
-
         this.sfApi = this.initializeClusterConnection();
     }
 
@@ -152,7 +98,7 @@ export class SfRest {
     //     return result;
     // }
 
-    private initializeClusterConnection(endpoint = ''): ServiceFabricClientAPIs {
+    private initializeClusterConnection(endpoint?:string): ServiceFabricClientAPIs {
         if (endpoint) {
             this.clusterHttpEndpoint = endpoint;
         }
@@ -162,7 +108,8 @@ export class SfRest {
             //return null;
         }
         const optionalParams: sfModels.ServiceFabricClientAPIsOptionalParams = {
-            $host: this.clusterHttpEndpoint!,
+            //$host: this.clusterHttpEndpoint!,
+            endpoint: this.clusterHttpEndpoint!,
             apiVersion: this.clientApiVersion,
             allowInsecureConnection: true,
             httpClient: new SfRestClient(this)
@@ -173,11 +120,12 @@ export class SfRest {
         return this.sfApi;
     }
 
-    public async connectToCluster(endpoint = '', certificate: string[] | string): Promise<any> {
-        if (!this.sfApi || (endpoint && this.clusterHttpEndpoint !== endpoint)) {
-            this.initializeClusterConnection(endpoint);
+    public async connectToCluster(endpoint: string, certificate?: string[] | string): Promise<any> {
+        if (certificate) {
+            this.certificate = certificate;
         }
 
+        this.initializeClusterConnection(endpoint);
         await this.getClusterVersion();
     }
 
@@ -196,7 +144,7 @@ export class SfRest {
             path: parsedUri!.path,
             method: "GET",
             headers: this.createSfAutoRestHttpHeaders(),
-            port: parsedUri.port ? parseInt(parsedUri.port) : 19080,
+            port: parsedUri.port ? parseInt(parsedUri.port) : SfConstants.SF_HTTP_GATEWAY_PORT,
             //timeout: this.timeOut,
             key: this.key,
             cert: this.certificate,
@@ -220,7 +168,7 @@ export class SfRest {
             method: "GET",
             path: path.replace(/(&|\?)$/, ""),
             headers: this.createSfAutoRestHttpHeaders(),
-            port: parsedUri.port ? parseInt(parsedUri.port) : 19080,
+            port: parsedUri.port ? parseInt(parsedUri.port) : SfConstants.SF_HTTP_GATEWAY_PORT,
             //timeout: this.timeOut,
             key: this.key,
             cert: this.certificate,
@@ -282,6 +230,7 @@ export class SfRest {
 
         return applicationTypes;
     }
+
 
     public async getClusterManifest(): Promise<sfModels.GetClusterManifestResponse> {
         const clusterManifest = await this.sfApi.getClusterManifest();
@@ -379,6 +328,26 @@ export class SfRest {
         SfUtility.outputLog('sfRest:getNodes:nodes:', nodes);
 
         return nodeInfos;
+    }
+
+    public async getClusterServerCertificate(clusterHttpEndpoint: string, port = SfConstants.SF_HTTP_GATEWAY_PORT): Promise<tls.PeerCertificate | undefined> {
+        const tlsoptions: tls.ConnectionOptions = {
+            host: clusterHttpEndpoint,
+            port: port,
+            rejectUnauthorized: false,
+        };
+
+        let cert: tls.PeerCertificate | undefined;
+
+        const tlsClient = await tls.connect(tlsoptions, () => {
+            SfUtility.outputLog('tls response:' + tlsClient.getPeerCertificate());
+            cert = tlsClient.getPeerCertificate();
+            tlsClient.end();
+        });
+
+
+        SfUtility.outputLog('SfRestClient:getServerCertificate');
+        return cert;
     }
 
     public async invokeRequestOptions(httpOptions: any | https.RequestOptions | tls.ConnectionOptions): Promise<ClientRequest | string | undefined> {
@@ -527,7 +496,7 @@ export class SfRest {
             options.method = method;
             options.host = parsedUri.hostname;
             options.path = restQuery;
-            options.port = parsedUri.port ? parseInt(parsedUri.port) : 19080;
+            options.port = parsedUri.port ? parseInt(parsedUri.port) : SfConstants.SF_HTTP_GATEWAY_PORT;
 
             return await this.invokeRequestOptions(options);
         }

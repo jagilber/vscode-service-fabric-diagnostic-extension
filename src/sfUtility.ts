@@ -121,6 +121,16 @@ export class SfUtility {
         return this.context.globalState.get(key);
     }
 
+    public static readFile(path:string):string{
+        let data = '';
+        vscode.workspace.fs.readFile(vscode.Uri.file(`${path}`)).then((value: any) => {
+            if (value) {
+                data = value;
+            }
+        });
+        return data;
+    }
+
     public  static removeFile(path:string):void{
         this.outputLog(`sfUtility:removeFile:checking path:${path}`);
         if(fs.existsSync(path)){

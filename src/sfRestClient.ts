@@ -22,7 +22,7 @@ import { SfRest } from './sfRest';
 import { ClientRequest, RequestOptions } from 'http';
 import { ServiceClient } from '@azure/core-client';
 import { inherits } from 'util';
-import { Http2ServerRequest } from 'http2';
+
 
 
 export class SfRestClient {
@@ -44,39 +44,6 @@ export class SfRestClient {
         SfUtility.outputLog('SfRestClient:constructor');
         this.sfRest = options;
     }
-
-    public async getServerCertificate(clusterHttpEndpoint:string): Promise<azRestPipeline.PipelineResponse> {
-        const pipelineRequest:azRestPipeline.PipelineRequest = azRestPipeline.createPipelineRequest({
-            url: clusterHttpEndpoint,
-            headers: this.sfRest?.createSfAutoRestHttpHeaders()
-        });
-        
-        const options = this.sfRest?.createSfAutoRestHttpOptions(clusterHttpEndpoint);
-        options.requestCert = true;
-
-        return new Promise<azRestPipeline.PipelineResponse>((resolve, reject) => {
-            this.invokeRequest(options)
-                .then((response: any) => {
-                    SfUtility.outputLog(`sendRequest:response:${response}`);
-
-                    const pipelineResponse: azRestPipeline.PipelineResponse = {
-                        request: pipelineRequest,
-                        status: 200,
-                        headers: pipelineRequest.headers,
-                        bodyAsText: response,
-                        //bodyAsJson: JSON.parse(response),
-                        //bodyAsByteArray: Buffer.from(response),
-                        //body: response
-                    };
-                    resolve(pipelineResponse);
-                }
-                ).catch((error: any) => {
-                    SfUtility.outputLog(`sendRequest:error:${error}`);
-                    resolve(error);
-                });
-        });
-    }
-
 
     public async sendRequest(request: azRestPipeline.PipelineRequest): Promise<azRestPipeline.PipelineResponse> {
         SfUtility.outputLog('SfRestClient:sendRequest');
@@ -156,8 +123,8 @@ export class SfRestClient {
                     SfUtility.outputLog("invokeRequest:request timed out", null, debugLevel.error);
                 }).on('connect', (connect: any) => {
                     SfUtility.outputLog("invokeRequest:request connected", connect);
-                // }).on('socket', (socket: any) => {
-                //     SFUtility.outputLog("invokeRequest:request socket", socket);
+                    // }).on('socket', (socket: any) => {
+                    //     SFUtility.outputLog("invokeRequest:request socket", socket);
                 }).on('response', (response: any, socket: any, head: Buffer) => {
                     SfUtility.outputLog(`invokeRequest:response status code:${response.statusCode}`, response);
                     switch (response.statusCode) {
@@ -215,7 +182,7 @@ export class SfRestClient {
             SfUtility.showError(`invokeRequest:error:${JSON.stringify(error)}`);
         }
     }
-    
+
     public async sendOperationRequest<T>(operationArguments: OperationArguments, operationSpec: OperationSpec): Promise<T> {
         SfUtility.outputLog('SfRestClient:sendOperationRequest');
         return await this.pipeline.sendOperationRequest(operationArguments, operationSpec);

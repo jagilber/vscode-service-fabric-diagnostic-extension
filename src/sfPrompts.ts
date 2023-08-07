@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { debugLevel, SfUtility } from './sfUtility';
-import { SfConfiguration } from './sfConfiguration';
+import { SfConfiguration, clusterEndpointInfo, clusterCertificate } from './sfConfiguration';
 import { SfExtSettings, sfExtSettingsList } from './sfExtSettings';
 import { SfRest } from './sfRest';
 import { SfMgr } from './sfMgr';
@@ -29,14 +29,14 @@ export class SfPrompts {
         if (!clusterEndpoint) { return; }
 
         this.sfConfig.setClusterEndpoint(clusterEndpoint);
-        
+
         if (clusterCertificate) {
             this.sfConfig.setClusterCertificate(clusterCertificate);
         }
         SfExtSettings.updateSetting(sfExtSettingsList.clusters, this.sfConfig.getClusterEndpointInfo());
     }
 
-    public async promptForClusterRestCall(sfMgr?: SfMgr) {
+    public async promptForClusterRestCall(sfMgr: SfMgr) {
         const adhocRestCall: string | undefined = await vscode.window.showInputBox({
             prompt: "Enter cluster REST call",
             placeHolder: "/$/GetClusterHealth"
@@ -60,17 +60,26 @@ export class SfPrompts {
             });
     }
 
-    public async promptForGetClusterEndpoint(sfMgr?: SfMgr) {
-        const quickPicks:string[] = [await sfMgr?.getSfConfigs().keys] as unknown as string[];
-        const clusterEndpoint: string | undefined = await vscode.window.showQuickPick(quickPicks, {
+    public async promptForGetClusterEndpoint(sfMgr: SfMgr) {
+        const quickPickItems: Array<vscode.QuickPickItem> = [];
+        sfMgr.getSfConfigs().forEach((cluster: SfConfiguration) => {
+            quickPickItems.push({
+                label: cluster.clusterHttpEndpoint as string,
+                description: cluster.getClusterCertificate()?.thumbprint,
+                detail: cluster.getClusterCertificate()?.commonName
+            });
+        });
+
+        const clusterEndpoint: vscode.QuickPickItem | undefined = await vscode.window.showQuickPick(quickPickItems, {
             title: "Enter cluster endpoint to enumerate",
             placeHolder: this.exampleClusterEndpoint,
             canPickMany: false
         });
 
-        this.sfConfig.clusterHttpEndpoint = clusterEndpoint![0];
-        sfMgr?.getCluster(clusterEndpoint![0]);
+        this.sfConfig.clusterHttpEndpoint = clusterEndpoint?.label;
+        sfMgr?.getCluster(clusterEndpoint!.label);
     }
+
 
     public async promptForRemoveClusterEndpoint() {
         const clusterEndpoint: string | undefined = await vscode.window.showInputBox({

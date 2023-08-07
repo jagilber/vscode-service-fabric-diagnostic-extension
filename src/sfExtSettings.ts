@@ -4,14 +4,16 @@ import { debugLevel, SfUtility } from './sfUtility';
 export const  enum sfExtSettingsList {
     clusters = 'clusters',
     cluster = 'clusters.cluster',
-    clusterCertificate = 'clusters.cluster.certificate'
+    clusterCertificate = 'clusters.cluster.certificate',
+    autorefresh = 'autorefresh',
+    refreshInterval = 'refreshInterval'
 }
 
 export class SfExtSettings {
     private static configurationSection = "sfClusterExplorer"; //servicefabric
     private static configurationSettings: vscode.WorkspaceConfiguration;
 
-    public static getSetting(setting: sfExtSettingsList) {
+    public static getSetting(setting: sfExtSettingsList): any {
         const settings = vscode.workspace.getConfiguration(this.configurationSection);
         const value = settings.get(setting);
         SfUtility.outputLog('sfExtSettings:getSetting returning:setting:' + setting + ' value:' + value, settings);
