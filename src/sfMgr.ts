@@ -181,21 +181,23 @@ export class SfMgr {
             this.sfConfig = this.getSfConfig(clusterEndpoint)!;
         }
 
-        const clusterCertificate: clusterCertificate | undefined = this.sfConfig.getClusterCertificate();
-        if (clusterCertificate && !clusterCertificate.certificate && (clusterCertificate.thumbprint || clusterCertificate.commonName)) {
-            clusterCertificate.certificate = [await this.ps.getPemFromLocalCertStore(clusterCertificate.thumbprint ?? clusterCertificate.commonName!)].join('\n');
+        const clusterCertificateInfo: clusterCertificate | undefined = this.sfConfig.getClusterCertificate();
+        if (clusterCertificateInfo && (!clusterCertificateInfo.certificate || !clusterCertificateInfo.key)) {
+            clusterCertificateInfo.certificate = await this.ps.getPemCertFromLocalCertStore(clusterCertificateInfo.thumbprint ?? clusterCertificateInfo.commonName!);
+            clusterCertificateInfo.key = await this.ps.getPemKeyFromLocalCertStore(clusterCertificateInfo.thumbprint ?? clusterCertificateInfo.commonName!);
         }
 
-        SfUtility.outputLog(`sfMgr:getCluster:certificate length:${clusterCertificate?.certificate?.length}`, clusterCertificate);
-        //end test
+        SfUtility.outputLog(`sfMgr:getCluster:certificate length:${clusterCertificateInfo?.certificate?.length}`);
 
-        await this.sfRest.connectToCluster(clusterEndpoint, clusterCertificate!.certificate!);
+        await this.sfRest.connectToCluster(clusterEndpoint, clusterCertificateInfo!);
 
         await this.sfRest.getClusterManifest().then((data: any) => {
             SfUtility.outputLog('sfMgr:getCluster:response:', data);
             this.sfConfig.setManifest(data);
             SfUtility.outputLog('sfMgr:getCluster:config:', this.sfConfig);
         });
+
+        
     }
 
     public async getClusters(): Promise<any> {

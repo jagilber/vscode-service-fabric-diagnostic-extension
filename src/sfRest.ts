@@ -5,6 +5,7 @@ import { apiUtils } from '@microsoft/vscode-azext-utils';
 import * as armServiceFabric from '@azure/arm-servicefabric';
 import * as azureIdentity from '@azure/identity';
 import * as serviceFabric from '@azure/servicefabric';
+import { SfConfiguration, clusterCertificate } from './sfConfiguration';
 
 import { ServiceFabricManagementClient } from './sdk/servicefabric/arm-servicefabric/src/serviceFabricManagementClient';
 import { ServiceFabricClientAPIs } from './sdk/servicefabric/servicefabric/src/serviceFabricClientAPIs';
@@ -120,9 +121,10 @@ export class SfRest {
         return this.sfApi;
     }
 
-    public async connectToCluster(endpoint: string, certificate?: string[] | string): Promise<any> {
-        if (certificate) {
-            this.certificate = certificate;
+    public async connectToCluster(endpoint: string, clusterCertificate?: clusterCertificate | undefined): Promise<any> {
+        if (clusterCertificate) {
+            this.certificate = clusterCertificate.certificate;
+            this.key = clusterCertificate.key;
         }
 
         this.initializeClusterConnection(endpoint);

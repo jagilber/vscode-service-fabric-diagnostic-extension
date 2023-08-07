@@ -249,7 +249,7 @@ export class SfConfiguration {
         if (clusterCertificate.length >= 32 && clusterCertificate.length <= 40 && clusterCertificate.match(/^[0-9a-fA-F]+$/)) {
             SfUtility.outputLog('sfConfiguration:setClusterCertificate:thumbprint:', clusterCertificate);
             this.clusterCertificateThumbprint = clusterCertificate;
-            this.clusterCertificate = await this.sfPs.getPemFromLocalCertStore(clusterCertificate);
+            this.clusterCertificate = await this.sfPs.getPemCertFromLocalCertStore(clusterCertificate);
         }
         else if (clusterCertificate.toUpperCase().includes('CERTIFICATE')) {
             SfUtility.outputLog(`sfConfiguration:setClusterCertificate:certificate length:${clusterCertificate.length}`);
@@ -258,7 +258,7 @@ export class SfConfiguration {
         else {
             SfUtility.outputLog(`sfConfiguration:setClusterCertificate:common name:${clusterCertificate}`);
             this.clusterCertificateCommonName = clusterCertificate;
-            this.clusterCertificate = await this.sfPs.getPemFromLocalCertStore(clusterCertificate, undefined, true);
+            this.clusterCertificate = await this.sfPs.getPemCertFromLocalCertStore(clusterCertificate, undefined, true);
         }
 
         return Promise.resolve();

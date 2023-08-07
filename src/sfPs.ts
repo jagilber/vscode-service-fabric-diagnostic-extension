@@ -13,7 +13,7 @@ export class SfPs {
     private err: string[] = [];
     private pwsh = 'pwsh.exe';
     private powershell = 'powershell.exe';
-    private ps = this.powershell;// required for sf scripts to work .net 4.7.2
+    private static ps = '';// required for sf scripts to work .net 4.7.2
     private psSession: ChildProcessWithoutNullStreams | undefined = undefined;
 
     constructor() {
@@ -27,47 +27,55 @@ export class SfPs {
         this.psSession?.kill();
     }
 
-    public async getPemFromLocalCertStore(thumbprint: string, password?: string, searchSubject = false): Promise<string> {
+    public async getPemCertFromLocalCertStore(thumbprint: string, password?: string, searchSubject = false): Promise<string> {
         let getItem = `get-item 'cert:\\CurrentUser\\My\\${thumbprint}'`;
 
         if (searchSubject) {
             getItem = `get-item 'cert:\\CurrentUser\\My\\* | where-item Subject -imatch ${thumbprint}'`;
         }
 
-        // const command = `
-        // $cert = ${getItem};
-        // $bytes = $cert.GetRawCertData();
-        // write-output '-----BEGIN CERTIFICATE-----';
-        // write-output ([convert]::ToBase64String($bytes));
-        // write-output '-----END CERTIFICATE-----';
-        // `;
+        // # pwsh only
+        const command = `$cert = ${getItem};write-output $cert.ExportCertificatePem();`;
 
-        const command = `
-        $cert = ${getItem};
-        $base64 = [convert]::ToBase64String($cert.GetRawCertData());
-        write-output "-----BEGIN CERTIFICATE-----$([environment]::NewLine)$($base64)$([environment]::NewLine)-----END CERTIFICATE-----";
-        `;
-
-        return await this.send(command); //.replace(/(\n|^\s+|\s+$)/gm,''));
+        return await this.send(command);
     }
+
+    public async getPemKeyFromLocalCertStore(thumbprint: string, password?: string, searchSubject = false): Promise<string> {
+        let getItem = `get-item 'cert:\\CurrentUser\\My\\${thumbprint}'`;
+
+        if (searchSubject) {
+            getItem = `get-item 'cert:\\CurrentUser\\My\\* | where-item Subject -imatch ${thumbprint}'`;
+        }
+
+        // # pwsh only
+        const command = `$cert = ${getItem};write-output $cert.PrivateKey.ExportRSAPrivateKeyPem();`;
+
+        return await this.send(command);
+    }
+
 
     // public async getCertFromHttpEndpoint(httpEndpoint: string): Promise<string> {
     //     return new Promise<string>();
     // }
 
     private isPwshInstalled(): Promise<boolean> {
-        return this.sendOnce(this.pwsh, ['$PSVersionTable.PSVersion.Major']).then((result) => {
-            SfUtility.outputLog(`pwsh installed:sfPs using: ${this.ps}`);
-            return true;
-        }).catch((err) => {
-            SfUtility.outputLog(`powershell installed:sfPs using: ${this.ps}`);
-            return false;
-        });
+        if (!SfPs.ps) {
+            SfPs.ps = this.pwsh;
+            return this.sendOnce(['write-host $PSVersionTable']).then((result) => {
+                SfUtility.outputLog(`pwsh installed:sfPs using: ${SfPs.ps}`, result);
+                return true;
+            }).catch((err) => {
+                SfUtility.outputLog(`powershell installed:sfPs using: ${SfPs.ps}`, err);
+                SfPs.ps = this.powershell;
+                return false;
+            });
+        }
+        return Promise.resolve(false);
     }
 
     public async init(): Promise<void> {
         //if (this.psSession === undefined) {
-        SfUtility.outputLog(`sfPs init using: ${this.ps}`);
+        SfUtility.outputLog(`sfPs init using: ${SfPs.ps}`);
         await this.session().then((session) => {
             this.psSession = session;
         }).catch((err) => {
@@ -76,12 +84,12 @@ export class SfPs {
         //}
     }
 
-    public async sendOnce(ps: string = this.ps, commands: string[], jsonDepth = 2, end = true): Promise<string[]> {
+    public async sendOnce(commands: string[], jsonDepth = 2, end = true): Promise<string[]> {
         const promise = new Promise<string[]>((resolve, reject) => {
             //const results: any[] = [];
             const out: string[] = [];
             const err: string[] = [];
-            const child = spawn(ps, ['-ExecutionPolicy', 'RemoteSigned', '-Command', '-']);
+            const child = spawn(SfPs.ps, ['-ExecutionPolicy', 'RemoteSigned', '-Command', '-']);
 
             child.stdin.setDefaultEncoding('utf-8');
             child.stdout.setEncoding('utf-8');
@@ -119,7 +127,7 @@ export class SfPs {
         }
 
         SfUtility.outputLog(`send:command:${command}`);
-        const compressedCommand = command.replace(/(\n|^\s+|\s+$)/gm,'');
+        const compressedCommand = command.replace(/(\n|^\s+|\s+$)/gm, '');
         const promise = new Promise<string>((resolve, reject) => {
             this.psSession?.stdin.setDefaultEncoding('utf-8');
             this.psSession?.stdout.setEncoding('utf-8');
@@ -166,7 +174,7 @@ export class SfPs {
 
     public async session(): Promise<ChildProcessWithoutNullStreams> {
         const promise = new Promise<ChildProcessWithoutNullStreams>((resolve, reject) => {
-            const child = spawn(this.ps, ['-ExecutionPolicy', 'RemoteSigned', '-Command', '-']);
+            const child = spawn(SfPs.ps, ['-ExecutionPolicy', 'RemoteSigned', '-Command', '-']);
 
             child.stdin.setDefaultEncoding('utf-8');
             child.stdout.setEncoding('utf-8');
