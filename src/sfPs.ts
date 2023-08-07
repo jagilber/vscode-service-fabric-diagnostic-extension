@@ -34,12 +34,18 @@ export class SfPs {
             getItem = `get-item 'cert:\\CurrentUser\\My\\* | where-item Subject -imatch ${thumbprint}'`;
         }
 
+        // const command = `
+        // $cert = ${getItem};
+        // $bytes = $cert.GetRawCertData();
+        // write-output '-----BEGIN CERTIFICATE-----';
+        // write-output ([convert]::ToBase64String($bytes));
+        // write-output '-----END CERTIFICATE-----';
+        // `;
+
         const command = `
         $cert = ${getItem};
-        $bytes = $cert.GetRawCertData();
-        write-output '-----BEGIN CERTIFICATE-----';
-        write-output ([convert]::ToBase64String($bytes));
-        write-output '-----END CERTIFICATE-----';
+        $base64 = [convert]::ToBase64String($cert.GetRawCertData());
+        write-output "-----BEGIN CERTIFICATE-----$([environment]::NewLine)$($base64)$([environment]::NewLine)-----END CERTIFICATE-----";
         `;
 
         return await this.send(command); //.replace(/(\n|^\s+|\s+$)/gm,''));
@@ -115,18 +121,13 @@ export class SfPs {
         SfUtility.outputLog(`send:command:${command}`);
         const compressedCommand = command.replace(/(\n|^\s+|\s+$)/gm,'');
         const promise = new Promise<string>((resolve, reject) => {
-            //const results: any[] = [];
-            //const out: string[] = [];
-            // const err: string[] = [];
-
             this.psSession?.stdin.setDefaultEncoding('utf-8');
             this.psSession?.stdout.setEncoding('utf-8');
 
             this.psSession?.stdout.on('data', function (data) {
-                //out.push(data.toString());
-                //resolve([data.toString() + '\n']);
-                resolve(data.toString());
-                //resolve(JSON.stringify(JSON.parse(data.toString().result)));
+                const result = JSON.parse(data.toString()).result;
+                SfUtility.outputLog(`sfPs result data:`, result);
+                resolve(result);
             });
             this.psSession?.stderr.on('data', function (data) {
                 // err.push(data.toString());
@@ -136,9 +137,6 @@ export class SfPs {
                 SfUtility.outputLog(`sfPs send close:`);
                 //  resolve(out.join(''));
             });
-            // this.psSession?.stdout.on('readable', function () {
-            //     SFUtility.outputLog(`sfPs send readable:`);
-            // });
             this.psSession?.stdout.on('pause', function () {
                 SfUtility.outputLog(`sfPs send pause:`);
             });
@@ -168,9 +166,6 @@ export class SfPs {
 
     public async session(): Promise<ChildProcessWithoutNullStreams> {
         const promise = new Promise<ChildProcessWithoutNullStreams>((resolve, reject) => {
-            //const results: any[] = [];
-            // const out: string[] = [];
-            // const err: string[] = [];
             const child = spawn(this.ps, ['-ExecutionPolicy', 'RemoteSigned', '-Command', '-']);
 
             child.stdin.setDefaultEncoding('utf-8');

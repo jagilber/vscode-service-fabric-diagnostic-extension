@@ -183,10 +183,10 @@ export class SfMgr {
 
         const clusterCertificate: clusterCertificate | undefined = this.sfConfig.getClusterCertificate();
         if (clusterCertificate && !clusterCertificate.certificate && (clusterCertificate.thumbprint || clusterCertificate.commonName)) {
-            clusterCertificate.certificate = [await this.ps.getPemFromLocalCertStore(clusterCertificate.thumbprint ?? clusterCertificate.commonName!)];
+            clusterCertificate.certificate = [await this.ps.getPemFromLocalCertStore(clusterCertificate.thumbprint ?? clusterCertificate.commonName!)].join('\n');
         }
 
-        SfUtility.outputLog(`sfMgr:getCluster:certificate length:${clusterCertificate?.certificate?.length}`);
+        SfUtility.outputLog(`sfMgr:getCluster:certificate length:${clusterCertificate?.certificate?.length}`, clusterCertificate);
         //end test
 
         await this.sfRest.connectToCluster(clusterEndpoint, clusterCertificate!.certificate!);

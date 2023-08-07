@@ -64,9 +64,10 @@ export type clusterViewTreeItemType = [
 ];
 
 export type clusterCertificate = {
-    certificate?: string[];
+    certificate?: string;
     thumbprint?: string;
     commonName?: string;
+    key?: string;
 };
 
 export type clusterEndpointInfo = {
@@ -89,7 +90,7 @@ export class SfConfiguration {
     public systemServices: sfModels.ServiceInfo[] = [];
     private sfClusterFolder: SfClusterFolder;
     private sfRest: SfRest;
-    private clusterCertificate?: string[];
+    private clusterCertificate?: string;
     private clusterCertificateThumbprint?: string;
     private clusterCertificateCommonName?: string;
     private sfPs: SfPs = new SfPs();
@@ -216,7 +217,7 @@ export class SfConfiguration {
         const clusterCertificate: PeerCertificate | undefined = await this.sfRest.getClusterServerCertificate(clusterHttpEndpoint);
         if (clusterCertificate) {
             SfUtility.outputLog('sfConfiguration:getClusterCertificateFromServer:clusterCertificate:', clusterCertificate);
-            this.clusterCertificate = [clusterCertificate.raw.toString('base64')];
+            this.clusterCertificate = clusterCertificate.raw.toString('base64');
             this.clusterCertificateThumbprint = clusterCertificate.fingerprint;
             this.clusterCertificateCommonName = clusterCertificate.subject.CN;
         }
@@ -248,16 +249,16 @@ export class SfConfiguration {
         if (clusterCertificate.length >= 32 && clusterCertificate.length <= 40 && clusterCertificate.match(/^[0-9a-fA-F]+$/)) {
             SfUtility.outputLog('sfConfiguration:setClusterCertificate:thumbprint:', clusterCertificate);
             this.clusterCertificateThumbprint = clusterCertificate;
-            this.clusterCertificate = [await this.sfPs.getPemFromLocalCertStore(clusterCertificate)];
+            this.clusterCertificate = await this.sfPs.getPemFromLocalCertStore(clusterCertificate);
         }
         else if (clusterCertificate.toUpperCase().includes('CERTIFICATE')) {
             SfUtility.outputLog(`sfConfiguration:setClusterCertificate:certificate length:${clusterCertificate.length}`);
-            this.clusterCertificate = [clusterCertificate];
+            this.clusterCertificate = clusterCertificate;
         }
         else {
             SfUtility.outputLog(`sfConfiguration:setClusterCertificate:common name:${clusterCertificate}`);
             this.clusterCertificateCommonName = clusterCertificate;
-            this.clusterCertificate = [await this.sfPs.getPemFromLocalCertStore(clusterCertificate, undefined, true)];
+            this.clusterCertificate = await this.sfPs.getPemFromLocalCertStore(clusterCertificate, undefined, true);
         }
 
         return Promise.resolve();
