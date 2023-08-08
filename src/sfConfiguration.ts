@@ -198,22 +198,6 @@ export class SfConfiguration {
         return clusterViewTreeItem;
     }
 
-    public async getApplications(): Promise<sfModels.ApplicationInfo[]> {
-        const applications: sfModels.ApplicationInfo[] = await this.sfRest.getApplications();
-        applications.forEach((application: sfModels.ApplicationInfo) => {
-            this.addApplication(application);
-        });
-        return Promise.resolve(this.applications);
-    }
-
-    public async getApplicationTypes(): Promise<void> {
-        const applicationTypes: sfModels.ApplicationTypeInfo[] = await this.sfRest.getApplicationTypes();
-        applicationTypes.forEach((applicationType: sfModels.ApplicationTypeInfo) => {
-            this.addApplicationType(applicationType);
-        });
-        return Promise.resolve();
-    }
-
     public getClusterEndpointInfo(): clusterEndpointInfo | undefined {
         if (this.clusterHttpEndpoint) {
             return {
@@ -251,8 +235,8 @@ export class SfConfiguration {
 
         await this.populateManifest();
         await this.populateNodes();
-        await this.getApplicationTypes();
-        await this.getApplications().then((applications: sfModels.ApplicationInfo[]) => {
+        await this.populateApplicationTypes();
+        await this.populateApplications().then((applications: sfModels.ApplicationInfo[]) => {
             applications.forEach((application: sfModels.ApplicationInfo) => {
                 this.populateServices(application.id!);
             });
@@ -262,40 +246,51 @@ export class SfConfiguration {
         return Promise.resolve();
     }
 
-    public populateManifest(): string {
-        this.sfRest.getClusterManifest().then((data: any) => {
-            this.setManifest(data);
+    public async populateApplications(): Promise<sfModels.ApplicationInfo[]> {
+        return await this.sfRest.getApplications().then((applications: sfModels.ApplicationInfo[]) => {
+            applications.forEach((application: sfModels.ApplicationInfo) => {
+                this.addApplication(application);
+            });
+            return applications;
         });
-
-        return this.getManifest();
     }
 
-    public populateNodes(): Array<sfModels.NodeInfo> {
+    public async populateApplicationTypes(): Promise<void> {
+        return await this.sfRest.getApplicationTypes().then((applicationTypes: sfModels.ApplicationTypeInfo[]) => {
+            applicationTypes.forEach((applicationType: sfModels.ApplicationTypeInfo) => {
+                this.addApplicationType(applicationType);
+            });
+        });
+    }
 
-        this.sfRest.getNodes().then((nodes: sfModels.NodeInfo[]) => {
+    public async populateManifest(): Promise<void> {
+        return await this.sfRest.getClusterManifest().then((data: any) => {
+            this.setManifest(data);
+        });
+    }
+
+    public async populateNodes(): Promise<void> {
+        return await this.sfRest.getNodes().then((nodes: sfModels.NodeInfo[]) => {
             nodes.forEach((node: sfModels.NodeInfo) => {
                 this.addNode(node);
             });
         });
-        return this.nodes;
     }
 
-    public populateServices(applicationId: string): Array<sfModels.ServiceInfo> {
-        this.sfRest.getServices(applicationId).then((services: sfModels.ServiceInfoUnion[]) => {
+    public async populateServices(applicationId: string): Promise<void> {
+        return await this.sfRest.getServices(applicationId).then((services: sfModels.ServiceInfoUnion[]) => {
             services.forEach((service: sfModels.ServiceInfo) => {
                 this.addService(service);
             });
         });
-        return this.services;
     }
 
-    public populateSystemServices(applicationId: string): Array<sfModels.ServiceInfo> {
-        this.sfRest.getSystemServices(applicationId).then((services: sfModels.ServiceInfoUnion[]) => {
+    public async populateSystemServices(applicationId: string): Promise<void> {
+        return await this.sfRest.getSystemServices(applicationId).then((services: sfModels.ServiceInfoUnion[]) => {
             services.forEach((service: sfModels.ServiceInfo) => {
                 this.systemServices.push(service);
             });
         });
-        return this.systemServices;
     }
 
     public async setClusterCertificate(clusterCertificate: string): Promise<void> {
