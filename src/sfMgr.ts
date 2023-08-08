@@ -80,7 +80,7 @@ export class SfMgr {
     }
 
     private addSfConfig(sfConfig: SfConfiguration) {
-        if (!this.sfConfigs.find((config: SfConfiguration) => config.clusterHttpEndpoint === sfConfig.clusterHttpEndpoint)) {
+        if (!this.sfConfigs.find((config: SfConfiguration) => config.getClusterEndpoint() === sfConfig.getClusterEndpoint())) {
             this.sfConfigs.push(sfConfig);
         }
     }
@@ -195,7 +195,7 @@ export class SfMgr {
     public async getClusters(): Promise<any> {
         //todo test
         // uses azure account to enumerate clusters
-        if (!this.sfConfig.clusterHttpEndpoint && !this.sfExtSecrets.getSecret(sfExtSecretList.sfRestCertificate) || !this.subscriptionId) {
+        if (!this.sfConfig.getClusterEndpoint() && !this.sfExtSecrets.getSecret(sfExtSecretList.sfRestCertificate) || !this.subscriptionId) {
             SfUtility.showWarning("Cluster secret or subscription id not set");
             if (!this.sfRest.azureConnect()) {
                 SfUtility.showError("Azure account not connected");
@@ -212,8 +212,12 @@ export class SfMgr {
             });
     }
 
+    public getCurrentSfConfig(): SfConfiguration {
+        return this.sfConfig;
+    }
+    
     public getSfConfig(clusterHttpEndpoint: string): SfConfiguration | undefined {
-        return this.sfConfigs.find((config: SfConfiguration) => config.clusterHttpEndpoint === clusterHttpEndpoint);
+        return this.sfConfigs.find((config: SfConfiguration) => config.getClusterEndpoint() === clusterHttpEndpoint);
     }
 
     public getSfConfigs(): Array<SfConfiguration> {
@@ -294,7 +298,7 @@ export class SfMgr {
     }
 
     public removeSfConfig(clusterHttpEndpoint: string) {
-        const index = this.sfConfigs.findIndex((config: SfConfiguration) => config.clusterHttpEndpoint === clusterHttpEndpoint);
+        const index = this.sfConfigs.findIndex((config: SfConfiguration) => config.getClusterEndpoint() === clusterHttpEndpoint);
         if (index > -1) {
             this.sfConfigs.splice(index, 1);
             SfUtility.outputLog('sfMgr:removeSfConfig:clusterHttpEndpoint removed:' + clusterHttpEndpoint);

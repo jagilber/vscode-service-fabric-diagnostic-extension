@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
+import * as json from 'jsonc-parser';
 import * as xmlConverter from 'xml-js';
 import { SfUtility, debugLevel } from './sfUtility';
 import { SfClusterFolder } from './sfClusterFolder';
@@ -22,6 +24,15 @@ export type clusterViewTreeItemType = [
     cluster: {
         label: string,
         children: [
+            manifest: {
+                label: string,
+            },
+            jobs: {
+                label: string,
+            },
+            events: {
+                label: string,
+            },
             applications: {
                 label: string,
                 children: [
@@ -77,21 +88,22 @@ export type clusterEndpointInfo = {
 };
 
 export class SfConfiguration {
-    public xmlManifest = "";
-    public jsonManifest = "";
-    public jObjectManifest: any;
+    private xmlManifest = "";
+    private jsonManifest = "";
+    private jObjectManifest: any;
     private context: any;
-    public clusterHttpEndpoint: string = SfConstants.SF_HTTP_GATEWAY_ENDPOINT;
-    public clusterName?: string;
-    public nodes: sfModels.NodeInfo[] = [];
-    public nodeTypes: nodeType[] = [];
-    public applicationTypes: sfModels.ApplicationTypeInfo[] = [];
-    public applications: sfModels.ApplicationInfo[] = [];
-    public services: sfModels.ServiceInfo[] = [];
-    public systemServices: sfModels.ServiceInfo[] = [];
+    private clusterHttpEndpoint: string = SfConstants.SF_HTTP_GATEWAY_ENDPOINT;
+    private clusterName?: string;
+    private nodes: sfModels.NodeInfo[] = [];
+    private nodeTypes: nodeType[] = [];
+    private applicationTypes: sfModels.ApplicationTypeInfo[] = [];
+    private applications: sfModels.ApplicationInfo[] = [];
+    private services: sfModels.ServiceInfo[] = [];
+    private systemServices: sfModels.ServiceInfo[] = [];
     private sfClusterFolder: SfClusterFolder;
     private sfRest: SfRest;
     private clusterCertificate: clusterCertificate = {};
+    private clusterHealth?: sfModels.ClusterHealth;
     private clusterCertificateThumbprint?: string;
     private clusterCertificateCommonName?: string;
     private sfPs: SfPs = new SfPs();
@@ -142,6 +154,14 @@ export class SfConfiguration {
         clusterViewTreeItemChildren.push(new TreeItem('applications', applicationItems, resourceUri));
     }
 
+    private addClusterTreeItems(resourceUri: vscode.Uri, clusterViewTreeItemChildren: TreeItem[]) {
+        const clusterTreeItems: TreeItem[] = [];
+
+        clusterViewTreeItemChildren.push(new TreeItem('manifest', undefined, resourceUri));
+        clusterViewTreeItemChildren.push(new TreeItem('jobs', undefined, resourceUri));
+        clusterViewTreeItemChildren.push(new TreeItem('events', undefined, resourceUri));
+    }
+
     public addNode(node: sfModels.NodeInfo) {
         this.nodes.push(node);
     }
@@ -149,7 +169,12 @@ export class SfConfiguration {
     private addNodeTreeItems(resourceUri: vscode.Uri, clusterViewTreeItemChildren: TreeItem[]) {
         const nodeItems: TreeItem[] = [];
         this.nodes.forEach((node: sfModels.NodeInfo) => {
-            nodeItems.push(new TreeItem(node.name ?? 'undefined', undefined, resourceUri, node.healthState));
+            nodeItems.push(new TreeItem(node.name ?? 'undefined',
+                undefined,
+                resourceUri,
+                node.healthState,
+                this.getIcon(node.healthState)
+            ));
         });
         clusterViewTreeItemChildren.push(new TreeItem('nodes', nodeItems, resourceUri));
     }
@@ -189,13 +214,26 @@ export class SfConfiguration {
         this.sfClusterFolder.createClusterFolder(this.clusterName!);
         const clusterViewTreeItemChildren: TreeItem[] = [];
 
+        this.addClusterTreeItems(resourceUri, clusterViewTreeItemChildren);
         this.addApplicationTreeItems(resourceUri, clusterViewTreeItemChildren);
         this.addNodeTreeItems(resourceUri, clusterViewTreeItemChildren);
         this.addSystemTreeItems(resourceUri, clusterViewTreeItemChildren);
 
-        const clusterViewTreeItem: TreeItem = new TreeItem(this.clusterName ?? 'undefined', clusterViewTreeItemChildren, resourceUri);
+        // add cluster view tree item to root view
+        const clusterViewTreeItem: TreeItem = new TreeItem(this.clusterName ?? 'undefined',
+            clusterViewTreeItemChildren,
+            resourceUri,
+            this.clusterHealth?.aggregatedHealthState,
+            this.getIcon(this.clusterHealth?.aggregatedHealthState)
+        );
+
         SfUtility.outputLog('clusterViewTreeItem:', clusterViewTreeItem);
         return clusterViewTreeItem;
+    }
+
+
+    public getClusterEndpoint(): string {
+        return this.clusterHttpEndpoint!;
     }
 
     public getClusterEndpointInfo(): clusterEndpointInfo | undefined {
@@ -226,13 +264,69 @@ export class SfConfiguration {
         return Promise.resolve();
     }
 
+    private getIcon(status: any): any {
+
+        switch (status.toLowerCase()) {
+            case 'ok':
+                return {
+                    light: this.context.asAbsolutePath(path.join('resources', 'light', 'pass.svg')),
+                    dark: this.context.asAbsolutePath(path.join('resources', 'dark', 'pass.svg'))
+                };
+            case 'warning':
+                return {
+                    light: this.context.asAbsolutePath(path.join('resources', 'light', 'warning.svg')),
+                    dark: this.context.asAbsolutePath(path.join('resources', 'dark', 'warning.svg'))
+                };
+            case 'error':
+                return {
+                    light: this.context.asAbsolutePath(path.join('resources', 'light', 'error.svg')),
+                    dark: this.context.asAbsolutePath(path.join('resources', 'dark', 'error.svg'))
+                };
+            case 'unknown':
+                return {
+                    light: this.context.asAbsolutePath(path.join('resources', 'light', 'unknown.svg')),
+                    dark: this.context.asAbsolutePath(path.join('resources', 'dark', 'unknown.svg'))
+                };
+        }
+
+        return null;
+    }
+
     public getManifest(): string {
         return this.xmlManifest;
     }
 
+    private getVmIcon(status: any): any {
+
+        switch (status.toLowerCase()) {
+            case 'ok':
+                return {
+                    light: this.context.asAbsolutePath(path.join('resources', 'light', 'vm-running.svg')),
+                    dark: this.context.asAbsolutePath(path.join('resources', 'dark', 'vm-running.svg'))
+                };
+            case 'warning':
+                return {
+                    light: this.context.asAbsolutePath(path.join('resources', 'light', 'warning.svg')),
+                    dark: this.context.asAbsolutePath(path.join('resources', 'dark', 'warning.svg'))
+                };
+            case 'error':
+                return {
+                    light: this.context.asAbsolutePath(path.join('resources', 'light', 'error.svg')),
+                    dark: this.context.asAbsolutePath(path.join('resources', 'dark', 'error.svg'))
+                };
+            case 'unknown':
+                return {
+                    light: this.context.asAbsolutePath(path.join('resources', 'light', 'vm.svg')),
+                    dark: this.context.asAbsolutePath(path.join('resources', 'dark', 'vm.svg'))
+                };
+        }
+
+        return null;
+    }
+
     public async populate(): Promise<void> {
         this.sfRest.connectToCluster(this.clusterHttpEndpoint, this.clusterCertificate!);
-
+        await this.populateClusterHealth();
         await this.populateManifest();
         await this.populateNodes();
         await this.populateApplicationTypes();
@@ -260,6 +354,13 @@ export class SfConfiguration {
             applicationTypes.forEach((applicationType: sfModels.ApplicationTypeInfo) => {
                 this.addApplicationType(applicationType);
             });
+        });
+    }
+
+    public async populateClusterHealth(): Promise<void> {
+        return await this.sfRest.getClusterHealth().then((clusterHealth: sfModels.ClusterHealth) => {
+            SfUtility.outputLog('sfConfiguration:populateClusterHealth:clusterHealth:', clusterHealth);
+            this.clusterHealth = clusterHealth;
         });
     }
 

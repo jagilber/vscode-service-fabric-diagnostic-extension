@@ -20,6 +20,11 @@ export class SfClusterFolder {
         SfUtility.createFile(path,data);
     }
 
+    public addClusterFile(clusterFileName: string, data?:string): void {
+        const path = this.clusterFolder + '\\' + clusterFileName;
+        SfUtility.createFile(path,data);
+    }
+
     public addNodeFile(nodeName: string, data?:string): void {
         const path = this.nodeFolder + '\\' + nodeName;
         SfUtility.createFile(path,data);
@@ -30,9 +35,13 @@ export class SfClusterFolder {
         SfUtility.createFile(path,data);
     }
 
-    public createClusterFolder(clusterName: string, data?:string): void {
+    public createClusterFolder(clusterName: string, data = 'PLACEHOLDER'): void {
         clusterName = this.globalStorage + '\\' + clusterName;
         this.clusterFolder = SfUtility.createFolder(clusterName);
+        this.addClusterFile('manifest.json',data);
+        this.addClusterFile('jobs.json',data);
+        this.addClusterFile('events.json',data);
+
         this.applicationFolder = SfUtility.createFolder(clusterName + '\\applications');
         this.nodeFolder = SfUtility.createFolder(clusterName + '\\nodes');
         this.systemFolder = SfUtility.createFolder(clusterName + '\\system');

@@ -99,7 +99,7 @@ export class SfRest {
     //     return result;
     // }
 
-    private initializeClusterConnection(endpoint?:string): ServiceFabricClientAPIs {
+    private initializeClusterConnection(endpoint?: string): ServiceFabricClientAPIs {
         if (endpoint) {
             this.clusterHttpEndpoint = endpoint;
         }
@@ -224,13 +224,13 @@ export class SfRest {
         return application;
     }
 
-    public async getApplications(continuationToken?:string): Promise<sfModels.ApplicationInfo[]> {
+    public async getApplications(continuationToken?: string): Promise<sfModels.ApplicationInfo[]> {
         const applicationInfos: Array<sfModels.ApplicationInfo> = [];
         // applicationInfos.push(await this.sfApi.getApplicationInfo("fabric:/System"));
-        const applications = await this.sfApi.getApplicationInfoList({continuationToken: continuationToken});
+        const applications = await this.sfApi.getApplicationInfoList({ continuationToken: continuationToken });
         applicationInfos.push(...applications.items!);
 
-        if(applications.continuationToken){
+        if (applications.continuationToken) {
             await this.getApplications(applications.continuationToken);
         }
 
@@ -241,16 +241,16 @@ export class SfRest {
         return applications.items!;
     }
 
-    public async getApplicationTypes(continuationToken?:string): Promise<sfModels.ApplicationTypeInfo[]> {
+    public async getApplicationTypes(continuationToken?: string): Promise<sfModels.ApplicationTypeInfo[]> {
         const applicationTypes: Array<sfModels.ApplicationTypeInfo> = [];
-        const applicationInfos = await this.sfApi.getApplicationTypeInfoList({continuationToken: continuationToken});
+        const applicationInfos = await this.sfApi.getApplicationTypeInfoList({ continuationToken: continuationToken });
         SfUtility.outputLog('sfRest:getApplicationTypes:', applicationInfos);
         applicationTypes.push(...applicationInfos.items!);
 
-        if(applicationInfos.continuationToken){
+        if (applicationInfos.continuationToken) {
             await this.getApplicationTypes(applicationInfos.continuationToken);
         }
-        
+
         return applicationTypes;
     }
 
@@ -353,16 +353,16 @@ export class SfRest {
         return nodeState;
     }
 
-    public async getNodes(nodeStatusFilter: sfModels.KnownNodeStatusFilter = sfModels.KnownNodeStatusFilter.Default, continuationToken?:string): Promise<sfModels.NodeInfo[]> {
+    public async getNodes(nodeStatusFilter: sfModels.KnownNodeStatusFilter = sfModels.KnownNodeStatusFilter.Default, continuationToken?: string): Promise<sfModels.NodeInfo[]> {
         const nodeInfos: Array<sfModels.NodeInfo> = [];
-        const nodes = await this.sfApi.getNodeInfoList({continuationToken: continuationToken, nodeStatusFilter: nodeStatusFilter});
+        const nodes = await this.sfApi.getNodeInfoList({ continuationToken: continuationToken, nodeStatusFilter: nodeStatusFilter });
 
         if (!nodes.items! || nodes.items?.length === 0) {
             SfUtility.showWarning("No nodes found");
             return nodeInfos;
         }
         nodeInfos.push(...nodes.items!);
-        if(nodes.continuationToken){
+        if (nodes.continuationToken) {
             await this.getNodes(nodeStatusFilter, nodes.continuationToken);
         }
 
@@ -370,18 +370,18 @@ export class SfRest {
         return nodeInfos;
     }
 
-    public async getService(applicationId: string, serviceId:string): Promise<sfModels.ServiceInfoUnion> {
+    public async getService(applicationId: string, serviceId: string): Promise<sfModels.ServiceInfoUnion> {
         const service = await this.sfApi.getServiceInfo(applicationId, serviceId);
         SfUtility.outputLog('sfRest:getService:complete', service);
         return service;
     }
 
-    public async getServices(applicationId:string, continuationToken?:string): Promise<sfModels.ServiceInfoUnion[]> {
+    public async getServices(applicationId: string, continuationToken?: string): Promise<sfModels.ServiceInfoUnion[]> {
         const serviceInfos: Array<sfModels.ServiceInfoUnion> = [];
-        const services = await this.sfApi.getServiceInfoList(applicationId,{continuationToken: continuationToken});
+        const services = await this.sfApi.getServiceInfoList(applicationId, { continuationToken: continuationToken });
         serviceInfos.push(...services.items!);
 
-        if(services.continuationToken){
+        if (services.continuationToken) {
             await this.getServices(applicationId, services.continuationToken);
         }
 
@@ -390,18 +390,18 @@ export class SfRest {
         return serviceInfos;
     }
 
-    public async getServiceTypes(applicationTypeName:string, applicationTypeVersion:string): Promise<sfModels.GetServiceTypeInfoListResponse> {
+    public async getServiceTypes(applicationTypeName: string, applicationTypeVersion: string): Promise<sfModels.GetServiceTypeInfoListResponse> {
         const serviceInfos = await this.sfApi.getServiceTypeInfoList(applicationTypeName, applicationTypeVersion);
         SfUtility.outputLog('sfRest:getServiceTypes:', serviceInfos);
         return serviceInfos;
     }
 
-    public async getSystemServices(applicationId:string, continuationToken?:string): Promise<sfModels.ServiceInfoUnion[]> {
+    public async getSystemServices(applicationId: string, continuationToken?: string): Promise<sfModels.ServiceInfoUnion[]> {
         const serviceInfos: Array<sfModels.ServiceInfoUnion> = [];
-        const services = await this.sfApi.getServiceInfoList(applicationId,{continuationToken: continuationToken});
+        const services = await this.sfApi.getServiceInfoList(applicationId, { continuationToken: continuationToken });
         serviceInfos.push(...services.items!);
 
-        if(services.continuationToken){
+        if (services.continuationToken) {
             await this.getSystemServices(applicationId, services.continuationToken);
         }
 

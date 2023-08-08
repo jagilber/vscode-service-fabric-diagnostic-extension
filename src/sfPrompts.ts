@@ -45,18 +45,19 @@ export class SfPrompts {
         SfUtility.activateOutputChannel();
         if (!adhocRestCall) { return; }
 
-        if (!this.sfConfig.clusterHttpEndpoint) {
+        if (!this.sfConfig.getClusterEndpoint()) {
             await this.promptForGetClusterEndpoint(sfMgr);
         }
-        if (!this.sfConfig.clusterHttpEndpoint) {
+        if (!this.sfConfig.getClusterEndpoint()) {
             await this.promptForAddClusterEndpoint();
         }
 
-        if (!this.sfConfig.clusterHttpEndpoint) { return; }
-
-        this.sfRest.invokeRestApi("GET", this.sfConfig.clusterHttpEndpoint!, adhocRestCall)
+        if (!this.sfConfig.getClusterEndpoint()) { return; }
+        
+        this.sfRest.connectToCluster(sfMgr.getCurrentSfConfig().getClusterEndpoint()!, sfMgr.getCurrentSfConfig().getClusterCertificate()!);
+        this.sfRest.invokeRestApi("GET", this.sfConfig.getClusterEndpoint()!, adhocRestCall)
             .then((data: any) => {
-                SfUtility.outputLog(data);
+                SfUtility.outputLog('adhoc result:', JSON.parse(data));
             });
     }
 
@@ -64,7 +65,7 @@ export class SfPrompts {
         const quickPickItems: Array<vscode.QuickPickItem> = [];
         sfMgr.getSfConfigs().forEach((cluster: SfConfiguration) => {
             quickPickItems.push({
-                label: cluster.clusterHttpEndpoint as string,
+                label: cluster.getClusterEndpoint() as string,
                 description: cluster.getClusterCertificate()?.thumbprint,
                 detail: cluster.getClusterCertificate()?.commonName,
                 kind: vscode.QuickPickItemKind.Default

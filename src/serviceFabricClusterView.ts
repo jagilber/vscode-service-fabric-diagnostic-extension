@@ -88,10 +88,16 @@ export class TreeItem extends vscode.TreeItem {
     children?: TreeItem[] = [];
     iconPath?: string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri; } | vscode.ThemeIcon | undefined;
 
-    constructor(label: string, children?: TreeItem[], resourceUri?: vscode.Uri, status?:string) {
+    constructor(label: string,
+        children?: TreeItem[],
+        resourceUri?: vscode.Uri,
+        status?: string,
+        iconPath?: string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri; } | vscode.ThemeIcon | undefined
+    ) {
         super(label, children === undefined ? vscode.TreeItemCollapsibleState.None : vscode.TreeItemCollapsibleState.Expanded);
         super.resourceUri = resourceUri;
         super.tooltip = status ?? label;
+        super.iconPath = iconPath;
         //super.command = { command: 'serviceFabricClusterView.reveal', title: 'Reveal', arguments: [this] };
         //super(label, children === undefined ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.Expanded);
         this.children = children;
