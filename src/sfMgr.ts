@@ -173,8 +173,7 @@ export class SfMgr {
 
     public async getCluster(clusterEndpoint: string): Promise<any> {
         if (!this.getSfConfig(clusterEndpoint)) {
-            this.sfConfig = new SfConfiguration(this.context);
-            this.sfConfig.clusterHttpEndpoint = clusterEndpoint;
+            this.sfConfig = new SfConfiguration(this.context, { endpoint: clusterEndpoint });
             this.addSfConfig(this.sfConfig);
         }
         else {
@@ -188,16 +187,9 @@ export class SfMgr {
         }
 
         SfUtility.outputLog(`sfMgr:getCluster:certificate length:${clusterCertificateInfo?.certificate?.length}`);
-
-        await this.sfRest.connectToCluster(clusterEndpoint, clusterCertificateInfo!);
-
-        await this.sfRest.getClusterManifest().then((data: any) => {
-            SfUtility.outputLog('sfMgr:getCluster:response:', data);
-            this.sfConfig.setManifest(data);
-            SfUtility.outputLog('sfMgr:getCluster:config:', this.sfConfig);
-        });
-
+        await this.sfConfig.populate();
         
+        this.sfClusterView.addTreeItem(this.sfConfig.createClusterViewTreeItem());
     }
 
     public async getClusters(): Promise<any> {
@@ -232,7 +224,7 @@ export class SfMgr {
         //todo test
         const clusters: clusterEndpointInfo[] | any = SfExtSettings.getSetting(sfExtSettingsList.clusters);
         for (const cluster of clusters) {
-            this.addSfConfig(new SfConfiguration(this.context, undefined, cluster));
+            this.addSfConfig(new SfConfiguration(this.context, cluster));
         }
     }
 

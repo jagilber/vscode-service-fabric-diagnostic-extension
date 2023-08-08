@@ -218,18 +218,39 @@ export class SfRest {
         return;
     }
 
-    public async getApplicationTypes(): Promise<sfModels.ApplicationTypeInfo[]> {
-        const applicationTypes: Array<sfModels.ApplicationTypeInfo> = [];
-        const applicationInfos = await this.sfApi.getApplicationTypeInfoList();
-        SfUtility.outputLog('sfRest:getApplicationTypes:', applicationInfos);
-        //todo: continuation token
-        applicationInfos.items?.forEach((element: any) => {
-            this.sfApi.getApplicationInfo(element.id).then((applicationInfo: any) => {
-                SfUtility.outputLog('sfRest:getApplicationTypes:applicationType:', applicationInfo);
-                applicationTypes.push(element);
-            });
-        });
+    public async getApplication(applicationId: string): Promise<sfModels.ApplicationInfo> {
+        const application = await this.sfApi.getApplicationInfo(applicationId);
+        SfUtility.outputLog('sfRest:getApplication:complete', application);
+        return application;
+    }
 
+    public async getApplications(continuationToken?:string): Promise<sfModels.ApplicationInfo[]> {
+        const applicationInfos: Array<sfModels.ApplicationInfo> = [];
+        // applicationInfos.push(await this.sfApi.getApplicationInfo("fabric:/System"));
+        const applications = await this.sfApi.getApplicationInfoList({continuationToken: continuationToken});
+        applicationInfos.push(...applications.items!);
+
+        if(applications.continuationToken){
+            await this.getApplications(applications.continuationToken);
+        }
+
+        SfUtility.outputLog(`sfRest:getService: returning:${applicationInfos.length} items`, applications);
+
+        return applicationInfos;
+
+        return applications.items!;
+    }
+
+    public async getApplicationTypes(continuationToken?:string): Promise<sfModels.ApplicationTypeInfo[]> {
+        const applicationTypes: Array<sfModels.ApplicationTypeInfo> = [];
+        const applicationInfos = await this.sfApi.getApplicationTypeInfoList({continuationToken: continuationToken});
+        SfUtility.outputLog('sfRest:getApplicationTypes:', applicationInfos);
+        applicationTypes.push(...applicationInfos.items!);
+
+        if(applicationInfos.continuationToken){
+            await this.getApplicationTypes(applicationInfos.continuationToken);
+        }
+        
         return applicationTypes;
     }
 
@@ -298,40 +319,6 @@ export class SfRest {
         //     });
     }
 
-
-    public async getNode(nodeName: string): Promise<sfModels.NodeInfo> {
-        const node = await this.sfApi.getNodeInfo(nodeName);
-        SfUtility.outputLog('sfRest:getNode:complete', node);
-        return node;
-    }
-
-    public async getNodeHealth(nodeName: string): Promise<sfModels.NodeHealthState> {
-        const nodeState = await this.sfApi.getNodeHealth(nodeName);
-        SfUtility.outputLog('sfRest:getNodeState:complete', nodeState);
-        return nodeState;
-    }
-
-    public async getNodes(nodeStatusFilter: sfModels.KnownNodeStatusFilter = sfModels.KnownNodeStatusFilter.Default): Promise<sfModels.NodeInfo[]> {
-        const nodeInfos: Array<sfModels.NodeInfo> = [];
-        const nodes = await this.sfApi.getNodeInfoList();
-
-        //todo: continuation token
-        if (!nodes.items! || nodes.items?.length === 0) {
-            SfUtility.showWarning("No nodes found");
-            return nodeInfos;
-        }
-        await nodes.items?.forEach((element: any) => {
-            // this.sfApi.getNodeInfo(element.name).then((node: any) => {
-            //     SFUtility.outputLog('sfRest:getNodes:node:', node);
-            //     nodeInfos.push(node);
-            // });
-            nodeInfos.push(element);
-        });
-        SfUtility.outputLog('sfRest:getNodes:nodes:', nodes);
-
-        return nodeInfos;
-    }
-
     public async getClusterServerCertificate(clusterHttpEndpoint: string, port = SfConstants.SF_HTTP_GATEWAY_PORT): Promise<tls.PeerCertificate | undefined> {
         const tlsoptions: tls.ConnectionOptions = {
             host: clusterHttpEndpoint,
@@ -350,6 +337,76 @@ export class SfRest {
 
         SfUtility.outputLog('SfRestClient:getServerCertificate');
         return cert;
+    }
+
+
+
+    public async getNode(nodeName: string): Promise<sfModels.NodeInfo> {
+        const node = await this.sfApi.getNodeInfo(nodeName);
+        SfUtility.outputLog('sfRest:getNode:complete', node);
+        return node;
+    }
+
+    public async getNodeHealth(nodeName: string): Promise<sfModels.NodeHealthState> {
+        const nodeState = await this.sfApi.getNodeHealth(nodeName);
+        SfUtility.outputLog('sfRest:getNodeState:complete', nodeState);
+        return nodeState;
+    }
+
+    public async getNodes(nodeStatusFilter: sfModels.KnownNodeStatusFilter = sfModels.KnownNodeStatusFilter.Default, continuationToken?:string): Promise<sfModels.NodeInfo[]> {
+        const nodeInfos: Array<sfModels.NodeInfo> = [];
+        const nodes = await this.sfApi.getNodeInfoList({continuationToken: continuationToken, nodeStatusFilter: nodeStatusFilter});
+
+        if (!nodes.items! || nodes.items?.length === 0) {
+            SfUtility.showWarning("No nodes found");
+            return nodeInfos;
+        }
+        nodeInfos.push(...nodes.items!);
+        if(nodes.continuationToken){
+            await this.getNodes(nodeStatusFilter, nodes.continuationToken);
+        }
+
+        SfUtility.outputLog(`sfRest:getService: returning:${nodeInfos.length} items`, nodes);
+        return nodeInfos;
+    }
+
+    public async getService(applicationId: string, serviceId:string): Promise<sfModels.ServiceInfoUnion> {
+        const service = await this.sfApi.getServiceInfo(applicationId, serviceId);
+        SfUtility.outputLog('sfRest:getService:complete', service);
+        return service;
+    }
+
+    public async getServices(applicationId:string, continuationToken?:string): Promise<sfModels.ServiceInfoUnion[]> {
+        const serviceInfos: Array<sfModels.ServiceInfoUnion> = [];
+        const services = await this.sfApi.getServiceInfoList(applicationId,{continuationToken: continuationToken});
+        serviceInfos.push(...services.items!);
+
+        if(services.continuationToken){
+            await this.getServices(applicationId, services.continuationToken);
+        }
+
+        SfUtility.outputLog(`sfRest:getService: returning:${serviceInfos.length} items`, services);
+
+        return serviceInfos;
+    }
+
+    public async getServiceTypes(applicationTypeName:string, applicationTypeVersion:string): Promise<sfModels.GetServiceTypeInfoListResponse> {
+        const serviceInfos = await this.sfApi.getServiceTypeInfoList(applicationTypeName, applicationTypeVersion);
+        SfUtility.outputLog('sfRest:getServiceTypes:', serviceInfos);
+        return serviceInfos;
+    }
+
+    public async getSystemServices(applicationId:string, continuationToken?:string): Promise<sfModels.ServiceInfoUnion[]> {
+        const serviceInfos: Array<sfModels.ServiceInfoUnion> = [];
+        const services = await this.sfApi.getServiceInfoList(applicationId,{continuationToken: continuationToken});
+        serviceInfos.push(...services.items!);
+
+        if(services.continuationToken){
+            await this.getSystemServices(applicationId, services.continuationToken);
+        }
+
+        SfUtility.outputLog(`sfRest:getSystemsServices: returning:${serviceInfos.length} items`, services);
+        return serviceInfos;
     }
 
     public async invokeRequestOptions(httpOptions: any | https.RequestOptions | tls.ConnectionOptions): Promise<ClientRequest | string | undefined> {

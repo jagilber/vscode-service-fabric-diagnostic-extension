@@ -66,7 +66,8 @@ export class SfPrompts {
             quickPickItems.push({
                 label: cluster.clusterHttpEndpoint as string,
                 description: cluster.getClusterCertificate()?.thumbprint,
-                detail: cluster.getClusterCertificate()?.commonName
+                detail: cluster.getClusterCertificate()?.commonName,
+                kind: vscode.QuickPickItemKind.Default
             });
         });
 
@@ -76,7 +77,7 @@ export class SfPrompts {
             canPickMany: false
         });
 
-        this.sfConfig.clusterHttpEndpoint = clusterEndpoint?.label;
+        this.sfConfig.setClusterEndpoint(clusterEndpoint!.label);
         sfMgr?.getCluster(clusterEndpoint!.label);
     }
 
@@ -87,7 +88,7 @@ export class SfPrompts {
             placeHolder: this.exampleClusterEndpoint
         });
 
-        this.sfConfig.clusterHttpEndpoint = clusterEndpoint;
+        this.sfConfig.setClusterEndpoint(clusterEndpoint!);
         SfExtSettings.removeSetting(sfExtSettingsList.clusters, clusterEndpoint);
     }
 }
