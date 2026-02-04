@@ -1,0 +1,10 @@
+{
+  "id": "sf-cluster-management-patterns",
+  "title": "Service Fabric Cluster Management Patterns",
+  "body": "## Cluster Endpoint Management\n\n### Storage and Configuration\n- Clusters stored in extension settings: `sfClusterExplorer.clusters` array\n- Configs loaded from globalStorage on activation: `context.globalStorageUri.fsPath`\n- Cluster file storage: `${globalStorage}\\\\clusters`\n- Default local endpoint: https://localhost:19080\n\n### Authentication Methods\n1. **Certificate-based**: thumbprint, commonName, PEM cert/key pairs\n2. **Azure AD**: via @azure/identity ClientSecretCredential\n\n### Certificate Authentication Pattern\n```typescript\ntype clusterCertificate = {\n  certificate?: string;  // PEM format\n  thumbprint?: string;\n  commonName?: string;\n  key?: string;         // PEM format\n};\n\ntype clusterEndpointInfo = {\n  endpoint: string;\n  clusterCertificate?: clusterCertificate;\n  manifest?: string;\n};\n```\n\n### Local Development Cluster\n- PowerShell integration via sfPs.ts\n- DevClusterSetup.ps1 script location: SF_SDK_DIR\n- Always validate cluster connectivity before operations\n\n### Configuration Class Usage\n```typescript\nconst sfConfig = new SfConfiguration(context);\nsfConfig.setClusterEndpoint(endpoint);\nawait sfConfig.loadClusterManifest();\n```\n\n### Best Practices\n- Validate cluster endpoint scheme (http/https) before requests\n- Check SF SDK installation: `SfUtility.fileExists(SfConstants.SF_SDK_DIR)`\n- Use try-catch for ALL REST operations\n- Provide meaningful error messages via SfUtility.outputLog\n- Always check certificate validity for secure clusters",
+  "priority": 0,
+  "audience": "agent",
+  "requirement": "always",
+  "rationale": "Critical patterns for cluster connectivity and authentication that must be followed",
+  "categories": ["service-fabric", "cluster-management", "authentication", "patterns"]
+}

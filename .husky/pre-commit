@@ -1,0 +1,93 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# PII Protection Pre-Commit Hook
+# Prevents committing sensitive information
+
+echo "🔒 Running PII protection checks..."
+
+# Check if .env file is being committed
+if git diff --cached --name-only | grep -E '^\.env$' > /dev/null; then
+    echo "❌ ERROR: .env file detected in commit!"
+    echo "   The .env file contains sensitive credentials and must not be committed."
+    echo "   Please unstage it with: git reset HEAD .env"
+    exit 1
+fi
+
+# Check if any .env.local files are being committed
+if git diff --cached --name-only | grep -E '\.env\..*\.local$' > /dev/null; then
+    echo "❌ ERROR: Local environment file detected in commit!"
+    echo "   Local .env files must not be committed."
+    exit 1
+fi
+
+# Get list of staged files (excluding .env.example which is allowed)
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -v '\.env\.example$')
+
+if [ -n "$STAGED_FILES" ]; then
+    # Check for hardcoded certificate thumbprints (except in allowed files)
+    if echo "$STAGED_FILES" | grep -v -E '(\.env\.example|SECURITY\.md|TEST_EXECUTION_REPORT\.md|test-results/|test/|\.test\.ts)' | xargs git diff --cached | grep -iE '[0-9A-F]{40}' > /dev/null; then
+        echo "⚠️  WARNING: Potential certificate thumbprint detected!"
+        echo "   Found 40-character hex string that looks like a thumbprint."
+        echo "   Allowed in: .env.example, SECURITY.md, test files"
+        echo "   If this is a real thumbprint, move it to .env file."
+        echo ""
+        read -p "   Continue anyway? (y/N) " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            exit 1
+        fi
+    fi
+
+    # Check for real cluster URLs (except in allowed files)
+    if echo "$STAGED_FILES" | grep -v -E '(\.env\.example|SECURITY\.md|README\.md|TEST_EXECUTION_REPORT\.md|test-results/|test/)' | xargs git diff --cached | grep -iE 'https?://[a-z0-9-]+\.(centralus|eastus|westus|northeurope|westeurope)\.cloudapp\.azure\.com' > /dev/null; then
+        echo "⚠️  WARNING: Real Azure cluster URL detected!"
+        echo "   Found URL pointing to actual Azure infrastructure."
+        echo "   Allowed in: .env.example, SECURITY.md, README.md, test files"
+        echo "   Consider using placeholder URLs in documentation."
+        echo ""
+        read -p "   Continue anyway? (y/N) " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            exit 1
+        fi
+    fi
+
+    # Check for common secret patterns
+    if echo "$STAGED_FILES" | grep -v -E '(\.env\.example|test/)' | xargs git diff --cached | grep -iE '(password|secret|apikey|api_key|access_token|private_key)\s*[=:]\s*["\047][^"\047]{8,}' > /dev/null; then
+        echo "❌ ERROR: Potential hardcoded secret detected!"
+        echo "   Found pattern matching password/secret/apikey with value."
+        echo "   Secrets must be stored in .env file, not in source code."
+        exit 1
+    fi
+fi
+
+echo "✅ Basic PII protection checks passed!"
+
+# Run PowerShell PII validation if available (fast, < 5 seconds)
+if command -v pwsh > /dev/null 2>&1; then
+    echo ""
+    
+    # Use fast pre-commit PII check (no Pester required)
+    if [ -f "test/Pre-Commit-PII-Check.ps1" ]; then
+        pwsh -NoProfile -File test/Pre-Commit-PII-Check.ps1
+        PWSH_EXIT=$?
+        
+        if [ $PWSH_EXIT -ne 0 ]; then
+            echo ""
+            echo "To skip PII checks (not recommended): git commit --no-verify"
+            exit 1
+        fi
+    else
+        echo "⚠️  WARNING: Pre-commit PII check script not found"
+    fi
+else
+    echo "⚠️  WARNING: PowerShell Core (pwsh) not found - skipping advanced PII validation"
+    echo "   Install from: https://github.com/PowerShell/PowerShell"
+fi
+
+echo ""
+echo "✨ All pre-commit checks passed!"
+
+# Run tests before commit (disabled: existing SDK compilation errors)
+# npm test

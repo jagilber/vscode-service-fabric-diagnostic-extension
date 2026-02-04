@@ -1,0 +1,127 @@
+name: PowerShell Command Tests
+
+on:
+  push:
+    branches: [ master, main, develop ]
+    paths:
+      - 'src/**/*.ts'
+      - 'test/**/*.ps1'
+      - 'test/**/*.Tests.ps1'
+  pull_request:
+    branches: [ master, main ]
+    paths:
+      - 'src/**/*.ts'
+      - 'test/**/*.ps1'
+      - 'test/**/*.Tests.ps1'
+  workflow_dispatch:
+
+jobs:
+  pester-tests:
+    name: Pester Tests on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+        include:
+          - os: windows-latest
+            shell: pwsh
+          - os: ubuntu-latest
+            shell: pwsh
+          - os: macos-latest
+            shell: pwsh
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup PowerShell 7
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      
+      - name: Install PowerShell modules
+        shell: ${{ matrix.shell }}
+        run: |
+          Write-Host "Installing Pester..." -ForegroundColor Cyan
+          Install-Module -Name Pester -MinimumVersion 5.3.0 -Force -SkipPublisherCheck -Scope CurrentUser
+          Write-Host "✅ Pester installed" -ForegroundColor Green
+          
+          $pester = Get-Module -Name Pester -ListAvailable | Select-Object -First 1
+          Write-Host "Pester version: $($pester.Version)" -ForegroundColor Yellow
+      
+      - name: Install npm dependencies
+        run: npm install
+      
+      - name: Compile TypeScript
+        run: npm run compile
+      
+      - name: Run All Pester Tests
+        shell: ${{ matrix.shell }}
+        run: |
+          Write-Host "🧪 Running Pester Test Suite" -ForegroundColor Cyan
+          cd test
+          .\Invoke-PowerShellCommandTests.ps1 -OutputFormat NUnitXml -PassThru
+        continue-on-error: false
+      
+      - name: Run Syntax Tests
+        shell: ${{ matrix.shell }}
+        run: |
+          Write-Host "🔍 Running Syntax Validation Tests" -ForegroundColor Cyan
+          cd test
+          .\Invoke-PowerShellCommandTests.ps1 -TestType Syntax
+        if: success() || failure()
+      
+      - name: Run PII Detection Tests
+        shell: ${{ matrix.shell }}
+        run: |
+          Write-Host "🔒 Running PII Detection Tests" -ForegroundColor Cyan
+          cd test
+          .\Invoke-PowerShellCommandTests.ps1 -TestType PII
+        if: success() || failure()
+      
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pester-test-results-${{ matrix.os }}
+          path: |
+            test-results/*.xml
+            test-results/*.txt
+          retention-days: 30
+      
+      - name: Publish Test Results
+        uses: EnricoMi/publish-unit-test-result-action/composite@v2
+        if: always() && matrix.os == 'windows-latest'
+        with:
+          files: |
+            test-results/*.xml
+          check_name: 'Pester Test Results'
+          comment_mode: 'off'
+  
+  test-summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: pester-tests
+    if: always()
+    
+    steps:
+      - name: Download all test results
+        uses: actions/download-artifact@v4
+        with:
+          path: all-test-results
+      
+      - name: Display test summary
+        run: |
+          echo "## 🧪 PowerShell Command Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Test Artifacts" >> $GITHUB_STEP_SUMMARY
+          ls -R all-test-results/ >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f "all-test-results/pester-test-results-windows-latest/TestSummary-*.txt" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Summary" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            cat all-test-results/pester-test-results-windows-latest/TestSummary-*.txt >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          fi

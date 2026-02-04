@@ -1,0 +1,17 @@
+{
+  "id": "vscode-tree-view-patterns",
+  "title": "VS Code TreeView Implementation Patterns",
+  "body": "**Essential patterns** for implementing VS Code TreeView in this extension:\n\n## TreeDataProvider Implementation\n```typescript\nimport * as vscode from 'vscode';\n\nclass MyTreeDataProvider implements vscode.TreeDataProvider<TreeItem> {\n    private _onDidChangeTreeData = new vscode.EventEmitter<TreeItem | undefined>();\n    readonly onDidChangeTreeData = this._onDidChangeTreeData.event;\n\n    refresh(): void {\n        this._onDidChangeTreeData.fire(undefined);\n    }\n\n    getTreeItem(element: TreeItem): vscode.TreeItem {\n        return element;\n    }\n\n    async getChildren(element?: TreeItem): Promise<TreeItem[]> {\n        // Lazy loading: only load children when expanded\n        return element ? element.children : this.getRootItems();\n    }\n}\n```\n\n## Context Menu Integration\n1. Set `contextValue` on TreeItem for menu targeting\n2. Define menus in package.json:\n```json\n\"menus\": {\n    \"view/item/context\": [{\n        \"command\": \"myExtension.myCommand\",\n        \"when\": \"view == myView && viewItem == myContextValue\",\n        \"group\": \"inline\"\n    }]\n}\n```\n\n## Health Status Icons\n- Use `iconPath` with theme-aware icons:\n```typescript\nitem.iconPath = new vscode.ThemeIcon(\n    'circle-filled',\n    healthState === 'Ok' ? new vscode.ThemeColor('testing.iconPassed') : undefined\n);\n```\n- Green (Ok), Yellow (Warning), Red (Error)\n\n## Performance: Lazy Loading\n- Set `collapsibleState = Collapsed` for unexpanded items\n- Only fetch children in `getChildren()` when parent is expanded\n- Use `description` field for lightweight metadata without expanding\n\n## Refresh Patterns\n- **Full refresh**: `_onDidChangeTreeData.fire(undefined)`\n- **Partial refresh**: `_onDidChangeTreeData.fire(specificItem)`\n- **Debounce**: Batch rapid refreshes with 300ms delay\n\nSee serviceFabricClusterView.ts for complete implementation.",
+  "rationale": "VS Code TreeView API has specific patterns for performance and UX. This instruction codifies the patterns used successfully in this extension.",
+  "priority": 10,
+  "audience": "all",
+  "requirement": "recommended",
+  "categories": ["vscode", "tree-view", "ui", "patterns"],
+  "primaryCategory": "vscode",
+  "contentType": "instruction",
+  "schemaVersion": "3",
+  "classification": "internal",
+  "priorityTier": "P2",
+  "owner": "jagilber",
+  "semanticSummary": "Implementation patterns for VS Code TreeView including TreeDataProvider interface, context menus, health status icons, lazy loading for performance, and refresh strategies."
+}

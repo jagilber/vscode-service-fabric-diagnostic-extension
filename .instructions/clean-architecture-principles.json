@@ -1,0 +1,17 @@
+{
+  "id": "clean-architecture-principles",
+  "title": "Clean Architecture Principles for This Extension",
+  "body": "**Follow these architectural principles** to maintain code quality:\n\n## Layer Separation\n1. **Presentation** (`views/`): UI components, no business logic\n2. **Application** (`extension.ts`): Command registration, coordination\n3. **Service** (`services/`): Business logic, orchestration\n4. **Infrastructure** (`infrastructure/`, `utils/`): Technical concerns (cache, HTTP, retry)\n\n## Dependency Rules\n- **Inner layers** (service) know nothing about outer layers (presentation)\n- **Dependencies point inward**: UI → Service → Infrastructure\n- Use **interfaces** (`interfaces/`) to break circular dependencies\n- Example: `IHttpOptionsProvider` interface prevents `SfRest ↔ SfRestClient` circular reference\n\n## Service Layer Guidelines\n- **Single Responsibility**: Each service has one clear purpose\n  - `SfClusterService`: Cluster operations orchestration\n  - `SfSdkInstaller`: SDK management only\n  - `SfHttpClient`: HTTP utilities only\n- **Dependency Injection**: Constructor injection for testability\n```typescript\nclass SfClusterService {\n    constructor(\n        private restClient: SfRestClient,\n        private cache: CacheManager\n    ) {}\n}\n```\n\n## Error Handling\n- **Custom error hierarchy** (`models/Errors.ts`): `ServiceFabricError` → `ClusterConnectionError` → `CertificateNotFoundError`\n- **Error context enrichment**: Always include clusterId, endpoint, timestamp\n- **Wrap and rethrow**: `throw new ClusterConnectionError('msg', { cause: originalError })`\n\n## Design Patterns Used\n- **Repository**: `SfConfiguration` for settings persistence\n- **Facade**: `SfClusterService` simplifies complex REST API\n- **Strategy**: `RetryPolicy` with configurable strategies\n- **Observer**: TreeView refresh events\n\n## TypeScript Standards\n- **No `any` types** in public APIs (50+ interfaces defined)\n- **Strict null checks** enabled\n- **Explicit return types** for all public methods\n\nSee ARCHITECTURE.md for detailed layer diagrams and data flows.",
+  "rationale": "Maintaining clean architecture ensures the extension remains testable, maintainable, and extensible as it grows in complexity.",
+  "priority": 8,
+  "audience": "all",
+  "requirement": "mandatory",
+  "categories": ["architecture", "design-patterns", "typescript", "best-practices"],
+  "primaryCategory": "architecture",
+  "contentType": "instruction",
+  "schemaVersion": "3",
+  "classification": "internal",
+  "priorityTier": "P1",
+  "owner": "jagilber",
+  "semanticSummary": "Clean architecture principles including layer separation, dependency rules, service layer guidelines, error handling patterns, and TypeScript standards to maintain code quality."
+}

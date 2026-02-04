@@ -1,0 +1,38 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "npm",
+			"script": "compile",
+			"problemMatcher": "$tsc",
+			"label": "npm",
+			"detail": "npm run compile",
+			"presentation": {
+				"reveal": "silent",
+				"panel": "shared"
+			},
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			}
+		},
+		{
+			"type": "npm",
+			"script": "watch",
+			"problemMatcher": "$tsc-watch",
+			"isBackground": true,
+			"label": "npm: watch",
+			"detail": "npm run watch",
+			"presentation": {
+				"reveal": "never"
+			}
+		},
+		{
+			"type": "npm",
+			"script": "vscode:prepublish",
+			"problemMatcher": [],
+			"label": "npm: vscode:prepublish",
+			"detail": "npm run compile"
+		}
+	]
+}

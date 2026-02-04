@@ -1,0 +1,17 @@
+{
+  "id": "performance-optimization",
+  "title": "Performance Optimization Strategies",
+  "body": "**Apply these optimization patterns** to maintain responsive UI:\n\n## Caching Strategy (CacheManager)\n- **What to cache**: Cluster health, node lists, application lists\n- **TTL**: 30 seconds (configurable via `ttl` parameter)\n- **Algorithm**: LRU (Least Recently Used) eviction\n- **Usage**:\n```typescript\nconst cache = new CacheManager<ClusterHealth>({ maxSize: 100, ttl: 30000 });\n\n// Try cache first\nconst cached = await cache.get(`health:${clusterId}`);\nif (cached) return cached;\n\n// Fetch and store\nconst health = await api.getClusterHealth(clusterId);\nawait cache.set(`health:${clusterId}`, health);\n```\n- **Impact**: 5x faster tree refresh on cache hits\n\n## Parallel Queries\n- **Pattern**: Fetch multiple resources concurrently with `Promise.all()`\n```typescript\nconst [nodes, apps, services] = await Promise.all([\n    client.getNodes(),\n    client.getApplications(),\n    client.getServices()\n]);\n```\n- **Batching**: Group related queries (e.g., health states for all nodes)\n- **Impact**: 80% reduction in total query time\n\n## Debounced Refresh\n- **Problem**: Rapid clicks/events cause UI thrashing\n- **Solution**: Debounce with 300ms delay\n```typescript\nimport { debounce } from 'lodash';\n\nconst debouncedRefresh = debounce(() => {\n    this._onDidChangeTreeData.fire(undefined);\n}, 300);\n```\n- **Impact**: Reduces API calls, prevents UI freezing\n\n## Lazy Loading (TreeView)\n- **Pattern**: Load children only when parent is expanded\n```typescript\ngetChildren(element?: TreeItem): Promise<TreeItem[]> {\n    if (!element) return this.getRootItems();\n    \n    // Only fetch children when expanded\n    return this.fetchChildren(element.id);\n}\n```\n- Set `collapsibleState = TreeItemCollapsibleState.Collapsed` for unexpanded items\n- **Impact**: 90% reduction in initial load time\n\n## Retry Policy with Exponential Backoff\n- **Purpose**: Resilience against transient failures (503, timeouts)\n- **Configuration**:\n```typescript\nconst policy = new RetryPolicy({\n    maxRetries: 3,\n    initialDelay: 1000,  // 1s → 2s → 4s\n    shouldRetry: (error) => error.statusCode === 503\n});\n```\n- **Jitter**: Prevents thundering herd problem\n\n## Future: Virtual Scrolling (v0.3.0)\n- **Goal**: Support 1000+ nodes without performance degradation\n- **Pattern**: Render only visible tree items (windowing)\n- **Libraries**: VS Code native support expected in future API\n\n## Performance Monitoring\n- Log slow operations: `console.time('getClusterHealth')` / `console.timeEnd()`\n- Measure cache hit rate: `hits / (hits + misses)`\n- Profile with VS Code Performance tools: Help → Toggle Developer Tools → Performance\n\nSee ARCHITECTURE.md \"Performance Optimizations\" section for impact metrics.",
+  "rationale": "Extension must remain responsive even with large clusters (100+ nodes). These patterns ensure <500ms tree refresh and smooth UI interactions.",
+  "priority": 12,
+  "audience": "all",
+  "requirement": "recommended",
+  "categories": ["performance", "caching", "parallelism", "optimization"],
+  "primaryCategory": "performance",
+  "contentType": "instruction",
+  "schemaVersion": "3",
+  "classification": "internal",
+  "priorityTier": "P2",
+  "owner": "jagilber",
+  "semanticSummary": "Performance optimization strategies including caching with LRU/TTL, parallel queries, debounced refresh, lazy loading, retry policies, and future virtual scrolling plans with impact metrics."
+}

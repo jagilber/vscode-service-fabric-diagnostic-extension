@@ -1,0 +1,340 @@
+import * as vscode from 'vscode';
+import { SfConfiguration, clusterEndpointInfo, clusterCertificate } from './sfConfiguration';
+import { SfConstants } from './sfConstants';
+import { SfPs } from './sfPs';
+import { SfRest } from './sfRest';
+import { sfExtSecretList, SfExtSecrets } from './sfExtSecrets';
+import { SfExtSettings, sfExtSettingsList } from './sfExtSettings';
+import { SfRestClient } from './sfRestClient';
+import { debugLevel, SfUtility } from './sfUtility';
+import { 
+    ClusterConnectionError, 
+    CertificateError, 
+    NetworkError,
+    SdkInstallationError 
+} from './models/Errors';
+import { ApplicationInfo } from './types';
+import { SfHttpClient } from './utils/SfHttpClient';
+import { SfSdkInstaller } from './services/SfSdkInstaller';
+import { SfClusterService } from './services/SfClusterService';
+
+import * as xmlConverter from 'xml-js';
+//import { serviceFabricClusterViewDragAndDrop } from './serviceFabricClusterViewDragAndDrop';
+import { serviceFabricClusterView, TreeItem } from './serviceFabricClusterView';
+import * as http from 'http';
+import * as https from 'https';
+import * as fs from 'fs';
+
+import * as armServiceFabric from '@azure/arm-servicefabric';
+import { DOMParser, XMLSerializer } from '@xmldom/xmldom';
+import * as sfModels from './sdk/servicefabric/servicefabric/src/models';
+import * as serviceFabric from '@azure/servicefabric';
+import { ClientSecretCredential } from "@azure/identity";
+import { AzureLogger, setLogLevel } from "@azure/logger";
+
+
+
+export class SfMgr {
+    private sfExtSecrets: SfExtSecrets;
+
+    // private key = "";
+    // private certificate = "";
+    private subscriptionId = "";
+    private context: vscode.ExtensionContext;
+    public sfClusterView: serviceFabricClusterView;
+    //public sfClusterViewDD: serviceFabricClusterViewDragAndDrop;
+    private sfRest: SfRest;
+    // private sfRestClient: SfRestClient;
+    private sfConfigs: Array<SfConfiguration> = [];
+    private sfConfig: SfConfiguration;
+
+    public sfClusters: ApplicationInfo[] = [];
+    // private clientApiVersion = "6.3";
+    // private resourceApiVersion = "2018-02-01";
+    // private timeOut = 9000;
+    // private maxResults = 100;
+    // private clusterEndpoints: string[] = [];
+    private ps: SfPs = new SfPs();
+    private httpClient: SfHttpClient;
+    private sdkInstaller: SfSdkInstaller;
+    private clusterService: SfClusterService;
+    private globalStorage = "";
+    private clusterFileStorage = "";
+
+    constructor(context: vscode.ExtensionContext) {
+        this.context = context;
+        this.sfClusterView = new serviceFabricClusterView(context);
+        
+        // Set up auto-refresh callback
+        this.sfClusterView.setRefreshCallback(async () => {
+            await this.refreshAllClusters();
+        });
+
+        // set azure log level and output
+        setLogLevel("verbose");
+
+        // get secrets
+        this.sfExtSecrets = new SfExtSecrets(context);
+
+        // override logging to output to console.log (default location is stderr)
+        AzureLogger.log = (...args) => {
+            SfUtility.outputLog(args.join(" "));
+        };
+
+        this.sfConfig = new SfConfiguration(this.context);
+        this.sfRest = new SfRest(context);
+        this.sdkInstaller = new SfSdkInstaller(context);
+        this.httpClient = new SfHttpClient({ timeout: 30000 });
+        this.clusterService = new SfClusterService(context);
+        // this.sfRestClient = new SfRestClient(this.sfRest);
+
+        this.globalStorage = context.globalStorageUri.fsPath;
+        this.clusterFileStorage = `${this.globalStorage}\\clusters`;
+
+        SfUtility.createFolder(this.globalStorage);
+        SfUtility.createFolder(this.clusterFileStorage);
+
+        //todo: https://github.com/Azure/azure-sdk-for-js/blob/main/documentation/MIGRATION-guide-for-next-generation-management-libraries.md
+        // const credentials = new ClientSecretCredential(tenantId, clientId, this.clientSecret);
+        this.loadSfConfigs();
+        
+        // Listen for configuration changes to restart auto-refresh with new settings
+        context.subscriptions.push(
+            vscode.workspace.onDidChangeConfiguration(e => {
+                if (e.affectsConfiguration('sfClusterExplorer.autorefresh') || 
+                    e.affectsConfiguration('sfClusterExplorer.refreshInterval')) {
+                    SfUtility.outputLog('Auto-refresh settings changed, restarting timer', null, debugLevel.info);
+                    this.sfClusterView.restartAutoRefresh();
+                }
+            })
+        );
+        
+        // Ensure cleanup on disposal
+        context.subscriptions.push({
+            dispose: () => this.sfClusterView.dispose()
+        });
+    }
+
+    private addSfConfig(sfConfig: SfConfiguration) {
+        if (!this.sfConfigs.find((config: SfConfiguration) => config.getClusterEndpoint() === sfConfig.getClusterEndpoint())) {
+            this.sfConfigs.push(sfConfig);
+        }
+    }
+    
+    /**
+     * Refresh all connected clusters - called by auto-refresh timer
+     * Only refreshes clusters that are actually displayed in the tree view
+     */
+    private async refreshAllClusters(): Promise<void> {
+        // Get clusters that are actually in the tree view (has tree items)
+        const visibleClusters = this.sfConfigs.filter(config => {
+            const endpoint = config.getClusterEndpoint();
+            // Check if this config has a corresponding tree item
+            return this.sfClusterView.hasClusterInTree(endpoint);
+        });
+        
+        SfUtility.outputLog(`Refreshing ${visibleClusters.length} visible cluster(s) (${this.sfConfigs.length} total configs loaded)`, null, debugLevel.info);
+        
+        for (const config of visibleClusters) {
+            try {
+                const endpoint = config.getClusterEndpoint();
+                SfUtility.outputLog(`Refreshing cluster: ${endpoint}`, null, debugLevel.info);
+                await this.clusterService.refreshCluster(config);
+            } catch (error) {
+                const endpoint = config.getClusterEndpoint();
+                SfUtility.outputLog(`Failed to refresh cluster ${endpoint}`, error, debugLevel.warn);
+                // Continue with other clusters even if one fails
+            }
+        }
+        
+        SfUtility.outputLog(`Completed refresh cycle`, null, debugLevel.info);
+    }
+
+    public async deployDevCluster() {
+        return await this.sdkInstaller.deployDevCluster();
+    }
+
+    public async deployDevSecureCluster() {
+        //todo implement
+    }
+
+    public async downloadSFSDK(): Promise<void> {
+        return await this.sdkInstaller.downloadAndInstallSdk();
+    }
+
+    public async getCluster(clusterEndpoint: string): Promise<void> {
+        if (!this.getSfConfig(clusterEndpoint)) {
+            this.sfConfig = new SfConfiguration(this.context, { endpoint: clusterEndpoint });
+            this.addSfConfig(this.sfConfig);
+        } else {
+            this.sfConfig = this.getSfConfig(clusterEndpoint)!;
+        }
+
+        // Create and add tree item BEFORE connecting (so it shows even if connection fails)
+        try {
+            const treeItem = this.sfConfig.createClusterViewTreeItem();
+            treeItem.tooltip = `Connecting to ${clusterEndpoint}...`;
+            this.sfClusterView.addTreeItem(treeItem, this.sfConfig);
+        } catch (treeError) {
+            SfUtility.outputLog('Failed to create tree view', treeError, debugLevel.error);
+            SfUtility.showWarning(`Failed to create tree view. Check Output panel for details.`);
+            throw treeError; // Can't proceed without tree item
+        }
+
+        // Connect to cluster using service
+        try {
+            await this.clusterService.connectToCluster(this.sfConfig, this.sfRest);
+            
+            // Pass sfRest instance to tree view for lazy loading
+            this.sfClusterView.setSfRest(this.sfConfig.getSfRest());
+            
+            // Update tree item with success and set as active
+            const successTreeItem = this.sfConfig.createClusterViewTreeItem();
+            this.sfClusterView.updateTreeItem(clusterEndpoint, successTreeItem);
+            
+            // Automatically set as active cluster
+            this.setActiveCluster(clusterEndpoint);
+        } catch (connectionError) {
+            // Connection failed but keep tree item with error status
+            SfUtility.outputLog('Failed to connect to cluster', connectionError, debugLevel.error);
+            
+            // Update tree item with error status
+            const errorTreeItem = this.sfConfig.createClusterViewTreeItem();
+            errorTreeItem.tooltip = `Connection failed: ${connectionError instanceof Error ? connectionError.message : String(connectionError)}`;
+            errorTreeItem.iconPath = new vscode.ThemeIcon('error', new vscode.ThemeColor('errorForeground'));
+            this.sfClusterView.updateTreeItem(clusterEndpoint, errorTreeItem);
+            
+            throw connectionError; // Re-throw so caller knows it failed
+        }
+    }
+
+    public async getClusters(): Promise<any> {
+        //todo test
+        // uses azure account to enumerate clusters
+        if (!this.sfConfig.getClusterEndpoint() && !this.sfExtSecrets.getSecret(sfExtSecretList.sfRestCertificate) || !this.subscriptionId) {
+            SfUtility.showWarning("Cluster secret or subscription id not set");
+            if (!this.sfRest.azureConnect()) {
+                SfUtility.showError("Azure account not connected");
+                return null;
+            }
+        }
+        await this.sfRest.getClusters()
+            .then((data: unknown) => {
+                const clusters = data as ApplicationInfo[];
+                for (const cluster of clusters) {
+                    this.sfClusters.push(cluster);
+                    //todo test
+                    this.addSfConfig(new SfConfiguration(this.context));
+                }
+            });
+    }
+
+    public getCurrentSfConfig(): SfConfiguration {
+        return this.sfConfig;
+    }
+    
+    public getSfConfig(clusterHttpEndpoint: string): SfConfiguration | undefined {
+        return this.sfConfigs.find((config: SfConfiguration) => config.getClusterEndpoint() === clusterHttpEndpoint);
+    }
+
+    public getSfConfigs(): Array<SfConfiguration> {
+        return this.sfConfigs;
+    }
+
+    public removeClusterFromTree(clusterEndpoint: string): void {
+        SfUtility.outputLog(`Removing cluster from tree: ${clusterEndpoint}`, null, debugLevel.info);
+        
+        // Remove from tree view
+        this.sfClusterView.removeClusterFromTree(clusterEndpoint);
+        
+        // Optionally remove from configs array (keep for reconnection ability)
+        // const index = this.sfConfigs.findIndex((config: SfConfiguration) => config.getClusterEndpoint() === clusterEndpoint);
+        // if (index !== -1) {
+        //     this.sfConfigs.splice(index, 1);
+        // }
+    }
+
+    public setActiveCluster(clusterEndpoint: string): void {
+        SfUtility.outputLog(`Setting active cluster: ${clusterEndpoint}`, null, debugLevel.info);
+        
+        const config = this.getSfConfig(clusterEndpoint);
+        if (!config) {
+            SfUtility.showError(`Cluster not found: ${clusterEndpoint}`);
+            return;
+        }
+        
+        this.sfConfig = config;
+        this.sfRest = config.getSfRest();
+        
+        // Update tree to show active indicator
+        this.sfClusterView.setActiveCluster(clusterEndpoint);
+        
+        SfUtility.showInformation(`Active cluster set to: ${clusterEndpoint}`);
+        SfUtility.outputLog(`Active cluster is now: ${clusterEndpoint}`, null, debugLevel.info);
+    }
+
+    public getSfRest(): SfRest {
+        // Return the current cluster's SfRest instance, not the global one
+        // The global sfRest (this.sfRest) is just a template/default instance
+        if (this.sfConfig) {
+            return this.sfConfig.getSfRest();
+        }
+        return this.sfRest; // Fallback if no cluster is selected
+    }
+
+    public async loadSfConfigs(): Promise<void> {
+        SfUtility.outputLog('Loading cluster configs from settings...', null, debugLevel.info);
+        const clusters: clusterEndpointInfo[] | any = SfExtSettings.getSetting(sfExtSettingsList.clusters);
+        
+        if (!clusters || !Array.isArray(clusters)) {
+            SfUtility.outputLog('No clusters found in settings or invalid format', null, debugLevel.warn);
+            return;
+        }
+        
+        SfUtility.outputLog(`Found ${clusters.length} cluster(s) in settings`, null, debugLevel.info);
+        
+        // Clear existing configs to avoid duplicates on reload
+        this.sfConfigs = [];
+        
+        for (const cluster of clusters) {
+            SfUtility.outputLog(`  Loading cluster: ${cluster.endpoint}`, null, debugLevel.debug);
+            this.addSfConfig(new SfConfiguration(this.context, cluster));
+        }
+        
+        SfUtility.outputLog(`Loaded ${this.sfConfigs.length} cluster config(s)`, null, debugLevel.info);
+    }
+
+    public removeSfConfig(clusterHttpEndpoint: string) {
+        const index = this.sfConfigs.findIndex((config: SfConfiguration) => config.getClusterEndpoint() === clusterHttpEndpoint);
+        if (index > -1) {
+            this.sfConfigs.splice(index, 1);
+            SfUtility.outputLog('sfMgr:removeSfConfig:clusterHttpEndpoint removed:' + clusterHttpEndpoint);
+        }
+        else {
+            SfUtility.outputLog('sfMgr:removeSfConfig:clusterHttpEndpoint not found:' + clusterHttpEndpoint);
+        }
+    }
+
+    public async runPsCommand(command: string): Promise<string> {
+        SfUtility.outputLog('runPsCommand: ' + command);
+        const results = await this.ps.send(command);
+        const response = JSON.parse(results);
+
+        SfUtility.outputLog(`runPsCommand output:`, response);
+        return response;
+    }
+
+    /**
+     * Cleanup resources when extension deactivates
+     */
+    public dispose(): void {
+        try {
+            SfUtility.outputLog('SfMgr disposing resources', null, debugLevel.info);
+            // Cleanup will be expanded when we add more resources
+            // For now, just log
+        } catch (error) {
+            SfUtility.outputLog('Error during SfMgr disposal', error, debugLevel.error);
+        }
+    }
+}
+

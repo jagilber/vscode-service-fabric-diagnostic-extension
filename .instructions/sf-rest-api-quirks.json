@@ -1,0 +1,17 @@
+{
+  "id": "sf-rest-api-quirks",
+  "title": "Service Fabric REST API Quirks & Workarounds",
+  "body": "**Critical:** When working with Service Fabric REST API, be aware of these non-obvious behaviors:\n\n## Property Name Casing\n- Direct REST API returns **PascalCase** (Id, Name, TypeName, HealthState)\n- Azure SDK returns **lowercase** (id, name, typeName, healthState)\n- **Solution**: Always normalize properties with fallbacks: `item.id || item.Id`\n- **Affected**: `/Nodes/{nodeName}/$/GetApplications`, service packages, code packages, replicas\n\n## API Version Requirements\n- **Management APIs** (nodes, apps, services): Use `api-version=6.0`\n- **EventStore APIs**: Use `api-version=6.4` (verified 2026-02-03 via Microsoft Learn)\n- **Never use 6.5** for EventStore - returns HTTP 400\n- Override version for EventStore: `makeRequest('GET', endpoint, undefined, '6.4')`\n\n## Response Structure Variations\nAPIs return inconsistent structures:\n- Direct array: `[{...}, {...}]`\n- Wrapped lowercase: `{ items: [...] }`\n- Wrapped PascalCase: `{ Items: [...] }`\n- **Solution**: Check all three formats with fallbacks\n\n## Endpoint Protocol\n- URLs MUST include protocol (`http://` or `https://`)\n- Auto-prepend `https://` if missing to avoid `ENOTFOUND` errors\n- Users can enter `cluster.azure.com:19080` without protocol\n\n## Node Restart Requirements (CRITICAL)\n- **NodeInstanceId**: MUST be the actual node's instanceId, NOT \"0\" (default causes HTTP 400)\n- **CreateFabricDump**: Case-sensitive capitalized strings \"True\" or \"False\" (not boolean)\n- **Solution**: Fetch node info first to get instanceId:\n  ```typescript\n  const nodeInfo = await sfApi.getNodeInfo(nodeName);\n  const restartDesc = {\n    nodeInstanceId: nodeInfo.instanceId,\n    createFabricDump: 'False'  // Capitalized string\n  };\n  await sfApi.restartNode(nodeName, restartDesc);\n  ```\n\n## Logging Best Practices\n- Log raw responses during development: `JSON.stringify(response).substring(0, 500)`\n- Use emoji markers for traceability: 📦, 🔍, 🌐\n- Test both Azure SDK and Direct REST when switching implementations\n\nSee ARCHITECTURE.md section \"Service Fabric REST API Quirks & Workarounds\" for full details.",
+  "rationale": "These API quirks were discovered through extensive integration testing and caused multiple production issues. Documenting them prevents regression and saves debugging time.",
+  "priority": 5,
+  "audience": "all",
+  "requirement": "critical",
+  "categories": ["service-fabric", "api", "troubleshooting", "best-practices"],
+  "primaryCategory": "service-fabric",
+  "contentType": "instruction",
+  "schemaVersion": "3",
+  "classification": "internal",
+  "priorityTier": "P1",
+  "owner": "jagilber",
+  "semanticSummary": "Critical non-obvious behaviors in Service Fabric REST API including property casing inconsistencies, API version requirements, and response structure variations that require normalization and fallback handling."
+}

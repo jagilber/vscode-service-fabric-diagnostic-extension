@@ -1,0 +1,10 @@
+perf: silence repeated image store checks during auto-refresh
+
+- Only log on first check (cache miss), silent on cache hits
+- Auto-refresh runs every 30s and recreates tree
+- With caching, subsequent checks are instant and silent
+- Reduces log noise from '...image store connection string...' every 30s
+- Makes cache benefit more obvious
+
+Before: Logs every auto-refresh cycle
+After: Logs once per cluster connect/refresh
