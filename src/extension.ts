@@ -20,7 +20,7 @@ let sfPromptsInstance: SfPrompts | undefined;
 
 export async function activate(context: vscode.ExtensionContext) {
     try {
-        console.log('[SF Extension] Activating Service Fabric extension...');
+        console.log('[SF Extension] 1/10 - Starting activation...');
         SfUtility.outputLog('Service Fabric extension activating', null, debugLevel.info);
         
         // Global unhandled promise rejection handler
@@ -40,6 +40,7 @@ export async function activate(context: vscode.ExtensionContext) {
             }
         };
         
+        console.log('[SF Extension] 2/10 - Setting up error handlers...');
         process.on('unhandledRejection', unhandledRejectionHandler);
         
         // Clean up handler on deactivation
@@ -49,34 +50,40 @@ export async function activate(context: vscode.ExtensionContext) {
             }
         });
         
-        // Set context key to make views visible
-        await vscode.commands.executeCommand('setContext', 'serviceFabricActive', true);
+        console.log('[SF Extension] 3/10 - Setting context...');
+        // Set context key to make views visible - add timeout to prevent hanging
+        await Promise.race([
+            vscode.commands.executeCommand('setContext', 'serviceFabricActive', true),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('setContext timeout')), 5000))
+        ]).catch(err => {
+            console.warn('[SF Extension] setContext failed or timed out:', err);
+            // Continue anyway - non-critical
+        });
         
         const rootPath = (vscode.workspace.workspaceFolders && (vscode.workspace.workspaceFolders.length > 0))
             ? vscode.workspace.workspaceFolders[0].uri.fsPath : undefined;
 
-        console.log('[SF Extension] Creating SfMgr and SfPrompts...');
-    const sfMgr = new SfMgr(context);
-    const sfPrompts = new SfPrompts(context);
+        console.log('[SF Extension] 4/10 - Creating SfMgr...');
+        const sfMgr = new SfMgr(context);
+        console.log('[SF Extension] 5/10 - Creating SfPrompts...');
+        const sfPrompts = new SfPrompts(context);
     
-    // Store for clean;
+    console.log('[SF Extension] 6/10 - Storing instances...');
+    // Store for cleanup
+    sfMgrInstance = sfMgr;
     sfPromptsInstance = sfPrompts;
     
+    console.log('[SF Extension] 7/10 - Registering Management WebView...');
     // Register Management WebView provider
-    console.log('[SF Extension] Registering Management WebView...');
     const managementProvider = new ManagementWebviewProvider(context.extensionUri, sfMgr);
     context.subscriptions.push(
         vscode.window.registerWebviewViewProvider(
             ManagementWebviewProvider.viewType,
             managementProvider
         )
-    )
-    sfPromptsInstance = sfPrompts;
+    );
     
-    console.log('[SF Extension] Registering commands...');
-
-    // Register cluster management commands
-    registerClusterCommands(context, sfMgr, sfPrompts);
+    console.log('[SF Extension] 8/10 - Registering commands...');
     
     // Register node management commands
     registerNodeCommands(context, sfMgr);
@@ -2337,9 +2344,13 @@ ${appStats.map((app: any) => {
         }
     });
 
-    console.log('[SF Extension] All commands registered successfully');
+    console.log('[SF Extension] 9/10 - All commands registered successfully');
     SfUtility.outputLog('Service Fabric extension activated', null, debugLevel.info);
-    console.log('[SF Extension] Extension activation complete');
+    console.log('[SF Extension] 10/10 - Extension activation complete ✅');
+    
+    // Show success notification
+    vscode.window.showInformationMessage('Service Fabric Extension activated successfully!');
+    
     } catch (error) {
         console.error('[SF Extension] FATAL: Extension activation failed:', error);
         SfUtility.outputLog('FATAL: Extension activation failed', error, debugLevel.error);
