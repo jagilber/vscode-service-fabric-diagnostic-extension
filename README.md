@@ -63,7 +63,92 @@ Right-click any cluster or node for quick actions:
 
 ## 📦 Installation
 
-### From Source
+> **Note**: This extension is not yet published to the VS Code Marketplace. Until v1.0.0 release, use one of the installation methods below.
+
+### Method 1: Install from VSIX (Recommended for End Users)
+
+**Prerequisites:**
+- Visual Studio Code 1.108.0 or higher
+- No Node.js or build tools required
+
+**Steps:**
+
+1. **Download the latest VSIX file:**
+   - Visit the [Releases page](https://github.com/jagilber/vscode-service-fabric-diagnostic-extension/releases)
+   - Download `vscode-service-fabric-diagnostic-extension-X.X.X.vsix`
+   - Or download the latest build artifact from [GitHub Actions](https://github.com/jagilber/vscode-service-fabric-diagnostic-extension/actions/workflows/security-scan.yml) (requires GitHub login)
+
+2. **Install the extension:**
+   
+   **Option A - VS Code UI:**
+   - Open VS Code
+   - Go to Extensions view (`Ctrl+Shift+X` / `Cmd+Shift+X`)
+   - Click the `...` menu → **Install from VSIX...**
+   - Browse to the downloaded `.vsix` file
+   - Click **Install**
+   
+   **Option B - Command Line:**
+   ```bash
+   code --install-extension vscode-service-fabric-diagnostic-extension-X.X.X.vsix
+   ```
+   
+   **Option C - Command Palette:**
+   - Press `Ctrl+Shift+P` / `Cmd+Shift+P`
+   - Type "Extensions: Install from VSIX"
+   - Select the downloaded file
+
+3. **Verify installation:**
+   - Open VS Code
+   - Go to Extensions view
+   - Search for "Service Fabric"
+   - You should see "Service Fabric Diagnostic Extension" installed
+
+4. **Activate the extension:**
+   - Open the Explorer sidebar (`Ctrl+Shift+E`)
+   - Look for **Service Fabric Clusters** view
+   - Follow [Configuration](#%EF%B8%8F-configuration) to add your first cluster
+
+**Troubleshooting VSIX Installation:**
+
+| Issue | Solution |
+|-------|----------|
+| "Unable to install extension" | Update VS Code to latest version (1.108.0+) |
+| "Extension is not compatible" | Check VS Code version: Help → About |
+| Extension not showing in sidebar | Reload window: `Ctrl+Shift+P` → "Reload Window" |
+| Downloaded file won't install | Verify file integrity - should be 1-5MB |
+
+### Method 2: Build VSIX Locally
+
+**Prerequisites:**
+- Node.js 18+ (required for build)
+- VS Code 1.108.0+
+
+**Steps:**
+
+1. **Clone and build:**
+   ```bash
+   git clone https://github.com/jagilber/vscode-service-fabric-diagnostic-extension.git
+   cd vscode-service-fabric-diagnostic-extension
+   npm install
+   npm run package
+   ```
+
+2. **Install the generated VSIX:**
+   ```bash
+   code --install-extension vscode-service-fabric-diagnostic-extension-1.0.0.vsix
+   ```
+
+### Method 3: Developer Installation (From Source)
+
+**For contributors and developers who want to modify the extension.**
+
+**Prerequisites:**
+- VS Code 1.108.0+
+- Node.js 20+ (required for development)
+- Git
+
+**Steps:**
+
 1. Clone the repository:
    ```bash
    git clone https://github.com/jagilber/vscode-service-fabric-diagnostic-extension.git
@@ -81,13 +166,28 @@ Right-click any cluster or node for quick actions:
    ```
 
 4. Debug in VS Code:
+   - Open the project folder in VS Code
    - Press `F5` to launch Extension Development Host
    - The extension will activate when you open the Service Fabric Explorer view
+   - Make changes and press `Ctrl+R` in Extension Host to reload
 
-### Prerequisites
-- **VS Code 1.74.0+**
-- **Node.js 16+** for development
-- **Service Fabric cluster** (local dev cluster or remote)
+### Uninstallation
+
+**Remove the extension:**
+
+1. Open Extensions view (`Ctrl+Shift+X`)
+2. Find "Service Fabric Diagnostic Extension"
+3. Click **Uninstall**
+4. Reload VS Code
+
+**Clean up configuration (optional):**
+```bash
+# Remove stored settings
+rm -rf %APPDATA%\Code\User\globalStorage\jagilber.vscode-sf\
+
+# Or on Linux/Mac:
+rm -rf ~/.config/Code/User/globalStorage/jagilber.vscode-sf/
+```
 
 ## ⚙️ Configuration
 

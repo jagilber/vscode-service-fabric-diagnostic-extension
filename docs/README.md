@@ -29,6 +29,7 @@ Project governance and planning documents.
 
 - [**Product Requirements Document (PRD)**](project/PRD.md) - Product vision, features, and requirements
 - [**Project Constitution**](project/CONSTITUTION.md) - Mission, values, and governance framework
+- [**Release Process**](project/RELEASES.md) - Release workflow, versioning, and distribution guide
 - [**Release Readiness Checklist**](project/RELEASE_READINESS_CHECKLIST.md) - Pre-release verification checklist
 
 ## Test Reports

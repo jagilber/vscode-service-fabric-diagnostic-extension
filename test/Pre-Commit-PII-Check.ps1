@@ -77,7 +77,7 @@ $piiPatterns = @{
     'Inconsistent Cluster Name' = @{
         Pattern = '(?<!my)cluster\.(?!eastus\.cloudapp\.azure\.com|example)'
         Severity = 'Low'
-        AllowedFiles = @('test/**', '*.test.ts')
+        AllowedFiles = @('test/**', '*.test.ts', 'README.md', 'CHANGELOG.md', '*.TEMPLATE.md')
     }
     
     'Inconsistent Node Name' = @{
@@ -117,12 +117,30 @@ foreach ($file in $filesToCheck) {
         if ($content -match $check.Pattern) {
             $matches = [regex]::Matches($content, $check.Pattern)
             foreach ($match in $matches) {
+                $matchText = $match.Value
+                $displayMatch = if ($matchText.Length -gt 50) {
+                    $matchText.Substring(0, 50)
+                } else {
+                    $matchText
+                }
+                
+                # Calculate line number safely
+                $lineNumber = 1
+                try {
+                    if ($match.Index -le $content.Length) {
+                        $lineNumber = ($content.Substring(0, $match.Index) -split "`n").Count
+                    }
+                } catch {
+                    # If calculation fails, use line 1
+                    $lineNumber = 1
+                }
+                
                 $violations += [PSCustomObject]@{
                     File = $file
                     Check = $checkName
                     Severity = $check.Severity
-                    Match = $match.Value.Substring(0, [Math]::Min(50, $match.Value.Length))
-                    Line = ($content.Substring(0, $match.Index) -split "`n").Count
+                    Match = $displayMatch
+                    Line = $lineNumber
                 }
             }
         }

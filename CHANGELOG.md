@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Installation & Distribution
+- **VSIX installation instructions** in README
+  - Three installation methods: VSIX (recommended), local build, from source
+  - Detailed prerequisites and troubleshooting for each method
+  - Uninstallation and cleanup instructions
+- **Release process documentation** ([RELEASES.md](docs/project/RELEASES.md))
+  - Complete workflow for creating GitHub releases
+  - VSIX packaging and verification procedures
+  - Marketplace publication guide (future v1.0.0+)
+  - Version numbering and semantic versioning guidelines
+  - Automated CI/CD process with GitHub Actions artifacts
+
 ### Added - Phase 1: Foundation & Type Safety
 - **CacheManager** infrastructure class with LRU cache and TTL support
 - **Debounced refresh** mechanism to batch rapid tree view updates
