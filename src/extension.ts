@@ -89,6 +89,9 @@ export async function activate(context: vscode.ExtensionContext) {
     );
     
     console.log('[SF Extension] 8/10 - Registering commands...');
+
+    // Register cluster management commands
+    registerClusterCommands(context, sfMgr, sfPrompts);
     
     // Register node management commands
     registerNodeCommands(context, sfMgr);
