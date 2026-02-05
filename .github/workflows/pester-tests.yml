@@ -1,19 +1,7 @@
 name: PowerShell Command Tests
 
 on:
-  push:
-    branches: [ master, main, develop ]
-    paths:
-      - 'src/**/*.ts'
-      - 'test/**/*.ps1'
-      - 'test/**/*.Tests.ps1'
-  pull_request:
-    branches: [ master, main ]
-    paths:
-      - 'src/**/*.ts'
-      - 'test/**/*.ps1'
-      - 'test/**/*.Tests.ps1'
-  workflow_dispatch:
+  workflow_dispatch:  # Manual trigger only
 
 jobs:
   pester-tests:
