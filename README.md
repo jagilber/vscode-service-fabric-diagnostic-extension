@@ -39,6 +39,32 @@ A powerful Visual Studio Code extension for managing and diagnosing Azure Servic
 - **Comprehensive error handling** with context-aware messages
 - **Detailed logging** for troubleshooting
 
+## ⚡ Quick Start
+
+**For Service Fabric Admins & Operators** - No development tools needed!
+
+### Install in 60 Seconds
+
+1. **Download**: Get the latest [VSIX file from Releases](https://github.com/jagilber/vscode-service-fabric-diagnostic-extension/releases/latest)
+2. **Install**: Open VS Code → Extensions (`Ctrl+Shift+X`) → `...` menu → **Install from VSIX**
+3. **Connect**: Click Service Fabric icon in sidebar → Add your cluster endpoint
+
+**That's it!** Start managing your clusters immediately.
+
+> 💡 **Coming Soon**: Direct install from VS Code Marketplace (v0.2.0 - March 2026)
+
+### First Time Setup
+
+```
+1. Open Extensions sidebar (Ctrl+Shift+X)
+2. Install VSIX file (downloaded above)
+3. Look for "Service Fabric Clusters" in Explorer sidebar
+4. Click "+" to add cluster: http://localhost:19080 or https://your-cluster:19080
+5. For HTTPS clusters, you'll be prompted for certificate thumbprint
+```
+
+**Need help?** See [Configuration Guide](#%EF%B8%8F-configuration) below for certificates and secure clusters.
+
 ## 📸 Screenshots
 
 ### Cluster Explorer Tree View
@@ -63,7 +89,7 @@ Right-click any cluster or node for quick actions:
 
 ## 📦 Installation
 
-> **Note**: This extension is not yet published to the VS Code Marketplace. Until v1.0.0 release, use one of the installation methods below.
+> **📢 Marketplace Coming March 2026**: This extension will be published to the VS Code Marketplace in v0.2.0. Until then, install via VSIX file (60 seconds, no coding required).
 
 ### Method 1: Install from VSIX (Recommended for End Users)
 

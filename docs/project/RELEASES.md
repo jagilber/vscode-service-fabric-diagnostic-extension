@@ -23,6 +23,7 @@ This document outlines the complete process for creating and publishing releases
 **Version**: 1.0.0  
 **Status**: Pre-release (not yet on Marketplace)  
 **Distribution**: VSIX files via GitHub Releases and Actions artifacts
+**Marketplace Target**: v0.2.0 (March 2026)
 
 ## Release Workflow
 
@@ -169,9 +170,10 @@ See [full documentation](https://github.com/jagilber/vscode-service-fabric-diagn
 **Full Changelog**: https://github.com/jagilber/vscode-service-fabric-diagnostic-extension/blob/master/CHANGELOG.md
 ```
 
-## Marketplace Publication (Future)
+## Marketplace Publication (v0.2.0 Target)
 
-**Not available until v1.0.0 stable release.**
+**Target Release**: v0.2.0 (March 2026)  
+**Rationale**: Accelerate adoption for Service Fabric admins/operators who need quick installation without development tools.
 
 When ready to publish to VS Code Marketplace:
 
@@ -260,10 +262,18 @@ jobs:
 - ✅ **GitHub Actions**: Artifacts from CI/CD builds
 - ❌ **VS Code Marketplace**: Not yet published
 
-### Future (v1.0.0+)
+### v0.2.0 (March 2026 Target)
 - ✅ **GitHub Releases**: Continue providing VSIX
 - ✅ **GitHub Actions**: Continue CI/CD artifacts
-- ✅ **VS Code Marketplace**: Primary distribution channel
+- ✅ **VS Code Marketplace**: Primary distribution channel (NEW)
+  - One-click installation from Marketplace
+  - Automatic updates
+  - Increased discoverability
+
+### Post-Marketplace (v0.2.0+)
+- ✅ **VS Code Marketplace**: Primary channel for all users
+- ✅ **GitHub Releases**: Continue for advanced users/CI scenarios
+- ✅ **GitHub Actions**: Development artifacts
 
 ## Version History
 
@@ -305,7 +315,7 @@ If a release has critical issues:
 
 ## Checklist: First Marketplace Publication
 
-Before publishing v1.0.0 to Marketplace:
+Before publishing v0.2.0 to Marketplace:
 
 - [ ] Security scan passing for 2+ weeks
 - [ ] All documentation complete and accurate

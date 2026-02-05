@@ -1,15 +1,29 @@
 {
   "name": "vscode-service-fabric-diagnostic-extension",
   "displayName": "Service Fabric Diagnostic Extension",
-  "description": "Service Fabric cluster explorer and diagnostic tools",
+  "description": "Manage and diagnose Azure Service Fabric clusters with visual tree view, health monitoring, and operational tools",
   "version": "1.0.0",
   "publisher": "jagilber",
-  "private": true,
   "license": "MIT",
+  "keywords": [
+    "service fabric",
+    "azure",
+    "microservices",
+    "cluster",
+    "diagnostic",
+    "monitoring",
+    "devops",
+    "operations"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/jagilber/vscode-service-fabric-diagnostic-extension"
   },
+  "bugs": {
+    "url": "https://github.com/jagilber/vscode-service-fabric-diagnostic-extension/issues"
+  },
+  "homepage": "https://github.com/jagilber/vscode-service-fabric-diagnostic-extension#readme",
+  "qna": "https://github.com/jagilber/vscode-service-fabric-diagnostic-extension/discussions",
   "engines": {
     "vscode": "^1.108.0"
   },

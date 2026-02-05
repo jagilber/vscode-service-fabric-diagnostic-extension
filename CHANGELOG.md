@@ -5,19 +5,37 @@ All notable changes to the Service Fabric Diagnostic Extension will be documente
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.0] - Target: March 2026
 
-### Added - Installation & Distribution
-- **VSIX installation instructions** in README
-  - Three installation methods: VSIX (recommended), local build, from source
-  - Detailed prerequisites and troubleshooting for each method
-  - Uninstallation and cleanup instructions
-- **Release process documentation** ([RELEASES.md](docs/project/RELEASES.md))
-  - Complete workflow for creating GitHub releases
-  - VSIX packaging and verification procedures
-  - Marketplace publication guide (future v1.0.0+)
-  - Version numbering and semantic versioning guidelines
-  - Automated CI/CD process with GitHub Actions artifacts
+**Marketplace Launch Release** - Making Service Fabric management accessible to all operators and admins.
+
+### Added
+- **VS Code Marketplace publication** - One-click installation for all users
+- **Quick Start section** in README for non-developers
+  - 60-second installation guide
+  - First-time setup walkthrough
+  - No Node.js or build tools required
+- **Marketplace-optimized package.json**
+  - Keywords for discoverability (service fabric, azure, microservices, etc.)
+  - Enhanced description for marketplace listing
+  - Links to bugs, Q&A, and documentation
+  - Removed `private: true` flag
+
+### Changed
+- **Accelerated marketplace timeline** from v1.0.0 to v0.2.0
+  - Prioritizes adoption for non-developer users
+  - Targets Service Fabric admins, DevOps engineers, cluster operators
+- **Updated release documentation** to reflect v0.2.0 marketplace target
+- **Installation instructions** now emphasize marketplace coming soon (March 2026)
+
+### Target Audience
+Primary focus on making extension accessible to:
+- Service Fabric administrators
+- DevOps engineers
+- Cluster operators without development background
+- Teams wanting quick evaluation without source builds
+
+## [Unreleased]
 
 ### Added - Phase 1: Foundation & Type Safety
 - **CacheManager** infrastructure class with LRU cache and TTL support
