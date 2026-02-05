@@ -7,9 +7,19 @@ import { SfUtility, debugLevel } from '../sfUtility';
  */
 export class OperationalCommandsGenerator {
     
+    /**
+     * Strip protocol from endpoint to avoid double http/https in curl commands
+     * @param endpoint - Cluster endpoint (may include protocol)
+     * @returns Endpoint without protocol
+     */
+    private static stripProtocol(endpoint: string): string {
+        return endpoint.replace(/^https?:\/\//, '');
+    }
+    
     // ==================== CLUSTER OPERATIONS ====================
     
     static generateStartClusterUpgrade(clusterEndpoint: string, nodes: any[]): string {
+        const cleanEndpoint = this.stripProtocol(clusterEndpoint);
         const nodeList = nodes.map(n => `- ${n.name} (${n.type})`).join('\n');
         
         return `# 🚀 Start Cluster Upgrade
@@ -119,11 +129,11 @@ Watch-ServiceFabricClusterUpgrade -TimeoutSec 7200
 
 \`\`\`bash
 # Get cluster manifest (contains version info)
-curl -k -X GET "https://${clusterEndpoint}/$/GetClusterManifest?api-version=6.0" \\
+curl -k -X GET "https://${cleanEndpoint}/$/GetClusterManifest?api-version=6.0" \\
   --cert client.pem --key client.key
 
 # Get cluster health
-curl -k -X GET "https://${clusterEndpoint}/$/GetClusterHealth?api-version=6.0" \\
+curl -k -X GET "https://${cleanEndpoint}/$/GetClusterHealth?api-version=6.0" \\
   --cert client.pem --key client.key
 \`\`\`
 
@@ -131,7 +141,7 @@ curl -k -X GET "https://${clusterEndpoint}/$/GetClusterHealth?api-version=6.0" \
 
 \`\`\`bash
 # POST upgrade configuration
-curl -k -X POST "https://${clusterEndpoint}/$/Upgrade?api-version=6.0" \\
+curl -k -X POST "https://${cleanEndpoint}/$/Upgrade?api-version=6.0" \\
   --cert client.pem --key client.key \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -156,7 +166,7 @@ curl -k -X POST "https://${clusterEndpoint}/$/Upgrade?api-version=6.0" \\
   }'
 
 # Get upgrade progress
-curl -k -X GET "https://${clusterEndpoint}/$/GetUpgradeProgress?api-version=6.0" \\
+curl -k -X GET "https://${cleanEndpoint}/$/GetUpgradeProgress?api-version=6.0" \\
   --cert client.pem --key client.key
 \`\`\`
 
@@ -267,6 +277,7 @@ Start-ServiceFabricClusterRollback
     }
     
     static generateRollbackClusterUpgrade(clusterEndpoint: string): string {
+        const cleanEndpoint = this.stripProtocol(clusterEndpoint);
         return `# ⏮️ Rollback Cluster Upgrade
 
 **Cluster:** \`${clusterEndpoint}\`  
@@ -334,14 +345,14 @@ Get-ServiceFabricClusterHealth -EventsFilter Error,Warning
 ### Check Upgrade Status
 
 \`\`\`bash
-curl -k -X GET "https://${clusterEndpoint}/$/GetUpgradeProgress?api-version=6.0" \\
+curl -k -X GET "https://${cleanEndpoint}/$/GetUpgradeProgress?api-version=6.0" \\
   --cert client.pem --key client.key
 \`\`\`
 
 ### Initiate Rollback
 
 \`\`\`bash
-curl -k -X POST "https://${clusterEndpoint}/$/Rollback?api-version=6.0" \\
+curl -k -X POST "https://${cleanEndpoint}/$/Rollback?api-version=6.0" \\
   --cert client.pem --key client.key \\
   -H "Content-Type: application/json"
 \`\`\`
@@ -356,6 +367,7 @@ curl -k -X POST "https://${clusterEndpoint}/$/Rollback?api-version=6.0" \\
     }
     
     static generateUpdateClusterConfig(clusterEndpoint: string): string {
+        const cleanEndpoint = this.stripProtocol(clusterEndpoint);
         return `# ⚙️ Update Cluster Configuration
 
 **Cluster:** \`${clusterEndpoint}\`  
@@ -483,6 +495,7 @@ az resource update \\
     }
     
     static generateRecoverSystemPartitions(clusterEndpoint: string): string {
+        const cleanEndpoint = this.stripProtocol(clusterEndpoint);
         return `# 🔧 Recover System Partitions
 
 **Cluster:** \`${clusterEndpoint}\`  
@@ -555,7 +568,7 @@ Get-ServiceFabricClusterHealth
 
 \`\`\`bash
 # POST recovery request
-curl -k -X POST "https://${clusterEndpoint}/$/RecoverPartition?api-version=6.0" \\
+curl -k -X POST "https://${cleanEndpoint}/$/RecoverPartition?api-version=6.0" \\
   --cert client.pem --key client.key \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -566,7 +579,7 @@ curl -k -X POST "https://${clusterEndpoint}/$/RecoverPartition?api-version=6.0" 
 ### Get Partition Status
 
 \`\`\`bash
-curl -k -X GET "https://${clusterEndpoint}/Partitions/{partitionId}?api-version=6.0" \\
+curl -k -X GET "https://${cleanEndpoint}/Partitions/{partitionId}?api-version=6.0" \\
   --cert client.pem --key client.key
 \`\`\`
 
@@ -626,6 +639,7 @@ while ((Get-Date) -lt $endTime) {
     }
     
     static generateResetPartitionLoads(clusterEndpoint: string): string {
+        const cleanEndpoint = this.stripProtocol(clusterEndpoint);
         return `# 🔄 Reset Partition Loads
 
 **Cluster:** \`${clusterEndpoint}\`  
@@ -704,14 +718,14 @@ Get-ServiceFabricPartition -ServiceName $serviceName | ForEach-Object {
 ### Get Partition Load
 
 \`\`\`bash
-curl -k -X GET "https://${clusterEndpoint}/Partitions/{partitionId}/$/GetLoadInformation?api-version=6.0" \\
+curl -k -X GET "https://${cleanEndpoint}/Partitions/{partitionId}/$/GetLoadInformation?api-version=6.0" \\
   --cert client.pem --key client.key
 \`\`\`
 
 ### Reset Partition Load
 
 \`\`\`bash
-curl -k -X POST "https://${clusterEndpoint}/Partitions/{partitionId}/$/ResetLoad?api-version=6.0" \\
+curl -k -X POST "https://${cleanEndpoint}/Partitions/{partitionId}/$/ResetLoad?api-version=6.0" \\
   --cert client.pem --key client.key
 \`\`\`
 
@@ -802,6 +816,7 @@ Get-ServiceFabricPartition -ServiceName $serviceName | ForEach-Object {
     // ==================== APPLICATION LIFECYCLE ====================
     
     static generateProvisionApplicationType(clusterEndpoint: string): string {
+        const cleanEndpoint = this.stripProtocol(clusterEndpoint);
         return `# 📦 Provision Application Type
 
 **Cluster:** \`${clusterEndpoint}\`  
@@ -887,7 +902,7 @@ Register-ServiceFabricApplicationType @params -Async
 # For file-based image store, upload via SMB/file system
 # For native image store (fabric:ImageStore), use REST API:
 
-curl -k -X PUT "https://${clusterEndpoint}/ImageStore/MyApp_1.0/ApplicationManifest.xml?api-version=6.0" \\
+curl -k -X PUT "https://${cleanEndpoint}/ImageStore/MyApp_1.0/ApplicationManifest.xml?api-version=6.0" \\
   --cert client.pem --key client.key \\
   --data-binary @ApplicationManifest.xml
 \`\`\`
@@ -903,7 +918,7 @@ curl -k -X POST "https://${clusterEndpoint}/ApplicationTypes/$/Provision?api-ver
   }'
 
 # Or provision from external package
-curl -k -X POST "https://${clusterEndpoint}/ApplicationTypes/$/Provision?api-version=6.5" \\
+curl -k -X POST "https://${cleanEndpoint}/ApplicationTypes/$/Provision?api-version=6.5" \\
   --cert client.pem --key client.key \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -965,6 +980,7 @@ Remove-ServiceFabricApplicationPackage \`
     }
     
     static generateCreateApplication(clusterEndpoint: string, appTypes: any[]): string {
+        const cleanEndpoint = this.stripProtocol(clusterEndpoint);
         const appTypeList = appTypes.length > 0 
             ? appTypes.map(t => `- ${t.name} (${t.version || 'version unknown'})`).join('\n')
             : '- No application types provisioned yet';
@@ -1054,7 +1070,7 @@ foreach ($env in $environments) {
 ### Create Application
 
 \`\`\`bash
-curl -k -X POST "https://${clusterEndpoint}/Applications/$/Create?api-version=6.0" \\
+curl -k -X POST "https://${cleanEndpoint}/Applications/$/Create?api-version=6.0" \\
   --cert client.pem --key client.key \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -1077,7 +1093,7 @@ curl -k -X POST "https://${clusterEndpoint}/Applications/$/Create?api-version=6.
 ### Get Application Details
 
 \`\`\`bash
-curl -k -X GET "https://${clusterEndpoint}/Applications/MyApp?api-version=6.0" \\
+curl -k -X GET "https://${cleanEndpoint}/Applications/MyApp?api-version=6.0" \\
   --cert client.pem --key client.key
 \`\`\`
 
@@ -1161,6 +1177,7 @@ if (!$appType) {
     }
     
     static generateStartApplicationUpgrade(clusterEndpoint: string, apps: any[]): string {
+        const cleanEndpoint = this.stripProtocol(clusterEndpoint);
         const appList = apps.length > 0
             ? apps.map(a => `- ${a.name} (Type: ${a.typeName}, Version: ${a.typeVersion})`).join('\n')
             : '- No applications deployed yet';
@@ -1256,7 +1273,7 @@ Start-ServiceFabricApplicationUpgrade \`
 ### Start Upgrade
 
 \`\`\`bash
-curl -k -X POST "https://${clusterEndpoint}/Applications/MyApp/$/Upgrade?api-version=6.0" \\
+curl -k -X POST "https://${cleanEndpoint}/Applications/MyApp/$/Upgrade?api-version=6.0" \\
   --cert client.pem --key client.key \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -1290,7 +1307,7 @@ curl -k -X POST "https://${clusterEndpoint}/Applications/MyApp/$/Upgrade?api-ver
 ### Get Upgrade Progress
 
 \`\`\`bash
-curl -k -X GET "https://${clusterEndpoint}/Applications/MyApp/$/GetUpgradeProgress?api-version=6.0" \\
+curl -k -X GET "https://${cleanEndpoint}/Applications/MyApp/$/GetUpgradeProgress?api-version=6.0" \\
   --cert client.pem --key client.key
 \`\`\`
 
@@ -1365,6 +1382,7 @@ Get-ServiceFabricApplication -ApplicationName $appName | Get-ServiceFabricServic
     }
     
     static generateRollbackApplicationUpgrade(clusterEndpoint: string): string {
+        const cleanEndpoint = this.stripProtocol(clusterEndpoint);
         return `# ⏮️ Rollback Application Upgrade
 
 **Cluster:** \`${clusterEndpoint}\`  
@@ -1398,7 +1416,7 @@ Get-ServiceFabricApplication -ApplicationName "fabric:/MyApp" | Select Applicati
 ## 🌐 REST API
 
 \`\`\`bash
-curl -k -X POST "https://${clusterEndpoint}/Applications/MyApp/$/Rollback?api-version=6.0" \\
+curl -k -X POST "https://${cleanEndpoint}/Applications/MyApp/$/Rollback?api-version=6.0" \\
   --cert client.pem --key client.key \\
   -H "Content-Type: application/json"
 \`\`\`
@@ -1414,6 +1432,7 @@ curl -k -X POST "https://${clusterEndpoint}/Applications/MyApp/$/Rollback?api-ve
     // ==================== PARTITION & REPLICA OPERATIONS ====================
     
     static generateMovePrimaryReplica(clusterEndpoint: string): string {
+        const cleanEndpoint = this.stripProtocol(clusterEndpoint);
         return `# ↗️ Move Primary Replica
 
 **Cluster:** \`${clusterEndpoint}\`  
@@ -1498,7 +1517,7 @@ curl -k -X POST "https://${clusterEndpoint}/Partitions/{partitionId}/$/MovePrima
   }'
 
 # Let platform choose
-curl -k -X POST "https://${clusterEndpoint}/Partitions/{partitionId}/$/MovePrimaryReplica?api-version=6.0" \\
+curl -k -X POST "https://${cleanEndpoint}/Partitions/{partitionId}/$/MovePrimaryReplica?api-version=6.0" \\
   --cert client.pem --key client.key \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -1516,6 +1535,7 @@ curl -k -X POST "https://${clusterEndpoint}/Partitions/{partitionId}/$/MovePrima
     }
     
     static generateMoveSecondaryReplica(clusterEndpoint: string): string {
+        const cleanEndpoint = this.stripProtocol(clusterEndpoint);
         return `# ↔️ Move Secondary Replica
 
 **Cluster:** \`${clusterEndpoint}\`  
@@ -1559,7 +1579,7 @@ Get-ServiceFabricReplica -PartitionId $partitionId | Select NodeName, ReplicaRol
 ## 🌐 REST API
 
 \`\`\`bash
-curl -k -X POST "https://${clusterEndpoint}/Partitions/{partitionId}/$/MoveSecondaryReplica?api-version=6.0" \\
+curl -k -X POST "https://${cleanEndpoint}/Partitions/{partitionId}/$/MoveSecondaryReplica?api-version=6.0" \\
   --cert client.pem --key client.key \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -1578,6 +1598,7 @@ curl -k -X POST "https://${clusterEndpoint}/Partitions/{partitionId}/$/MoveSecon
     }
     
     static generateResetPartitionLoad(clusterEndpoint: string): string {
+        const cleanEndpoint = this.stripProtocol(clusterEndpoint);
         return `# 🔄 Reset Partition Load
 
 **Cluster:** \`${clusterEndpoint}\`  
@@ -1615,7 +1636,7 @@ Get-ServiceFabricPartitionLoadInformation -PartitionId $partitionId
 ## 🌐 REST API
 
 \`\`\`bash
-curl -k -X POST "https://${clusterEndpoint}/Partitions/{partitionId}/$/ResetLoad?api-version=6.0" \\
+curl -k -X POST "https://${cleanEndpoint}/Partitions/{partitionId}/$/ResetLoad?api-version=6.0" \\
   --cert client.pem --key client.key
 \`\`\`
 
@@ -1628,6 +1649,7 @@ curl -k -X POST "https://${clusterEndpoint}/Partitions/{partitionId}/$/ResetLoad
     }
     
     static generateReportHealth(clusterEndpoint: string): string {
+        const cleanEndpoint = this.stripProtocol(clusterEndpoint);
         return `# 💚 Report Custom Health
 
 **Cluster:** \`${clusterEndpoint}\`  
@@ -1700,7 +1722,7 @@ Send-ServiceFabricApplicationHealthReport \`
 ## 🌐 REST API
 
 \`\`\`bash
-curl -k -X POST "https://${clusterEndpoint}/Applications/MyApp/$/ReportHealth?api-version=6.0" \\
+curl -k -X POST "https://${cleanEndpoint}/Applications/MyApp/$/ReportHealth?api-version=6.0" \\
   --cert client.pem --key client.key \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -1724,6 +1746,7 @@ curl -k -X POST "https://${clusterEndpoint}/Applications/MyApp/$/ReportHealth?ap
     // ==================== TESTING & CHAOS ====================
     
     static generateStartChaos(clusterEndpoint: string): string {
+        const cleanEndpoint = this.stripProtocol(clusterEndpoint);
         return `# 🧪 Start Chaos Test
 
 **Cluster:** \`${clusterEndpoint}\`  
@@ -1818,7 +1841,7 @@ curl -k -X POST "https://${clusterEndpoint}/Tools/Chaos/$/Start?api-version=6.2"
   }'
 
 # Get chaos status
-curl -k -X GET "https://${clusterEndpoint}/Tools/Chaos?api-version=6.2" \\
+curl -k -X GET "https://${cleanEndpoint}/Tools/Chaos?api-version=6.2" \\
   --cert client.pem --key client.key
 \`\`\`
 
@@ -1862,6 +1885,7 @@ $report.ChaosEvents | Where-Object {$_.EventKind -like "*Fault*"} |
     }
     
     static generateStopChaos(clusterEndpoint: string): string {
+        const cleanEndpoint = this.stripProtocol(clusterEndpoint);
         return `# 🛑 Stop Chaos Test
 
 **Cluster:** \`${clusterEndpoint}\`  
@@ -1895,7 +1919,7 @@ Get-ServiceFabricChaosReport | Select Status, ContinuationToken, @{N='EventCount
 ## 🌐 REST API
 
 \`\`\`bash
-curl -k -X POST "https://${clusterEndpoint}/Tools/Chaos/$/Stop?api-version=6.2" \\
+curl -k -X POST "https://${cleanEndpoint}/Tools/Chaos/$/Stop?api-version=6.2" \\
   --cert client.pem --key client.key
 \`\`\`
 
@@ -1919,6 +1943,7 @@ curl -k -X POST "https://${clusterEndpoint}/Tools/Chaos/$/Stop?api-version=6.2" 
     // ==================== BACKUP & RESTORE OPERATIONS ====================
     
     static generateEnableBackup(clusterEndpoint: string): string {
+        const cleanEndpoint = this.stripProtocol(clusterEndpoint);
         return `# 💾 Enable Backup
 
 **Cluster:** \`${clusterEndpoint}\`  
@@ -2044,7 +2069,7 @@ Get-SFBackupPolicyList | Select-Object Name, AutoRestoreOnDataLoss
 ### Create Backup Policy
 
 \`\`\`bash
-curl -k -X POST "https://${clusterEndpoint}/BackupRestore/BackupPolicies/$/Create?api-version=6.4" \\
+curl -k -X POST "https://${cleanEndpoint}/BackupRestore/BackupPolicies/$/Create?api-version=6.4" \\
   --cert client.pem --key client.key \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -2067,7 +2092,7 @@ curl -k -X POST "https://${clusterEndpoint}/BackupRestore/BackupPolicies/$/Creat
 ### Enable Backup for Application
 
 \`\`\`bash
-curl -k -X POST "https://${clusterEndpoint}/Applications/MyApp/$/EnableBackup?api-version=6.4" \\
+curl -k -X POST "https://${cleanEndpoint}/Applications/MyApp/$/EnableBackup?api-version=6.4" \\
   --cert client.pem --key client.key \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -2078,7 +2103,7 @@ curl -k -X POST "https://${clusterEndpoint}/Applications/MyApp/$/EnableBackup?ap
 ### Enable Backup for Service
 
 \`\`\`bash
-curl -k -X POST "https://${clusterEndpoint}/Services/MyApp~MyService/$/EnableBackup?api-version=6.4" \\
+curl -k -X POST "https://${cleanEndpoint}/Services/MyApp~MyService/$/EnableBackup?api-version=6.4" \\
   --cert client.pem --key client.key \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -2089,7 +2114,7 @@ curl -k -X POST "https://${clusterEndpoint}/Services/MyApp~MyService/$/EnableBac
 ### Enable Backup for Partition
 
 \`\`\`bash
-curl -k -X POST "https://${clusterEndpoint}/Partitions/726a6a23-5c0e-4c6c-a456-789012345678/$/EnableBackup?api-version=6.4" \\
+curl -k -X POST "https://${cleanEndpoint}/Partitions/726a6a23-5c0e-4c6c-a456-789012345678/$/EnableBackup?api-version=6.4" \\
   --cert client.pem --key client.key \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -2302,6 +2327,7 @@ Get-SFApplicationBackupConfigurationInfo -ApplicationId "MyApp"
     }
     
     static generateDisableBackup(clusterEndpoint: string): string {
+        const cleanEndpoint = this.stripProtocol(clusterEndpoint);
         return `# 🚫 Disable Backup
 
 **Cluster:** \`${clusterEndpoint}\`  
@@ -2361,7 +2387,7 @@ Get-SFBackupEntityList
 ### Disable Application Backup
 
 \`\`\`bash
-curl -k -X POST "https://${clusterEndpoint}/Applications/MyApp/$/DisableBackup?api-version=6.4" \\
+curl -k -X POST "https://${cleanEndpoint}/Applications/MyApp/$/DisableBackup?api-version=6.4" \\
   --cert client.pem --key client.key \\
   -H "Content-Type: application/json"
 \`\`\`
@@ -2369,7 +2395,7 @@ curl -k -X POST "https://${clusterEndpoint}/Applications/MyApp/$/DisableBackup?a
 ### Disable Service Backup
 
 \`\`\`bash
-curl -k -X POST "https://${clusterEndpoint}/Services/MyApp~MyService/$/DisableBackup?api-version=6.4" \\
+curl -k -X POST "https://${cleanEndpoint}/Services/MyApp~MyService/$/DisableBackup?api-version=6.4" \\
   --cert client.pem --key client.key
 \`\`\`
 
@@ -2377,7 +2403,7 @@ curl -k -X POST "https://${clusterEndpoint}/Services/MyApp~MyService/$/DisableBa
 
 \`\`\`bash
 # Must disable all entities using policy first
-curl -k -X DELETE "https://${clusterEndpoint}/BackupRestore/BackupPolicies/DailyAzureBackup/$/Delete?api-version=6.4" \\
+curl -k -X DELETE "https://${cleanEndpoint}/BackupRestore/BackupPolicies/DailyAzureBackup/$/Delete?api-version=6.4" \\
   --cert client.pem --key client.key
 \`\`\`
 
@@ -2400,6 +2426,7 @@ curl -k -X DELETE "https://${clusterEndpoint}/BackupRestore/BackupPolicies/Daily
     }
     
     static generateTriggerBackup(clusterEndpoint: string): string {
+        const cleanEndpoint = this.stripProtocol(clusterEndpoint);
         return `# 📤 Trigger Ad-hoc Backup
 
 **Cluster:** \`${clusterEndpoint}\`  
@@ -2484,7 +2511,7 @@ foreach ($partition in $partitions) {
 ### Trigger Backup Using Policy Storage
 
 \`\`\`bash
-curl -k -X POST "https://${clusterEndpoint}/Partitions/726a6a23-5c0e-4c6c-a456-789012345678/$/Backup?api-version=6.4" \\
+curl -k -X POST "https://${cleanEndpoint}/Partitions/726a6a23-5c0e-4c6c-a456-789012345678/$/Backup?api-version=6.4" \\
   --cert client.pem --key client.key \\
   -H "Content-Type: application/json"
 \`\`\`
@@ -2492,7 +2519,7 @@ curl -k -X POST "https://${clusterEndpoint}/Partitions/726a6a23-5c0e-4c6c-a456-7
 ### Trigger Backup to Azure Blob
 
 \`\`\`bash
-curl -k -X POST "https://${clusterEndpoint}/Partitions/726a6a23-5c0e-4c6c-a456-789012345678/$/Backup?api-version=6.4" \\
+curl -k -X POST "https://${cleanEndpoint}/Partitions/726a6a23-5c0e-4c6c-a456-789012345678/$/Backup?api-version=6.4" \\
   --cert client.pem --key client.key \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -2508,7 +2535,7 @@ curl -k -X POST "https://${clusterEndpoint}/Partitions/726a6a23-5c0e-4c6c-a456-7
 ### Trigger Backup to File Share
 
 \`\`\`bash
-curl -k -X POST "https://${clusterEndpoint}/Partitions/726a6a23-5c0e-4c6c-a456-789012345678/$/Backup?api-version=6.4" \\
+curl -k -X POST "https://${cleanEndpoint}/Partitions/726a6a23-5c0e-4c6c-a456-789012345678/$/Backup?api-version=6.4" \\
   --cert client.pem --key client.key \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -2613,6 +2640,7 @@ if ($progress.BackupState -eq "Success") {
     }
     
     static generateGetBackupProgress(clusterEndpoint: string): string {
+        const cleanEndpoint = this.stripProtocol(clusterEndpoint);
         return `# ⏳ Get Backup Progress
 
 **Cluster:** \`${clusterEndpoint}\`  
@@ -2695,14 +2723,14 @@ $allBackups | Select-Object BackupId, CreationTimeUtc, BackupType, BackupSize | 
 ### Get Backup Progress
 
 \`\`\`bash
-curl -k -X GET "https://${clusterEndpoint}/Partitions/726a6a23-5c0e-4c6c-a456-789012345678/$/GetBackupProgress?api-version=6.4" \\
+curl -k -X GET "https://${cleanEndpoint}/Partitions/726a6a23-5c0e-4c6c-a456-789012345678/$/GetBackupProgress?api-version=6.4" \\
   --cert client.pem --key client.key
 \`\`\`
 
 ### Get Latest Backup Info
 
 \`\`\`bash
-curl -k -X GET "https://${clusterEndpoint}/Partitions/726a6a23-5c0e-4c6c-a456-789012345678/$/GetBackups?api-version=6.4&Latest=true" \\
+curl -k -X GET "https://${cleanEndpoint}/Partitions/726a6a23-5c0e-4c6c-a456-789012345678/$/GetBackups?api-version=6.4&Latest=true" \\
   --cert client.pem --key client.key
 \`\`\`
 
@@ -2712,7 +2740,7 @@ curl -k -X GET "https://${clusterEndpoint}/Partitions/726a6a23-5c0e-4c6c-a456-78
 START_TIME="2026-01-28T00:00:00Z"
 END_TIME="2026-02-04T23:59:59Z"
 
-curl -k -X GET "https://${clusterEndpoint}/Partitions/726a6a23-5c0e-4c6c-a456-789012345678/$/GetBackups?api-version=6.4&StartDateTimeFilter=\${START_TIME}&EndDateTimeFilter=\${END_TIME}" \\
+curl -k -X GET "https://${cleanEndpoint}/Partitions/726a6a23-5c0e-4c6c-a456-789012345678/$/GetBackups?api-version=6.4&StartDateTimeFilter=\${START_TIME}&EndDateTimeFilter=\${END_TIME}" \\
   --cert client.pem --key client.key
 \`\`\`
 
@@ -2885,6 +2913,7 @@ else {
     }
     
     static generateRestoreBackup(clusterEndpoint: string): string {
+        const cleanEndpoint = this.stripProtocol(clusterEndpoint);
         return `# 📥 Restore from Backup
 
 **Cluster:** \`${clusterEndpoint}\`  
@@ -2959,8 +2988,8 @@ $backupStorage = @{
     ContainerName = "archived-backups"
 }
 
-$backupId = "53af455a-1e67-4b27-9476-123456789abc"
-$backupLocation = "https://backupstorage.blob.core.windows.net/archived-backups/MyApp/MyService/53af455a-1e67-4b27-9476-123456789abc"
+$backupId = "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
+$backupLocation = "https://backupstorage.blob.core.windows.net/archived-backups/MyApp/MyService/XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
 
 Restore-SFPartition \`
     -PartitionId $partitionId \`
@@ -2985,7 +3014,7 @@ BACKUP_ID=\$(cat latest_backup.json | jq -r '.[0].BackupId')
 BACKUP_LOCATION=\$(cat latest_backup.json | jq -r '.[0].BackupLocation')
 
 # Trigger restore
-curl -k -X POST "https://${clusterEndpoint}/Partitions/726a6a23-5c0e-4c6c-a456-789012345678/$/Restore?api-version=6.4" \\
+curl -k -X POST "https://${cleanEndpoint}/Partitions/726a6a23-5c0e-4c6c-a456-789012345678/$/Restore?api-version=6.4" \\
   --cert client.pem --key client.key \\
   -H "Content-Type: application/json" \\
   -d "{
@@ -2997,11 +3026,11 @@ curl -k -X POST "https://${clusterEndpoint}/Partitions/726a6a23-5c0e-4c6c-a456-7
 ### Restore with External Storage Credentials
 
 \`\`\`bash
-curl -k -X POST "https://${clusterEndpoint}/Partitions/726a6a23-5c0e-4c6c-a456-789012345678/$/Restore?api-version=6.4" \\
+curl -k -X POST "https://${cleanEndpoint}/Partitions/726a6a23-5c0e-4c6c-a456-789012345678/$/Restore?api-version=6.4" \\
   --cert client.pem --key client.key \\
   -H "Content-Type: application/json" \\
   -d '{
-    "BackupId": "53af455a-1e67-4b27-9476-123456789abc",
+    "BackupId": "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
     "BackupLocation": "https://backupstorage.blob.core.windows.net/archived-backups/...",
     "BackupStorage": {
       "StorageKind": "AzureBlobStore",
@@ -3014,7 +3043,7 @@ curl -k -X POST "https://${clusterEndpoint}/Partitions/726a6a23-5c0e-4c6c-a456-7
 ### Get Restore Progress
 
 \`\`\`bash
-curl -k -X GET "https://${clusterEndpoint}/Partitions/726a6a23-5c0e-4c6c-a456-789012345678/$/GetRestoreProgress?api-version=6.4" \\
+curl -k -X GET "https://${cleanEndpoint}/Partitions/726a6a23-5c0e-4c6c-a456-789012345678/$/GetRestoreProgress?api-version=6.4" \\
   --cert client.pem --key client.key
 \`\`\`
 
@@ -3170,7 +3199,7 @@ Restore-ServiceFabricPartitionSafely -PartitionId "726a6a23-5c0e-4c6c-a456-78901
 # Restore from specific backup without confirmation (automated)
 Restore-ServiceFabricPartitionSafely \\
     -PartitionId "726a6a23-5c0e-4c6c-a456-789012345678" \\
-    -BackupId "53af455a-1e67-4b27-9476-123456789abc" \\
+    -BackupId "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX" \\
     -Force
 \`\`\`
     $result = Watch-RestoreProgress -PartitionId $PartitionId -TimeoutMinutes 60
@@ -3185,7 +3214,7 @@ Restore-ServiceFabricPartitionSafely -PartitionId "726a6a23-5c0e-4c6c-a456-78901
 # Restore from specific backup without confirmation (automated)
 Restore-ServiceFabricPartitionSafely \`
     -PartitionId "726a6a23-5c0e-4c6c-a456-789012345678" \`
-    -BackupId "53af455a-1e67-4b27-9476-123456789abc" \`
+    -BackupId "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX" \`
     -Force
 \`\`\`
 
