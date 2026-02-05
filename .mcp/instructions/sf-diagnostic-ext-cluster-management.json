@@ -1,0 +1,14 @@
+{
+  "id": "sf-diagnostic-ext-cluster-management",
+  "title": "Service Fabric Cluster Management Patterns",
+  "body": "Cluster endpoint management:\n\n- Clusters stored in extension settings (sfClusterExplorer.clusters array)\n- Local dev cluster default: https://localhost:19080\n- Certificate-based authentication: thumbprint, commonName, PEM cert/key pairs\n- Cluster configs loaded from globalStorage on activation\n- PowerShell integration for local dev cluster deployment (DevClusterSetup.ps1)\n\nKey constants in sfConstants.ts:\n- SF_SDK_DIR: C:\\\\Program Files\\\\Microsoft SDKs\\\\Service Fabric\\\\ClusterSetup\n- SF_HTTP_GATEWAY_PORT: 19080\n- SF_HTTP_GATEWAY_ENDPOINT: http://localhost:19080\n\nAlways validate cluster connectivity before operations. Use SfConfiguration class for cluster state management.",
+  "priority": 0,
+  "priorityTier": 0,
+  "audience": "agent",
+  "requirement": "always",
+  "categories": ["service-fabric", "cluster-management", "authentication"],
+  "rationale": "Critical patterns for cluster connectivity and authentication that must be followed for cluster operations",
+  "mode": "append",
+  "version": "1.0.0",
+  "contentType": "instruction"
+}

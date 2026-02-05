@@ -1,0 +1,17 @@
+{
+  "id": "testing-guidelines",
+  "title": "Testing Guidelines for Service Fabric Extension",
+  "body": "**Follow these testing practices** when adding or modifying code:\n\n## Test Structure\n```\ntest/\n├── unit/                          # Fast, isolated tests\n│   ├── extension.test.ts          # Command registration\n│   ├── sfConfiguration.test.ts    # Settings management\n│   └── infrastructure/            # Cache, retry logic\n├── integration/                   # Cluster interaction tests\n│   ├── 00-api-version-validation.test.ts   # API version checks\n│   ├── 01-low-risk-read-operations.test.ts # Safe read-only\n│   ├── 02-medium-risk-operations.test.ts   # Modifying operations\n│   └── 03-high-risk-operations.test.ts     # Destructive ops (careful!)\n└── fixtures/                      # Mock data\n    └── mockClusterData.ts\n```\n\n## Integration Test Safety Levels\n**CRITICAL**: Always check test file names for risk level:\n- **00-**: Validation only, no modifications\n- **01-**: Low risk (read-only operations)\n- **02-**: Medium risk (state changes, but recoverable)\n- **03-**: High risk (node restart, state removal)\n- **CRITICAL-RISK-MANUAL-ONLY.md**: NEVER run automatically\n\n## Test Configuration\n- Use `test/setup.ts` for global configuration\n- Load cluster endpoint from environment: `SFCLUSTER_ENDPOINT` or default to `http://localhost:19080`\n- Use `test/fixtures/mockClusterData.ts` for unit test data\n\n## Writing Integration Tests\n```typescript\nimport { SfDirectRestClient } from '../src/services/SfDirectRestClient';\n\ndescribe('Low Risk Operations', () => {\n    let client: SfDirectRestClient;\n\n    beforeAll(() => {\n        client = new SfDirectRestClient({\n            endpoint: process.env.SFCLUSTER_ENDPOINT || 'http://localhost:19080'\n        });\n    });\n\n    it('should get cluster health', async () => {\n        const health = await client.getClusterHealth();\n        expect(health).toBeDefined();\n        expect(health.aggregatedHealthState).toBeDefined();\n    }, 10000); // 10s timeout for slow clusters\n});\n```\n\n## API Regression Tests\n- **Always** add API version validation when changing REST calls\n- Test both PascalCase and lowercase property names\n- Verify response structure (array vs wrapped object)\n- Log raw responses for debugging: `console.log(JSON.stringify(response, null, 2))`\n\n## Mock Data Best Practices\n- Use realistic cluster data from production (anonymized)\n- Include edge cases: empty nodes, failed health states\n- Update mocks when API structure changes\n\n## Running Tests\n```bash\nnpm test                    # Run all tests\nnpm test -- unit            # Unit tests only\nnpm test -- integration     # Integration tests (requires cluster)\n```\n\nSee TEST_GUIDE.md and test/integration/README.md for detailed safe execution procedures.",
+  "rationale": "Testing strategy must balance thorough coverage with safety, especially for destructive operations on production-like clusters.",
+  "priority": 7,
+  "audience": "all",
+  "requirement": "mandatory",
+  "categories": ["testing", "integration-tests", "safety", "best-practices"],
+  "primaryCategory": "testing",
+  "contentType": "instruction",
+  "schemaVersion": "3",
+  "classification": "internal",
+  "priorityTier": "P1",
+  "owner": "jagilber",
+  "semanticSummary": "Testing guidelines including test structure, safety levels for integration tests, configuration, writing practices, API regression tests, and execution procedures for safe testing."
+}

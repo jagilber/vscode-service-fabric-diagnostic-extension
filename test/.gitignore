@@ -1,0 +1,13 @@
+# Test .gitignore
+
+# Coverage reports
+coverage/
+*.lcov
+.nyc_output/
+
+# Jest cache
+.jest/
+
+# Test output
+test-results/
+junit.xml

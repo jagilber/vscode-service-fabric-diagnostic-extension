@@ -1,0 +1,14 @@
+{
+  "id": "sf-diagnostic-ext-architecture",
+  "title": "Service Fabric VSCode Extension Architecture",
+  "body": "This VSCode extension provides Service Fabric cluster management and diagnostic capabilities. Core modules:\n\n- **sfMgr.ts**: Main manager class coordinating all SF operations, cluster management, Azure integration\n- **sfConfiguration.ts**: Cluster configuration management, manifest parsing (XML/JSON), node/app/service tracking\n- **sfRest.ts / sfRestClient.ts**: REST API communication with Service Fabric clusters\n- **sfClusterExplorer.ts**: TreeView provider for cluster visualization in VSCode explorer\n- **serviceFabricClusterView.ts**: Main cluster view component with tree item management\n- **sfPs.ts**: PowerShell command execution for local cluster operations\n- **sfPrompts.ts**: User input prompts for cluster endpoints and operations\n- **sfExtSecrets.ts / sfExtSettings.ts**: Secure credential and settings management\n\nThe extension uses Azure SDK packages (@azure/arm-servicefabric, @azure/servicefabric) and integrates with Azure authentication.",
+  "priority": 0,
+  "priorityTier": 0,
+  "audience": "agent",
+  "requirement": "always",
+  "categories": ["architecture", "service-fabric", "vscode-extension"],
+  "rationale": "Provides essential context about the extension's architecture and module responsibilities for code navigation and modifications",
+  "mode": "append",
+  "version": "1.0.0",
+  "contentType": "instruction"
+}

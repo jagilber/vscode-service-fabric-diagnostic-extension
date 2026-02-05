@@ -1,0 +1,14 @@
+{
+  "id": "sf-diagnostic-ext-treeview-pattern",
+  "title": "Service Fabric TreeView Implementation Pattern",
+  "body": "VSCode TreeView implementation for cluster visualization:\n\n- Main provider: serviceFabricClusterView extends vscode.TreeDataProvider<TreeItem>\n- TreeItem hierarchy: Cluster → Applications/Nodes/System → Services\n- Refresh pattern: Fire onDidChangeTreeData event to trigger view update\n- Command registration in extension.ts using registerCommand helper\n\nKey commands:\n- sfClusterExplorer.refresh: Refresh tree view\n- sfClusterExplorer.sfGetClusters: Load clusters from Azure subscription\n- sfClusterExplorer.sfSetClusterEndpoint: Add cluster endpoint\n- sfClusterExplorer.sfSetClusterRestCall: Execute adhoc REST query\n\nTree items use contextValue for command visibility (when clauses in package.json menus).\n\nAlways update both the view contribution in package.json and the provider implementation together.",
+  "priority": 0,
+  "priorityTier": 0,
+  "audience": "agent",
+  "requirement": "always",
+  "categories": ["vscode-extension", "treeview", "ui-pattern"],
+  "rationale": "TreeView pattern is core to the extension UX and must be implemented consistently",
+  "mode": "append",
+  "version": "1.0.0",
+  "contentType": "instruction"
+}

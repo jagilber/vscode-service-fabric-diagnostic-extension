@@ -1,0 +1,26 @@
+<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Grid lines -->
+  <line x1="1" y1="4" x2="15" y2="4" stroke="#424242" stroke-width="0.5" opacity="0.4"/>
+  <line x1="1" y1="8" x2="15" y2="8" stroke="#424242" stroke-width="0.5" opacity="0.4"/>
+  <line x1="1" y1="12" x2="15" y2="12" stroke="#424242" stroke-width="0.5" opacity="0.4"/>
+  
+  <line x1="4" y1="1" x2="4" y2="15" stroke="#424242" stroke-width="0.5" opacity="0.4"/>
+  <line x1="8" y1="1" x2="8" y2="15" stroke="#424242" stroke-width="0.5" opacity="0.4"/>
+  <line x1="12" y1="1" x2="12" y2="15" stroke="#424242" stroke-width="0.5" opacity="0.4"/>
+  
+  <!-- Nodes at intersections -->
+  <circle cx="4" cy="4" r="1.8" fill="#616161"/>
+  <circle cx="8" cy="4" r="1.8" fill="#616161"/>
+  <circle cx="12" cy="4" r="1.8" fill="#616161"/>
+  
+  <circle cx="4" cy="8" r="1.8" fill="#616161"/>
+  <circle cx="8" cy="8" r="1.8" fill="#616161"/>
+  <circle cx="12" cy="8" r="1.8" fill="#616161"/>
+  
+  <circle cx="4" cy="12" r="1.8" fill="#616161"/>
+  <circle cx="8" cy="12" r="1.8" fill="#616161"/>
+  <circle cx="12" cy="12" r="1.8" fill="#616161"/>
+  
+  <!-- Border -->
+  <rect x="1" y="1" width="14" height="14" fill="none" stroke="#424242" stroke-width="1" opacity="0.6"/>
+</svg>

@@ -1,0 +1,14 @@
+{
+  "id": "sf-diagnostic-ext-azure-integration",
+  "title": "Azure SDK Integration Patterns",
+  "body": "Azure integration uses modern Azure SDK v5+ packages:\n\n- @azure/arm-servicefabric: ARM management operations for SF clusters\n- @azure/servicefabric: Service Fabric client APIs for cluster operations\n- @azure/identity: ClientSecretCredential for authentication\n- @azure/logger: Logging with setLogLevel and AzureLogger\n\nLogging pattern in sfMgr.ts constructor:\n```typescript\nsetLogLevel('verbose');\nAzureLogger.log = (...args) => {\n  SfUtility.outputLog(args.join(' '));\n};\n```\n\nUse SfUtility.outputLog() for all diagnostic output to maintain consistent logging.\n\nCredentials managed via SfExtSecrets class using VSCode SecretStorage API.",
+  "priority": 0,
+  "priorityTier": 0,
+  "audience": "agent",
+  "requirement": "always",
+  "categories": ["azure", "service-fabric", "authentication", "logging"],
+  "rationale": "Ensures proper Azure SDK usage and logging patterns are maintained throughout the codebase",
+  "mode": "append",
+  "version": "1.0.0",
+  "contentType": "instruction"
+}

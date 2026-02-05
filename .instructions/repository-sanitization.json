@@ -1,0 +1,240 @@
+{
+  "instruction": "repository-sanitization",
+  "description": "Best practices and automation for sanitizing repositories before public release",
+  "version": "1.0.0",
+  "lastUpdated": "2026-02-04",
+  "category": "security-and-compliance",
+  "tags": ["security", "pii", "public-release", "git", "automation"],
+  "priority": "high",
+  "audience": ["developers", "release-managers"],
+  "applicability": {
+    "when": [
+      "Converting private repository to public",
+      "Preparing code for open-source release",
+      "Removing internal planning documentation",
+      "Sanitizing chat history and analysis artifacts",
+      "Validating no PII or sensitive data exists"
+    ],
+    "notWhen": [
+      "Repository never had sensitive data",
+      "All commits already sanitized",
+      "Pure open-source project from inception"
+    ]
+  },
+  "principles": {
+    "fileTypes": {
+      "toRemove": {
+        "chatHistory": [
+          "*ANALYSIS*.md - AI chat session analysis",
+          "*PLAN*.md - Internal planning documents",
+          "COMPLETE-ANALYSIS-*.md - Full session transcripts",
+          "CRITICAL_ISSUES_SUMMARY.md - Internal issue tracking",
+          "*ROOT-CAUSE*.md - Troubleshooting sessions"
+        ],
+        "internalTracking": [
+          "PHASE_*.md - Development phase tracking",
+          "*_SUMMARY.md - Internal summaries",
+          "COMMANDS_100_PERCENT_COMPLETE.md - Progress tracking",
+          "*_INTEGRATION.md - Internal integration notes"
+        ],
+        "implementationDetails": [
+          "PII_VALIDATION_SYSTEM.md - Implementation details (keep user-facing docs)",
+          "PII_OBFUSCATION_IMPLEMENTATION.md - Technical implementation",
+          "*_IMPROVEMENT_PLAN.md - Internal improvement plans"
+        ],
+        "gitBackups": [
+          ".git.backup/ - Old git history with sensitive commits"
+        ]
+      },
+      "toKeep": {
+        "userFacing": [
+          "README.md - Main documentation",
+          "CONTRIBUTING.md - Contribution guide",
+          "CHANGELOG.md - Version history",
+          "ARCHITECTURE.md - Technical overview (sanitize examples)",
+          "TEST_GUIDE.md - Testing instructions",
+          "USAGE.md - Usage guide"
+        ],
+        "legal": [
+          "LICENSE - Software license",
+          "SECURITY.md - Security policy"
+        ]
+      }
+    },
+    "piiPatterns": {
+      "azureSubscriptionIds": {
+        "pattern": "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
+        "exclusions": ["example", "YOUR_SUBSCRIPTION_ID", "00000000-0000-0000-0000-000000000000"],
+        "severity": "high"
+      },
+      "certificateThumbprints": {
+        "pattern": "[0-9A-F]{40}",
+        "exclusions": ["1234567890ABCDEF1234567890ABCDEF12345678", "ABCDEF1234567890ABCDEF1234567890ABCDEF12"],
+        "severity": "high"
+      },
+      "internalEndpoints": {
+        "pattern": "(?<!my|example|test|demo|localhost)\\w+\\.(cloudapp\\.azure|azurewebsites)\\.com",
+        "replacement": "mycluster.eastus.cloudapp.azure.com",
+        "severity": "high"
+      },
+      "storageAccountKeys": {
+        "pattern": "AccountKey=[A-Za-z0-9+/]{86}==",
+        "severity": "critical"
+      },
+      "userPaths": {
+        "pattern": "C:\\\\Users\\\\[^\\\\]+\\\\AppData",
+        "replacement": "%APPDATA% or generic path",
+        "severity": "medium"
+      },
+      "emailAddresses": {
+        "pattern": "[A-Za-z0-9._%+-]+@(?!microsoft\\.com|example\\.com|contoso\\.com)[A-Za-z0-9.-]+\\.[A-Z|a-z]{2,}",
+        "severity": "medium"
+      }
+    },
+    "consistentExamples": {
+      "purpose": "Use same example data everywhere for easy validation",
+      "values": {
+        "clusterEndpoint": "mycluster.eastus.cloudapp.azure.com:19080",
+        "clusterName": "mycluster",
+        "clientCertThumbprint": "1234567890ABCDEF1234567890ABCDEF12345678",
+        "serverCertThumbprint": "ABCDEF1234567890ABCDEF1234567890ABCDEF12",
+        "partitionGuid": "726a6a23-5c0e-4c6c-a456-789012345678",
+        "applicationName": "fabric:/MyApp",
+        "nodeNames": ["_Node_0", "_Node_1", "_Node_2", "_Node_3", "_Node_4"],
+        "storageAccount": "mybackups",
+        "containerName": "sfbackups"
+      },
+      "benefit": "Tests can exclude known examples from PII validation"
+    },
+    "automationScript": {
+      "pattern": "PowerShell cleanup script with ShouldProcess",
+      "features": [
+        "CmdletBinding with ShouldProcess for -WhatIf preview",
+        "Explicit file removal list (no wildcards in Remove-Item)",
+        ".gitignore updates with exclusion patterns",
+        "Code sanitization (string replacements in specific files)",
+        "Validation scanning (user paths, credentials, endpoints)",
+        "Summary output with next steps"
+      ],
+      "requirements": "PowerShell 7.0+ for cross-platform support",
+      "example": "scripts/cleanup-before-public.ps1"
+    },
+    "gitignorePatterns": {
+      "purpose": "Prevent future commits of internal docs",
+      "patterns": [
+        ".git.backup/ - Backup git history",
+        "*ANALYSIS*.md - Analysis documents",
+        "*PLAN*.md - Planning documents",
+        "PHASE_*.md - Phase tracking",
+        "*_SUMMARY.md - Internal summaries",
+        "test-results-*.txt - Raw test output (keep .md summaries)"
+      ]
+    }
+  },
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "action": "Create automation script",
+        "description": "Build cleanup-before-public.ps1 with file list, sanitization rules, validation",
+        "output": "scripts/cleanup-before-public.ps1"
+      },
+      {
+        "step": 2,
+        "action": "Preview changes",
+        "description": "Run script with -WhatIf to see what would be removed/changed",
+        "command": "pwsh -File .\\scripts\\cleanup-before-public.ps1 -WhatIf"
+      },
+      {
+        "step": 3,
+        "action": "Execute cleanup",
+        "description": "Run script without -WhatIf to perform actual cleanup",
+        "command": "pwsh -File .\\scripts\\cleanup-before-public.ps1"
+      },
+      {
+        "step": 4,
+        "action": "Remove git backup",
+        "description": "Delete .git.backup directory if it exists (contains old sensitive history)",
+        "command": "Remove-Item .git.backup -Recurse -Force"
+      },
+      {
+        "step": 5,
+        "action": "Review changes",
+        "description": "Check git status, diff key files, verify no sensitive data remains",
+        "commands": [
+          "git status",
+          "git diff .gitignore ARCHITECTURE.md",
+          "git diff HEAD -- '*.md' | Select-String 'internal|prod|real'"
+        ]
+      },
+      {
+        "step": 6,
+        "action": "Run tests",
+        "description": "Ensure all tests pass with sanitized data",
+        "command": "npm test"
+      },
+      {
+        "step": 7,
+        "action": "Commit and push",
+        "description": "Commit sanitization changes and push to GitHub",
+        "commands": [
+          "git add .",
+          "git commit -m 'chore: remove internal docs before public release'",
+          "git push origin master"
+        ]
+      }
+    ]
+  },
+  "testingStrategy": {
+    "unitTests": {
+      "purpose": "Validate generated content has no PII",
+      "implementation": [
+        "Test each command generator for PII patterns",
+        "Verify consistent example data usage",
+        "Check documentation links are valid",
+        "Ensure no internal references"
+      ],
+      "example": "test/unit/azureCliCommandGenerator.test.ts"
+    },
+    "securityValidation": {
+      "checks": [
+        "No real Azure subscription IDs (except YOUR_SUBSCRIPTION_ID placeholders)",
+        "No real certificate thumbprints (except known examples)",
+        "No internal endpoints (only mycluster, example, localhost)",
+        "No storage account keys",
+        "No user-specific file paths",
+        "No email addresses (except @microsoft.com in docs)"
+      ]
+    }
+  },
+  "bestPractices": [
+    "Use automation script instead of manual cleanup (reduces human error)",
+    "Always run with -WhatIf first to preview changes",
+    "Use consistent example data throughout codebase",
+    "Add PII validation to test suites",
+    "Update .gitignore to prevent future commits of internal docs",
+    "Keep user-facing documentation (README, CONTRIBUTING, TEST_GUIDE)",
+    "Sanitize code examples (replace real endpoints with 'mycluster')",
+    "Delete .git.backup after verifying cleanup",
+    "Run full test suite before pushing to verify no breakage"
+  ],
+  "commonMistakes": [
+    "Forgetting to remove .git.backup directory",
+    "Not updating .gitignore (files get re-committed)",
+    "Manual cleanup missing files (use scripted approach)",
+    "Sanitizing ARCHITECTURE.md but leaving real data in tests",
+    "Removing user-facing docs by accident (keep TEST_GUIDE.md)",
+    "Not running tests after sanitization (might break something)"
+  ],
+  "relatedFiles": [
+    "scripts/cleanup-before-public.ps1",
+    ".gitignore",
+    "test/unit/azureCliCommandGenerator.test.ts",
+    "test/PowerShellCommands.Tests.ps1",
+    "test/Pre-Commit-PII-Check.ps1"
+  ],
+  "references": [
+    "https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners",
+    "https://docs.github.com/en/code-security/secret-scanning/about-secret-scanning"
+  ]
+}

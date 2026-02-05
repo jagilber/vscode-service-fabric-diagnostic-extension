@@ -1,0 +1,223 @@
+name: Security Scanning
+
+on:
+  push:
+    branches: [ master, main, develop ]
+  pull_request:
+    branches: [ master, main ]
+  schedule:
+    # Run weekly on Mondays at 9 AM UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  pull-requests: read
+
+jobs:
+  codeql-analysis:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'javascript', 'typescript' ]
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: ${{ matrix.language }}
+        queries: security-extended,security-and-quality
+        
+    - name: Autobuild
+      uses: github/codeql-action/autobuild@v3
+      
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:${{ matrix.language }}"
+
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Dependency Review
+      uses: actions/dependency-review-action@v4
+      with:
+        fail-on-severity: moderate
+        deny-licenses: GPL-2.0, GPL-3.0
+
+  npm-audit:
+    name: NPM Security Audit
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Run npm audit
+      run: npm audit --audit-level=moderate
+      continue-on-error: true
+      
+    - name: Check for vulnerabilities
+      run: |
+        AUDIT_OUTPUT=$(npm audit --json)
+        VULNERABILITIES=$(echo $AUDIT_OUTPUT | jq '.metadata.vulnerabilities.total')
+        echo "Total vulnerabilities found: $VULNERABILITIES"
+        
+        if [ "$VULNERABILITIES" -gt 0 ]; then
+          echo "⚠️ Security vulnerabilities detected!"
+          npm audit --audit-level=moderate
+          exit 1
+        fi
+
+  secret-scanning:
+    name: Secret Scanning
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: TruffleHog Secret Scan
+      uses: trufflesecurity/trufflehog@main
+      with:
+        path: ./
+        base: ${{ github.event.repository.default_branch }}
+        head: HEAD
+        extra_args: --debug --only-verified
+
+  certificate-audit:
+    name: Certificate Security Audit
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Check for hardcoded certificates
+      run: |
+        echo "Scanning for potential certificate leaks..."
+        
+        # Search for common certificate patterns
+        if grep -r -i -E "(BEGIN CERTIFICATE|BEGIN PRIVATE KEY|BEGIN RSA PRIVATE KEY)" \
+          --exclude-dir={node_modules,.git,out,coverage} \
+          --exclude="*.md" .; then
+          echo "❌ ERROR: Potential certificate content found in source code!"
+          exit 1
+        fi
+        
+        # Search for certificate thumbprints in code (not config/docs)
+        if grep -r -E "[0-9A-Fa-f]{40}" \
+          --include="*.ts" --include="*.js" \
+          --exclude-dir={node_modules,.git,out,test,test-certs} . | \
+          grep -v "// Example thumbprint" | \
+          grep -v "example thumbprint" | \
+          grep -v "ABC123"; then
+          echo "⚠️ WARNING: Potential thumbprint found in source code"
+          echo "Please verify these are examples/test data only"
+        fi
+        
+        echo "✅ No certificate leaks detected"
+        
+    - name: Check certificate storage practices
+      run: |
+        echo "Verifying secure credential storage practices..."
+        
+        # Ensure SecretStorage API is used
+        if ! grep -r "SecretStorage" src/; then
+          echo "⚠️ WARNING: SecretStorage API may not be in use"
+        fi
+        
+        # Check for insecure secret logging
+        if grep -r -i "outputLog.*secret" src/ | grep -v "secretName" | grep -v ".length" | grep -v "//"; then
+          echo "⚠️ WARNING: Potential secret logging detected"
+        fi
+        
+        echo "✅ Certificate storage check complete"
+
+  license-compliance:
+    name: License Compliance Check
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Check licenses
+      run: |
+        npx license-checker --summary --production --onlyAllow "MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC;0BSD;CC0-1.0;Unlicense;Python-2.0"
+
+  build-verification:
+    name: Build and Test
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node-version: [18, 20]
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Compile TypeScript
+      run: npm run compile
+      
+    - name: Run tests
+      run: npm test
+      continue-on-error: true
+      
+    - name: Package extension
+      run: npm run package
+      if: matrix.os == 'ubuntu-latest' && matrix.node-version == 18
+      
+    - name: Upload VSIX artifact
+      uses: actions/upload-artifact@v4
+      if: matrix.os == 'ubuntu-latest' && matrix.node-version == 18
+      with:
+        name: vscode-extension
+        path: '*.vsix'
+        retention-days: 7

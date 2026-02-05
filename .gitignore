@@ -1,0 +1,49 @@
+out
+node_modules
+yarn.lock
+**/test-certs
+**/node_modules
+**/temp
+temp/
+
+# Build artifacts
+*.vsix
+*.tgz
+dist/
+
+# Environment files with sensitive data
+.env
+.env.local
+.env.*.local
+
+# Coverage reports
+coverage/
+*.lcov
+.nyc_output/
+
+# Test results - keep summaries, ignore raw outputs
+test-results-*.txt
+test-results/*.txt
+!test-results/*.md
+# Test execution reports with real data (NEVER COMMIT)
+TEST_EXECUTION_REPORT.md
+test-output.txt
+test-connection.js
+test-results/LATEST-TEST-RUN*.md
+test-results/NODE-LIFECYCLE-API-VERIFICATION-REPORT.md
+test-results-*.txt
+
+# Any file with 'real' or 'actual' in name
+*real*.txt
+*actual*.txt
+*production*.txt
+
+# Git backup directory (created during sanitization)
+.git.backup/
+
+# Internal planning and analysis docs
+*ANALYSIS*.md
+*PLAN*.md
+PHASE_*.md
+DOCUMENTATION_SUMMARY.md
+COMMANDS_100_PERCENT_COMPLETE.md
