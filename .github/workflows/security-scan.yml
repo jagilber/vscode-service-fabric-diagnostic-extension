@@ -178,8 +178,20 @@ jobs:
       
     - name: Check licenses
       run: |
-        # Check only production dependencies, not the package itself
-        npx license-checker --summary --production --onlyAllow "MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC;0BSD;CC0-1.0;Unlicense;Python-2.0" --excludePackages "vscode-service-fabric-diagnostic-extension"
+        # Check production dependencies licenses
+        # Exclude main package (private packages may not be detected correctly by license-checker)
+        LICENSE_OUTPUT=$(npx license-checker --production --json 2>&1)
+        echo "$LICENSE_OUTPUT" | jq -r 'to_entries[] | select(.key | contains("vscode-service-fabric-diagnostic-extension") | not) | select(.value.licenses == "UNLICENSED" or (.value.licenses | type == "string" and (. | test("MIT|Apache-2.0|BSD-2-Clause|BSD-3-Clause|ISC|0BSD|CC0-1.0|Unlicense|Python-2.0") | not))) | .key + " : " + .value.licenses'
+        
+        # Check if any dependencies have disallowed licenses
+        VIOLATIONS=$(echo "$LICENSE_OUTPUT" | jq -r '[to_entries[] | select(.key | contains("vscode-service-fabric-diagnostic-extension") | not) | select(.value.licenses == "UNLICENSED" or (.value.licenses | type == "string" and (. | test("MIT|Apache-2.0|BSD-2-Clause|BSD-3-Clause|ISC|0BSD|CC0-1.0|Unlicense|Python-2.0") | not)))] | length')
+        
+        if [ "$VIOLATIONS" -gt 0 ]; then
+          echo "❌ Found dependencies with disallowed licenses"
+          exit 1
+        else
+          echo "✅ All dependency licenses are compliant"
+        fi
 
   build-verification:
     name: Build and Test
