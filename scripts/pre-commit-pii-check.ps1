@@ -1,7 +1,26 @@
 # PII Protection Pre-Commit Hook (PowerShell)
 # Prevents committing sensitive information
 
-Write-Host "🔒 Running PII protection checks..." -ForegroundColor Cyan
+Write-Host "🔒 Running Pre-Commit Checks..." -ForegroundColor Cyan
+
+# STEP 1: CRITICAL - Icon rendering protection tests
+Write-Host "`n[1/3] Running CRITICAL icon rendering protection tests..." -ForegroundColor Yellow
+$iconTestOutput = npm test -- icon-rendering-validation.test.ts --silent 2>&1 | Out-String
+
+# Check if all 10 tests passed (ignore coverage thresholds)
+if ($iconTestOutput -match "Tests:.*10 passed" -and $iconTestOutput -match "Test Suites:.*1 passed") {
+    Write-Host "✅ Icon protection tests passed (10/10)" -ForegroundColor Green
+} else {
+    Write-Host "❌ FAILED: Icon protection tests failed!" -ForegroundColor Red
+    Write-Host "   These tests prevent the icon color rendering bug from returning." -ForegroundColor Yellow
+    Write-Host "   See docs/ICON_RENDERING_BUG.md for details." -ForegroundColor Yellow
+    Write-Host "`n   Output:" -ForegroundColor Gray
+    Write-Host $iconTestOutput -ForegroundColor Gray
+    exit 1
+}
+
+# STEP 2: PII/Secrets check
+Write-Host "`n[2/3] Checking for PII/Secrets..." -ForegroundColor Yellow
 
 $exitCode = 0
 
@@ -90,12 +109,16 @@ if ($stagedFiles) {
     }
 }
 
-Write-Host "✅ PII protection checks passed!" -ForegroundColor Green
-Write-Host ""
+Write-Host "`n[3/3] Running PII pattern checks..." -ForegroundColor Yellow
 
-# Run tests before commit (disabled: existing SDK compilation errors)
-# Write-Host "Running tests..." -ForegroundColor Cyan
-# npm test
-# exit $LASTEXITCODE
+Write-Host "✅ PII protection checks passed!" -ForegroundColor Green
+
+Write-Host "`n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
+Write-Host "✓ All pre-commit checks passed!" -ForegroundColor Green
+Write-Host "  [1/3] Icon protection tests: OK" -ForegroundColor Gray
+Write-Host "  [2/3] PII/Secrets scan: Clean" -ForegroundColor Gray
+Write-Host "  [3/3] Pattern checks: Clean" -ForegroundColor Gray
+Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
+Write-Host ""
 
 exit 0

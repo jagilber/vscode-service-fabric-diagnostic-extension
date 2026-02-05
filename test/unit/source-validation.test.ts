@@ -16,43 +16,45 @@ describe('Source Code Validation - Icon Rendering Patterns', () => {
     });
 
     test('RED: sfConfiguration.ts MUST have ThemeColor for all static icons', () => {
-        // Line 265: image store
+        // All static icons must have ThemeColor from creation
+        
+        // Image store
         assert.ok(
             configSource.includes("iconPath: new vscode.ThemeIcon('package', new vscode.ThemeColor('charts.orange'))"),
             'image store MUST have ThemeColor charts.orange'
         );
 
-        // Line 291: manifest
+        // Manifest
         assert.ok(
             configSource.includes("iconPath: new vscode.ThemeIcon('file-code', new vscode.ThemeColor('charts.orange'))"),
             'manifest MUST have ThemeColor charts.orange'
         );
 
-        // Line 215: essentials
+        // Essentials
         assert.ok(
             configSource.includes("iconPath: new vscode.ThemeIcon('info', new vscode.ThemeColor('charts.blue'))"),
             'essentials MUST have ThemeColor charts.blue'
         );
 
-        // Line 227: details
+        // Details
         assert.ok(
             configSource.includes("iconPath: new vscode.ThemeIcon('list-tree', new vscode.ThemeColor('charts.green'))"),
             'details MUST have ThemeColor charts.green'
         );
 
-        // Line 238: metrics
+        // Metrics
         assert.ok(
             configSource.includes("iconPath: new vscode.ThemeIcon('graph', new vscode.ThemeColor('charts.red'))"),
             'metrics MUST have ThemeColor charts.red'
         );
 
-        // Line 302: events
+        // Events
         assert.ok(
             configSource.includes("iconPath: new vscode.ThemeIcon('calendar', new vscode.ThemeColor('charts.purple'))"),
             'events MUST have ThemeColor charts.purple'
         );
 
-        // Line 314: commands
+        // Commands
         assert.ok(
             configSource.includes("iconPath: new vscode.ThemeIcon('terminal', new vscode.ThemeColor('charts.yellow'))"),
             'commands MUST have ThemeColor charts.yellow'
@@ -111,6 +113,12 @@ describe('Source Code Validation - Icon Rendering Patterns', () => {
         assert.ok(
             viewSource.includes("['essentials', 'details', 'metrics', 'cluster-map', 'image-store', 'manifest', 'events', 'commands']"),
             'MUST refresh all 8 static icon items: essentials, details, metrics, cluster-map, image-store, manifest, events, commands'
+        );
+        
+        // Verify refresh events are fired for each item
+        assert.ok(
+            viewSource.includes("this._onDidChangeTreeData.fire(child)"),
+            'MUST fire refresh event for each static icon item'
         );
     });
 

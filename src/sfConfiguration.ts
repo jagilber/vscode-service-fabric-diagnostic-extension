@@ -248,8 +248,8 @@ export class SfConfiguration {
             resourceUri: resourceUri,
             status: undefined,
             iconPath: {
-                light: path.join(__filename, '..', '..', 'resources', 'light', 'cluster-map.svg'),
-                dark: path.join(__filename, '..', '..', 'resources', 'dark', 'cluster-map.svg')
+                light: vscode.Uri.file(path.join(__filename, '..', '..', 'resources', 'light', 'cluster-map.svg')),
+                dark: vscode.Uri.file(path.join(__filename, '..', '..', 'resources', 'dark', 'cluster-map.svg'))
             },
             itemType: 'cluster-map',
             itemId: 'cluster-map',

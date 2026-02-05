@@ -402,6 +402,15 @@ export class serviceFabricClusterView implements vscode.TreeDataProvider<TreeIte
     
     /**
      * Populate root groups in background - called automatically after cluster is added to tree
+     * 
+     * CRITICAL: This function must NOT call _onDidChangeTreeData.fire() on individual
+     * static icon children (essentials, details, metrics, image-store, manifest, events, commands).
+     * 
+     * VS Code TreeView limitation: Explicitly refreshing items with ThemeIcon + ThemeColor
+     * before they are properly processed causes the color to be lost. Static items must only be
+     * refreshed as part of their parent (cluster) refresh.
+     * 
+     * See: docs/ICON_RENDERING_BUG.md for full context and test protection in icon-rendering-validation.test.ts
      */
     private async populateRootGroupsInBackground(clusterItem: TreeItem): Promise<void> {
         if (!clusterItem.children) {
@@ -424,16 +433,6 @@ export class serviceFabricClusterView implements vscode.TreeDataProvider<TreeIte
         // Don't await - let them run in background
         Promise.all(promises).then(() => {
             SfUtility.outputLog('✅ Background population complete', null, debugLevel.info);
-            
-            // Explicitly refresh all items with static colored icons to ensure ThemeColor renders
-            if (clusterItem.children) {
-                clusterItem.children.forEach(child => {
-                    // Refresh all static icon items: essentials, details, metrics, cluster map, image store, manifest, events, commands
-                    if (['essentials', 'details', 'metrics', 'cluster-map', 'image-store', 'manifest', 'events', 'commands'].includes(child.itemType || '')) {
-                        this._onDidChangeTreeData.fire(child);
-                    }
-                });
-            }
             
             // Refresh the entire cluster item to update all icons
             this._onDidChangeTreeData.fire(clusterItem);
@@ -2386,7 +2385,7 @@ export interface TreeItemOptions {
     children?: TreeItem[];
     resourceUri?: vscode.Uri;
     status?: string;
-    iconPath?: string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri; } | vscode.ThemeIcon;
+    iconPath?: string | vscode.Uri | { light: vscode.Uri; dark: vscode.Uri; } | vscode.ThemeIcon;
     contextValue?: string; // For VS Code context menu matching
     itemType?: string;
     itemId?: string;
