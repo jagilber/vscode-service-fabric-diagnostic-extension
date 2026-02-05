@@ -31,12 +31,7 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:sfClusterExplorer.sfGetClusters",
-    "onCommand:sfClusterExplorer.sfGetCluster",
-    "onCommand:sfClusterExplorer.sfDeployDevCluster",
-    "onCommand:sfClusterExplorer.sfSetClusterEndpoint",
-    "onCommand:sfClusterExplorer.sfRemoveClusterEndpoint",
-    "onCommand:sfClusterExplorer.sfSetClusterRestCall"
+    "onView:serviceFabricClusterView"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -44,8 +39,7 @@
       "explorer": [
         {
           "id": "serviceFabricClusterView",
-          "name": "Service Fabric Clusters",
-          "when": "serviceFabricActive"
+          "name": "Service Fabric Clusters"
         },
         {
           "id": "serviceFabricManagementPanel",
