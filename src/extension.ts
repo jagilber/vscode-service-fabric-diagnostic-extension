@@ -21,6 +21,11 @@ let sfPromptsInstance: SfPrompts | undefined;
 export async function activate(context: vscode.ExtensionContext) {
     try {
         console.log('[SF Extension] 1/10 - Starting activation...');
+        
+        // CRITICAL: Initialize SfUtility FIRST to create output channel
+        SfUtility.init();
+        console.log('[SF Extension] 1.5/10 - SfUtility initialized');
+        
         SfUtility.outputLog('Service Fabric extension activating', null, debugLevel.info);
         
         // Global unhandled promise rejection handler

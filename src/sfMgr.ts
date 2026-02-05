@@ -62,57 +62,78 @@ export class SfMgr {
     private clusterFileStorage = "";
 
     constructor(context: vscode.ExtensionContext) {
-        this.context = context;
-        this.sfClusterView = new serviceFabricClusterView(context);
-        
-        // Set up auto-refresh callback
-        this.sfClusterView.setRefreshCallback(async () => {
-            await this.refreshAllClusters();
-        });
+        try {
+            SfUtility.outputLog('SfMgr: Starting constructor...', null, debugLevel.info);
+            
+            this.context = context;
+            this.sfClusterView = new serviceFabricClusterView(context);
+            
+            // Set up auto-refresh callback
+            this.sfClusterView.setRefreshCallback(async () => {
+                await this.refreshAllClusters();
+            });
 
-        // set azure log level and output
-        setLogLevel("verbose");
+            // set azure log level and output
+            setLogLevel("verbose");
 
-        // get secrets
-        this.sfExtSecrets = new SfExtSecrets(context);
+            // get secrets
+            this.sfExtSecrets = new SfExtSecrets(context);
 
-        // override logging to output to console.log (default location is stderr)
-        AzureLogger.log = (...args) => {
-            SfUtility.outputLog(args.join(" "));
-        };
+            // override logging to output to console.log (default location is stderr)
+            AzureLogger.log = (...args) => {
+                SfUtility.outputLog(args.join(" "));
+            };
 
-        this.sfConfig = new SfConfiguration(this.context);
-        this.sfRest = new SfRest(context);
-        this.sdkInstaller = new SfSdkInstaller(context);
-        this.httpClient = new SfHttpClient({ timeout: 30000 });
-        this.clusterService = new SfClusterService(context);
-        // this.sfRestClient = new SfRestClient(this.sfRest);
+            SfUtility.outputLog('SfMgr: Creating SfConfiguration...', null, debugLevel.debug);
+            this.sfConfig = new SfConfiguration(this.context);
+            
+            SfUtility.outputLog('SfMgr: Creating SfRest...', null, debugLevel.debug);
+            this.sfRest = new SfRest(context);
+            
+            SfUtility.outputLog('SfMgr: Creating services...', null, debugLevel.debug);
+            this.sdkInstaller = new SfSdkInstaller(context);
+            this.httpClient = new SfHttpClient({ timeout: 30000 });
+            this.clusterService = new SfClusterService(context);
+            // this.sfRestClient = new SfRestClient(this.sfRest);
 
-        this.globalStorage = context.globalStorageUri.fsPath;
-        this.clusterFileStorage = `${this.globalStorage}\\clusters`;
+            this.globalStorage = context.globalStorageUri.fsPath;
+            this.clusterFileStorage = `${this.globalStorage}\\clusters`;
 
-        SfUtility.createFolder(this.globalStorage);
-        SfUtility.createFolder(this.clusterFileStorage);
+            SfUtility.outputLog(`SfMgr: Creating storage folders at ${this.globalStorage}`, null, debugLevel.debug);
+            SfUtility.createFolder(this.globalStorage);
+            SfUtility.createFolder(this.clusterFileStorage);
 
-        //todo: https://github.com/Azure/azure-sdk-for-js/blob/main/documentation/MIGRATION-guide-for-next-generation-management-libraries.md
-        // const credentials = new ClientSecretCredential(tenantId, clientId, this.clientSecret);
-        this.loadSfConfigs();
-        
-        // Listen for configuration changes to restart auto-refresh with new settings
-        context.subscriptions.push(
-            vscode.workspace.onDidChangeConfiguration(e => {
-                if (e.affectsConfiguration('sfClusterExplorer.autorefresh') || 
-                    e.affectsConfiguration('sfClusterExplorer.refreshInterval')) {
-                    SfUtility.outputLog('Auto-refresh settings changed, restarting timer', null, debugLevel.info);
-                    this.sfClusterView.restartAutoRefresh();
-                }
-            })
-        );
-        
-        // Ensure cleanup on disposal
-        context.subscriptions.push({
-            dispose: () => this.sfClusterView.dispose()
-        });
+            //todo: https://github.com/Azure/azure-sdk-for-js/blob/main/documentation/MIGRATION-guide-for-next-generation-management-libraries.md
+            // const credentials = new ClientSecretCredential(tenantId, clientId, this.clientSecret);
+            
+            SfUtility.outputLog('SfMgr: Loading cluster configurations (async)...', null, debugLevel.info);
+            // Fire-and-forget: Load configs asynchronously, won't block activation
+            this.loadSfConfigs().catch(err => {
+                SfUtility.outputLog('SfMgr: Failed to load cluster configs', err, debugLevel.warn);
+                // Non-fatal: Extension can still work without pre-configured clusters
+            });
+            
+            // Listen for configuration changes to restart auto-refresh with new settings
+            context.subscriptions.push(
+                vscode.workspace.onDidChangeConfiguration(e => {
+                    if (e.affectsConfiguration('sfClusterExplorer.autorefresh') || 
+                        e.affectsConfiguration('sfClusterExplorer.refreshInterval')) {
+                        SfUtility.outputLog('Auto-refresh settings changed, restarting timer', null, debugLevel.info);
+                        this.sfClusterView.restartAutoRefresh();
+                    }
+                })
+            );
+            
+            // Ensure cleanup on disposal
+            context.subscriptions.push({
+                dispose: () => this.sfClusterView.dispose()
+            });
+            
+            SfUtility.outputLog('SfMgr: Constructor completed successfully', null, debugLevel.info);
+        } catch (error) {
+            SfUtility.outputLog('SfMgr: Constructor failed', error, debugLevel.error);
+            throw error; // Re-throw so activation knows it failed
+        }
     }
 
     private addSfConfig(sfConfig: SfConfiguration) {
