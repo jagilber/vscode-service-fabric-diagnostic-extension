@@ -22,6 +22,10 @@ export async function activate(context: vscode.ExtensionContext) {
     try {
         console.log('[SF Extension] 1/10 - Starting activation...');
         
+        // CRITICAL: Declare sfMgr/sfPrompts here so they're available in command closures
+        let sfMgr: SfMgr;
+        let sfPrompts: SfPrompts;
+        
         // CRITICAL: Initialize SfUtility FIRST to create output channel
         SfUtility.init();
         console.log('[SF Extension] 1.5/10 - SfUtility initialized');
@@ -69,9 +73,9 @@ export async function activate(context: vscode.ExtensionContext) {
             ? vscode.workspace.workspaceFolders[0].uri.fsPath : undefined;
 
         console.log('[SF Extension] 4/10 - Creating SfMgr...');
-        const sfMgr = new SfMgr(context);
+        sfMgr = new SfMgr(context);
         console.log('[SF Extension] 5/10 - Creating SfPrompts...');
-        const sfPrompts = new SfPrompts(context);
+        sfPrompts = new SfPrompts(context);
     
     console.log('[SF Extension] 6/10 - Storing instances...');
     // Store for cleanup
@@ -1638,8 +1642,15 @@ ${appStats.map((app: any) => {
         }
     });
     
+    console.log('[SF Extension] Registering showItemDetails command...');
     // Handle tree item clicks to show details
     registerCommand(context, 'sfClusterExplorer.showItemDetails', async (item: any) => {
+        console.log('[SF Extension] ===== showItemDetails CALLED =====');
+        console.log('[SF Extension] Item:', item);
+        console.log('[SF Extension] Item type:', item?.itemType);
+        console.log('[SF Extension] Item ID:', item?.itemId);
+        SfUtility.outputLog(`showItemDetails called for: ${item?.label}`, { itemType: item?.itemType, itemId: item?.itemId }, debugLevel.info);
+        
         // Note: item.label contains entity names (nodes, apps, services) - not PII like endpoints/thumbprints
         console.log('[SF Extension] showItemDetails triggered for:', item.label);
         try {
@@ -2353,6 +2364,16 @@ ${appStats.map((app: any) => {
     });
 
     console.log('[SF Extension] 9/10 - All commands registered successfully');
+    
+    // Verify showItemDetails command is registered
+    vscode.commands.getCommands(true).then(commands => {
+        const hasShowItemDetails = commands.includes('sfClusterExplorer.showItemDetails');
+        console.log('[SF Extension] Command verification - showItemDetails:', hasShowItemDetails);
+        if (!hasShowItemDetails) {
+            console.error('[SF Extension] ERROR: showItemDetails command NOT registered!');
+        }
+    });
+    
     SfUtility.outputLog('Service Fabric extension activated', null, debugLevel.info);
     console.log('[SF Extension] 10/10 - Extension activation complete ✅');
     

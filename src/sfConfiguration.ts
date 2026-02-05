@@ -276,7 +276,7 @@ export class SfConfiguration {
             children: undefined,
             resourceUri: resourceUri,
             status: this.clusterHealth?.aggregatedHealthState,
-            iconPath: this.getIcon(this.clusterHealth?.aggregatedHealthState, 'heart'),
+            iconPath: this.getIcon(this.clusterHealth?.aggregatedHealthState, 'heart') || new vscode.ThemeIcon('heart'),
             itemType: 'health',
             itemId: 'cluster-health',
             clusterEndpoint: this.clusterHttpEndpoint,
@@ -340,74 +340,39 @@ export class SfConfiguration {
         this.nodes.push(node);
     }
 
-    private addNodeTreeItems(resourceUri: vscode.Uri, clusterViewTreeItemChildren: TreeItem[]) {
-        const nodeItems: TreeItem[] = [];
-        
-        // Calculate aggregated health state for all nodes
-        const worstNodeHealth = this.getWorstHealthState(this.nodes);
-        
-        //Sort nodes like SFX: seed nodes first, then by name
-        const sortedNodes = [...this.nodes].sort((a, b) => {
-            // Seed nodes come first
-            if (a.isSeedNode && !b.isSeedNode) {return -1;}
-            if (!a.isSeedNode && b.isSeedNode) {return 1;}
-            // Then sort by name
-            return (a.name || '').localeCompare(b.name || '');
-        });
-        
-        sortedNodes.forEach((node: sfModels.NodeInfo) => {
-            // Build display name like SFX: "NodeName (Status)" or "NodeName (Seed Node)" or "NodeName (Seed Node - Status)"
-            let displayName = node.name ?? 'undefined';
-            const statusParts: string[] = [];
-            
-            // Add node status if not Up
-            if (node.nodeStatus && node.nodeStatus !== 'Up') {
-                if (node.isStopped) {
-                    statusParts.push('Down (Stopped)');
-                } else {
-                    statusParts.push(node.nodeStatus);
-                    // Add deactivation intent if present
-                    if (node.nodeDeactivationInfo?.nodeDeactivationIntent && 
-                        node.nodeDeactivationInfo.nodeDeactivationIntent !== 'Invalid') {
-                        statusParts[statusParts.length - 1] += ` -> ${node.nodeDeactivationInfo.nodeDeactivationIntent}`;
-                    }
-                }
-            }
-            
-            // Add seed node indicator
-            if (node.isSeedNode) {
-                statusParts.push('Seed Node');
-            }
-            
-            // Add description showing node has children for lazy loading
-            if (statusParts.length > 0) {
-                displayName += ` (${statusParts.join(' - ')})`;
-            }
-            
-            // Choose icon based on health state
-            const icon = this.getIcon(node.healthState, 'vm') || new vscode.ThemeIcon('vm');
-            
-            nodeItems.push(new TreeItem(displayName, {
-                children: undefined, // Will be lazy-loaded when expanded
-                resourceUri: resourceUri,
-                status: node.healthState,
-                iconPath: icon,
-                contextValue: 'node', // Enable context menu for node items
-                itemType: 'node',
-                itemId: node.name,
-                clusterEndpoint: this.clusterHttpEndpoint,
-                healthState: node.healthState
-            }));
-        });
-        
-        // Add nodes group with count and aggregated health color
-        SfUtility.outputLog(`Total nodes: ${nodeItems.length}, worst health: ${worstNodeHealth}`, null, debugLevel.info);
-        clusterViewTreeItemChildren.push(new TreeItem(`nodes (${nodeItems.length})`, {
-            children: nodeItems,
+    private addNodesGroupPlaceholder(resourceUri: vscode.Uri, clusterViewTreeItemChildren: TreeItem[]) {
+        // Add nodes group with loading indicator - will lazy load when expanded
+        clusterViewTreeItemChildren.push(new TreeItem(`nodes (...)`, {
+            children: undefined, // Lazy load when expanded
             resourceUri: resourceUri,
-            status: worstNodeHealth,
-            iconPath: this.getIcon(worstNodeHealth, 'server') || new vscode.ThemeIcon('server'),
-            itemType: 'nodes-group'
+            status: undefined,
+            iconPath: new vscode.ThemeIcon('server'),
+            itemType: 'nodes-group',
+            clusterEndpoint: this.clusterHttpEndpoint
+        }));
+    }
+    
+    private addApplicationsGroupPlaceholder(resourceUri: vscode.Uri, clusterViewTreeItemChildren: TreeItem[]) {
+        // Add applications group with loading indicator
+        clusterViewTreeItemChildren.push(new TreeItem(`applications (...)`, {
+            children: undefined,
+            resourceUri: resourceUri,
+            status: undefined,
+            iconPath: new vscode.ThemeIcon('package'),
+            itemType: 'applications-group',
+            clusterEndpoint: this.clusterHttpEndpoint
+        }));
+    }
+    
+    private addSystemGroupPlaceholder(resourceUri: vscode.Uri, clusterViewTreeItemChildren: TreeItem[]) {
+        // Add system services group with loading indicator
+        clusterViewTreeItemChildren.push(new TreeItem(`system (...)`, {
+            children: undefined,
+            resourceUri: resourceUri,
+            status: undefined,
+            iconPath: new vscode.ThemeIcon('gear'),
+            itemType: 'system-services-group',
+            clusterEndpoint: this.clusterHttpEndpoint
         }));
     }
 
@@ -551,12 +516,12 @@ export class SfConfiguration {
 
             SfUtility.outputLog(`Creating cluster tree items (health, events, etc.)...`, null, debugLevel.info);
             this.addClusterTreeItems(resourceUri, clusterViewTreeItemChildren);
-            SfUtility.outputLog(`Creating application tree items (${this.applications.length} apps)...`, null, debugLevel.info);
-            this.addApplicationTreeItems(resourceUri, clusterViewTreeItemChildren);
-            SfUtility.outputLog(`Creating node tree items (${this.nodes.length} nodes)...`, null, debugLevel.info);
-            this.addNodeTreeItems(resourceUri, clusterViewTreeItemChildren);
-            SfUtility.outputLog(`Creating system tree items (${this.systemServices.length} services)...`, null, debugLevel.info);
-            this.addSystemTreeItems(resourceUri, clusterViewTreeItemChildren);
+            
+            // Add root groups with placeholders - they'll lazy load when expanded
+            SfUtility.outputLog(`Adding root groups with lazy loading...`, null, debugLevel.info);
+            this.addApplicationsGroupPlaceholder(resourceUri, clusterViewTreeItemChildren);
+            this.addNodesGroupPlaceholder(resourceUri, clusterViewTreeItemChildren);
+            this.addSystemGroupPlaceholder(resourceUri, clusterViewTreeItemChildren);
 
             // add cluster view tree item to root view
             SfUtility.outputLog(`Creating root cluster tree item with ${clusterViewTreeItemChildren.length} children...`, null, debugLevel.info);
@@ -581,7 +546,24 @@ export class SfConfiguration {
 
     public getClusterEndpoint(): string {
         return this.clusterHttpEndpoint!;
-    }    
+    }
+    
+    public getNodes(): any[] {
+        return this.nodes;
+    }
+    
+    public getApplications(): any[] {
+        return this.applications;
+    }
+    
+    public getSystemServices(): any[] {
+        return this.systemServices;
+    }
+    
+    public getClusterHealth(): any {
+        return this.clusterHealth;
+    }
+        
     public getSfRest(): SfRest {
         return this.sfRest;
     }
@@ -741,6 +723,7 @@ export class SfConfiguration {
             
             // Fetch data in parallel for better performance
             try {
+                SfUtility.outputLog('⏳ Starting parallel data fetch...', null, debugLevel.info);
                 const [health, manifest, nodes, applicationTypes, repairTasks] = await Promise.all([
                     this.populateClusterHealth(),
                     this.populateManifest(),
@@ -748,9 +731,11 @@ export class SfConfiguration {
                     this.populateApplicationTypes(),
                     this.populateRepairTasks()
                 ]);
+                SfUtility.outputLog(`✅ Parallel data fetch complete - nodes=${this.nodes.length}, apps=${this.applications.length}, appTypes=${this.applicationTypes.length}`, null, debugLevel.info);
             } catch (parallelError) {
-                SfUtility.outputLog('Error during parallel data fetch', parallelError, debugLevel.error);
-                // Continue with sequential fallback
+                SfUtility.outputLog('❌ ERROR during parallel data fetch - DATA NOT POPULATED', parallelError, debugLevel.error);
+                vscode.window.showErrorMessage(`Failed to fetch cluster data: ${parallelError instanceof Error ? parallelError.message : String(parallelError)}`);
+                throw parallelError; // Re-throw instead of continuing
             }
             
             // Merge health states into nodes from cluster health
@@ -955,7 +940,18 @@ export class SfConfiguration {
     public async populateRepairTasks(): Promise<void> {
         try {
             SfUtility.outputLog('Populating repair tasks...', null, debugLevel.info);
-            this.repairTasks = await this.sfRest.getRepairTasks();
+            
+            // Create a timeout promise (5 seconds)
+            const timeoutPromise = new Promise<never>((_, reject) => {
+                setTimeout(() => reject(new Error('Repair tasks request timed out after 5 seconds')), 5000);
+            });
+            
+            // Race between the actual request and the timeout
+            this.repairTasks = await Promise.race([
+                this.sfRest.getRepairTasks(),
+                timeoutPromise
+            ]);
+            
             SfUtility.outputLog(`Populated ${this.repairTasks.length} repair task(s)`, null, debugLevel.info);
         } catch (error) {
             // Repair Manager may not be available on all clusters (e.g., dev clusters)

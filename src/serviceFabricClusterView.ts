@@ -63,6 +63,12 @@ export class serviceFabricClusterView implements vscode.TreeDataProvider<TreeIte
         this.updateViewVisibility();
         this.refresh();
         
+        // Start background population for root groups
+        if (treeItem.itemType === 'cluster') {
+            SfUtility.outputLog('🚀 Starting background population for root groups...', null, debugLevel.info);
+            this.populateRootGroupsInBackground(treeItem);
+        }
+        
         // Start auto-refresh if enabled and we have clusters
         if (this.tree.length > 0 && this.refreshCallback) {
             this.startAutoRefresh();
@@ -167,6 +173,38 @@ export class serviceFabricClusterView implements vscode.TreeDataProvider<TreeIte
         
         SfUtility.outputLog(`🌲 getChildren called: label="${element.label}", itemType="${element.itemType}", children=${element.children === undefined ? 'undefined' : Array.isArray(element.children) ? `array[${element.children.length}]` : 'other'}`, null, debugLevel.info);
         
+        // Handle lazy loading for nodes-group (populates all nodes when expanded)
+        if (element.itemType === 'nodes-group') {
+            // If already populated in background, return cached children
+            if (element.children !== undefined) {
+                SfUtility.outputLog(`🌲 -> Returning cached nodes (${element.children.length})`, null, debugLevel.info);
+                return element.children;
+            }
+            // Otherwise fetch now
+            SfUtility.outputLog(`🌲 -> Lazy loading nodes-group`, null, debugLevel.info);
+            return this.loadNodesGroup(element);
+        }
+        
+        // Handle lazy loading for applications-group
+        if (element.itemType === 'applications-group') {
+            if (element.children !== undefined) {
+                SfUtility.outputLog(`🌲 -> Returning cached applications (${element.children.length})`, null, debugLevel.info);
+                return element.children;
+            }
+            SfUtility.outputLog(`🌲 -> Lazy loading applications-group`, null, debugLevel.info);
+            return this.loadApplicationsGroup(element);
+        }
+        
+        // Handle lazy loading for system-services-group
+        if (element.itemType === 'system-services-group') {
+            if (element.children !== undefined) {
+                SfUtility.outputLog(`🌲 -> Returning cached system services (${element.children.length})`, null, debugLevel.info);
+                return element.children;
+            }
+            SfUtility.outputLog(`🌲 -> Lazy loading system-services-group`, null, debugLevel.info);
+            return this.loadSystemServicesGroup(element);
+        }
+        
         // Handle lazy loading for nodes (deployed applications)
         if (element.itemType === 'node' && element.children === undefined) {
             SfUtility.outputLog(`🌲 -> Triggering loadNodeChildren for: ${element.label}`, null, debugLevel.info);
@@ -240,6 +278,405 @@ export class serviceFabricClusterView implements vscode.TreeDataProvider<TreeIte
         }
         
         return element.children;
+    }
+    
+    private getConfigForTreeItem(treeItem: TreeItem): SfConfiguration | undefined {
+        const endpoint = treeItem.clusterEndpoint;
+        if (!endpoint) {
+            SfUtility.outputLog('❌ No clusterEndpoint on treeItem', null, debugLevel.warn);
+            return undefined;
+        }
+        return this.clusterConfigMap.get(endpoint);
+    }
+    
+    private async loadNodesGroup(nodesGroupItem: TreeItem): Promise<TreeItem[]> {
+        SfUtility.outputLog(`🔵 loadNodesGroup CALLED`, null, debugLevel.info);
+        
+        try {
+            const config = this.getConfigForTreeItem(nodesGroupItem);
+            if (!config) {
+                SfUtility.outputLog('❌ Cannot load nodes: config not found', null, debugLevel.warn);
+                nodesGroupItem.label = 'nodes (error)';
+                return [];
+            }
+            
+            // Fetch nodes with 5-second timeout
+            SfUtility.outputLog('⏳ Fetching nodes with timeout...', null, debugLevel.info);
+            const timeoutPromise = new Promise<never>((_, reject) => {
+                setTimeout(() => reject(new Error('Nodes request timed out after 5 seconds')), 5000);
+            });
+            
+            await Promise.race([
+                config.populateNodes(),
+                timeoutPromise
+            ]);
+            
+            const nodes = config.getNodes();
+            SfUtility.outputLog(`✅ Loaded ${nodes.length} nodes`, null, debugLevel.info);
+            
+            // Update group label and icon with actual count/health
+            const worstHealth = this.getWorstHealthState(nodes);
+            nodesGroupItem.label = `nodes (${nodes.length})`;
+            nodesGroupItem.iconPath = config.getIcon(worstHealth, 'server') || new vscode.ThemeIcon('server');
+            
+            // Fire tree refresh to update the label
+            this._onDidChangeTreeData.fire(nodesGroupItem);
+            
+            // Generate tree items from populated data
+            const nodeItems: TreeItem[] = [];
+            const resourceUri = nodesGroupItem.resourceUri!;
+            
+            // Sort nodes like SFX: seed nodes first, then by name
+            const sortedNodes = [...nodes].sort((a, b) => {
+                if (a.isSeedNode && !b.isSeedNode) return -1;
+                if (!a.isSeedNode && b.isSeedNode) return 1;
+                return (a.name || '').localeCompare(b.name || '');
+            });
+            
+            sortedNodes.forEach((node: any) => {
+                let displayName = node.name ?? 'undefined';
+                const statusParts: string[] = [];
+                
+                if (node.nodeStatus && node.nodeStatus !== 'Up') {
+                    statusParts.push(node.isStopped ? 'Down (Stopped)' : node.nodeStatus);
+                }
+                if (node.isSeedNode) {
+                    statusParts.push('Seed Node');
+                }
+                if (statusParts.length > 0) {
+                    displayName += ` (${statusParts.join(' - ')})`;
+                }
+                
+                const icon = config.getIcon(node.healthState, 'vm') || new vscode.ThemeIcon('vm');
+                
+                nodeItems.push(new TreeItem(displayName, {
+                    children: undefined, // Lazy load deployed apps when expanded
+                    resourceUri: resourceUri,
+                    status: node.healthState,
+                    iconPath: icon,
+                    contextValue: 'node',
+                    itemType: 'node',
+                    itemId: node.name,
+                    clusterEndpoint: nodesGroupItem.clusterEndpoint,
+                    healthState: node.healthState
+                }));
+            });
+            
+            // Cache the children for this group
+            nodesGroupItem.children = nodeItems;
+            return nodeItems;
+            
+        } catch (error) {
+            SfUtility.outputLog('❌ Failed to load nodes group', error, debugLevel.error);
+            nodesGroupItem.label = 'nodes (error)';
+            nodesGroupItem.iconPath = new vscode.ThemeIcon('error', new vscode.ThemeColor('errorForeground'));
+            vscode.window.showErrorMessage(`Failed to load nodes: ${error instanceof Error ? error.message : String(error)}`);
+            return [];
+        }
+    }
+    
+    private getWorstHealthState(items: any[]): string {
+        if (!items || items.length === 0) return 'Ok';
+        
+        const healthPriority: { [key: string]: number } = {
+            'Error': 3,
+            'Warning': 2,
+            'Ok': 1,
+            'Unknown': 0
+        };
+        
+        let worstHealth = 'Ok';
+        let worstPriority = healthPriority['Ok'];
+        
+        for (const item of items) {
+            const health = item.healthState || item.aggregatedHealthState || 'Unknown';
+            const priority = healthPriority[health] || 0;
+            if (priority > worstPriority) {
+                worstHealth = health;
+                worstPriority = priority;
+            }
+        }
+        
+        return worstHealth;
+    }
+    
+    /**
+     * Populate root groups in background - called automatically after cluster is added to tree
+     */
+    private async populateRootGroupsInBackground(clusterItem: TreeItem): Promise<void> {
+        if (!clusterItem.children) {
+            return;
+        }
+        
+        const nodesGroup = clusterItem.children.find(c => c.itemType === 'nodes-group');
+        const appsGroup = clusterItem.children.find(c => c.itemType === 'applications-group');
+        const systemGroup = clusterItem.children.find(c => c.itemType === 'system-services-group');
+        const healthItem = clusterItem.children.find(c => c.itemType === 'health');
+        
+        // Fetch all in parallel - each with its own timeout, non-blocking
+        const promises = [
+            nodesGroup ? this.backgroundFetchNodes(nodesGroup).catch(() => {}) : Promise.resolve(),
+            appsGroup ? this.backgroundFetchApplications(appsGroup).catch(() => {}) : Promise.resolve(),
+            systemGroup ? this.backgroundFetchSystemServices(systemGroup).catch(() => {}) : Promise.resolve(),
+            healthItem ? this.backgroundFetchClusterHealth(healthItem).catch(() => {}) : Promise.resolve()
+        ];
+        
+        // Don't await - let them run in background
+        Promise.all(promises).then(() => {
+            SfUtility.outputLog('✅ Background population complete', null, debugLevel.info);
+            
+            // Explicitly refresh all items with static colored icons to ensure ThemeColor renders
+            if (clusterItem.children) {
+                clusterItem.children.forEach(child => {
+                    // Refresh all static icon items: essentials, details, metrics, cluster map, image store, manifest, events, commands
+                    if (['essentials', 'details', 'metrics', 'cluster-map', 'image-store', 'manifest', 'events', 'commands'].includes(child.itemType || '')) {
+                        this._onDidChangeTreeData.fire(child);
+                    }
+                });
+            }
+            
+            // Refresh the entire cluster item to update all icons
+            this._onDidChangeTreeData.fire(clusterItem);
+        });
+    }
+    
+    private async backgroundFetchNodes(nodesGroup: TreeItem): Promise<void> {
+        try {
+            const config = this.getConfigForTreeItem(nodesGroup);
+            if (!config) throw new Error('Config not found');
+            
+            const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000));
+            await Promise.race([config.populateNodes(), timeoutPromise]);
+            
+            const nodes = config.getNodes();
+            const worstHealth = this.getWorstHealthState(nodes);
+            
+            nodesGroup.label = `nodes (${nodes.length})`;
+            nodesGroup.iconPath = config.getIcon(worstHealth, 'server') || new vscode.ThemeIcon('server');
+            nodesGroup.children = this.buildNodeItems(nodes, config, nodesGroup.resourceUri!, nodesGroup.clusterEndpoint);
+            
+            this._onDidChangeTreeData.fire(nodesGroup);
+            SfUtility.outputLog(`✅ Nodes: ${nodes.length}`, null, debugLevel.info);
+        } catch (error) {
+            nodesGroup.label = 'nodes (error)';
+            nodesGroup.iconPath = new vscode.ThemeIcon('error', new vscode.ThemeColor('errorForeground'));
+            this._onDidChangeTreeData.fire(nodesGroup);
+            throw error;
+        }
+    }
+    
+    private async backgroundFetchApplications(appsGroup: TreeItem): Promise<void> {
+        try {
+            const config = this.getConfigForTreeItem(appsGroup);
+            if (!config) throw new Error('Config not found');
+            
+            const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000));
+            await Promise.race([config.populateApplications(), timeoutPromise]);
+            
+            const apps = config.getApplications();
+            const worstHealth = this.getWorstHealthState(apps);
+            
+            appsGroup.label = `applications (${apps.length})`;
+            appsGroup.iconPath = config.getIcon(worstHealth, 'package') || new vscode.ThemeIcon('package');
+            appsGroup.children = [];
+            
+            this._onDidChangeTreeData.fire(appsGroup);
+            SfUtility.outputLog(`✅ Applications: ${apps.length}`, null, debugLevel.info);
+        } catch (error) {
+            appsGroup.label = 'applications (error)';
+            appsGroup.iconPath = new vscode.ThemeIcon('error', new vscode.ThemeColor('errorForeground'));
+            this._onDidChangeTreeData.fire(appsGroup);
+            throw error;
+        }
+    }
+    
+    private async backgroundFetchSystemServices(systemGroup: TreeItem): Promise<void> {
+        try {
+            const config = this.getConfigForTreeItem(systemGroup);
+            if (!config) throw new Error('Config not found');
+            
+            const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000));
+            await Promise.race([config.populateSystemServices('System'), timeoutPromise]);
+            
+            const services = config.getSystemServices();
+            const worstHealth = this.getWorstHealthState(services);
+            
+            systemGroup.label = `system (${services.length})`;
+            systemGroup.iconPath = config.getIcon(worstHealth, 'gear') || new vscode.ThemeIcon('gear');
+            // Build system service tree items for instant expand
+            systemGroup.children = this.buildSystemServiceItems(services, config, systemGroup.resourceUri!, systemGroup.clusterEndpoint);
+            
+            this._onDidChangeTreeData.fire(systemGroup);
+            SfUtility.outputLog(`✅ System: ${services.length}`, null, debugLevel.info);
+        } catch (error) {
+            systemGroup.label = 'system (error)';
+            systemGroup.iconPath = new vscode.ThemeIcon('error', new vscode.ThemeColor('errorForeground'));
+            this._onDidChangeTreeData.fire(systemGroup);
+            throw error;
+        }
+    }
+    
+    private async backgroundFetchClusterHealth(healthItem: TreeItem): Promise<void> {
+        try {
+            const config = this.getConfigForTreeItem(healthItem);
+            if (!config) throw new Error('Config not found');
+            
+            const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000));
+            await Promise.race([config.populateClusterHealth(), timeoutPromise]);
+            
+            const clusterHealth = config.getClusterHealth();
+            if (clusterHealth) {
+                healthItem.iconPath = config.getIcon(clusterHealth.aggregatedHealthState, 'heart') || new vscode.ThemeIcon('heart');
+                this._onDidChangeTreeData.fire(healthItem);
+                SfUtility.outputLog(`✅ Cluster health: ${clusterHealth.aggregatedHealthState}`, null, debugLevel.info);
+            }
+        } catch (error) {
+            healthItem.iconPath = new vscode.ThemeIcon('heart-broken', new vscode.ThemeColor('errorForeground'));
+            this._onDidChangeTreeData.fire(healthItem);
+            throw error;
+        }
+    }
+    
+    private buildNodeItems(nodes: any[], config: SfConfiguration, resourceUri: vscode.Uri, clusterEndpoint?: string): TreeItem[] {
+        const sortedNodes = [...nodes].sort((a, b) => {
+            if (a.isSeedNode && !b.isSeedNode) return -1;
+            if (!a.isSeedNode && b.isSeedNode) return 1;
+            return (a.name || '').localeCompare(b.name || '');
+        });
+        
+        return sortedNodes.map((node: any) => {
+            let displayName = node.name ?? 'undefined';
+            const statusParts: string[] = [];
+            
+            if (node.nodeStatus && node.nodeStatus !== 'Up') {
+                statusParts.push(node.isStopped ? 'Down (Stopped)' : node.nodeStatus);
+            }
+            if (node.isSeedNode) statusParts.push('Seed Node');
+            if (statusParts.length > 0) displayName += ` (${statusParts.join(' - ')})`;
+            
+            return new TreeItem(displayName, {
+                children: undefined,
+                resourceUri: resourceUri,
+                status: node.healthState,
+                iconPath: config.getIcon(node.healthState, 'vm') || new vscode.ThemeIcon('vm'),
+                contextValue: 'node',
+                itemType: 'node',
+                itemId: node.name,
+                clusterEndpoint: clusterEndpoint,
+                healthState: node.healthState
+            });
+        });
+    }
+    
+    private buildSystemServiceItems(services: any[], config: SfConfiguration, resourceUri: vscode.Uri, clusterEndpoint?: string): TreeItem[] {
+        const sortedServices = [...services].sort((a, b) => 
+            (a.name || '').localeCompare(b.name || '')
+        );
+        
+        return sortedServices.map((service: any) => {
+            const displayName = service.name ?? 'undefined';
+            
+            return new TreeItem(displayName, {
+                children: undefined,
+                resourceUri: resourceUri,
+                status: service.healthState,
+                iconPath: config.getIcon(service.healthState, 'gear') || new vscode.ThemeIcon('gear'),
+                contextValue: 'service',
+                itemType: 'service',
+                itemId: service.id,
+                clusterEndpoint: clusterEndpoint,
+                healthState: service.healthState,
+                applicationId: 'fabric:/System'
+            });
+        });
+    }
+    
+    private async loadApplicationsGroup(appsGroupItem: TreeItem): Promise<TreeItem[]> {
+        SfUtility.outputLog(`🔵 loadApplicationsGroup CALLED`, null, debugLevel.info);
+        
+        try {
+            const config = this.getConfigForTreeItem(appsGroupItem);
+            if (!config) {
+                SfUtility.outputLog('❌ Cannot load applications: config not found', null, debugLevel.warn);
+                appsGroupItem.label = 'applications (error)';
+                return [];
+            }
+            
+            // Fetch applications with 5-second timeout
+            const timeoutPromise = new Promise<never>((_, reject) => {
+                setTimeout(() => reject(new Error('Applications request timed out after 5 seconds')), 5000);
+            });
+            
+            await Promise.race([
+                config.populateApplications(),
+                timeoutPromise
+            ]);
+            
+            const apps = config.getApplications();
+            SfUtility.outputLog(`✅ Loaded ${apps.length} applications`, null, debugLevel.info);
+            
+            // Update label and fire refresh
+            appsGroupItem.label = `applications (${apps.length})`;
+            const worstHealth = this.getWorstHealthState(apps);
+            appsGroupItem.iconPath = config.getIcon(worstHealth, 'package') || new vscode.ThemeIcon('package');
+            this._onDidChangeTreeData.fire(appsGroupItem);
+            
+            // TODO: Generate app tree items (application types -> apps -> services)
+            // For now, just return empty to show the count updated
+            appsGroupItem.children = [];
+            return [];
+            
+        } catch (error) {
+            SfUtility.outputLog('❌ Failed to load applications group', error, debugLevel.error);
+            appsGroupItem.label = 'applications (error)';
+            appsGroupItem.iconPath = new vscode.ThemeIcon('error', new vscode.ThemeColor('errorForeground'));
+            this._onDidChangeTreeData.fire(appsGroupItem);
+            return [];
+        }
+    }
+    
+    private async loadSystemServicesGroup(systemGroupItem: TreeItem): Promise<TreeItem[]> {
+        SfUtility.outputLog(`🔵 loadSystemServicesGroup CALLED`, null, debugLevel.info);
+        
+        try {
+            const config = this.getConfigForTreeItem(systemGroupItem);
+            if (!config) {
+                SfUtility.outputLog('❌ Cannot load system services: config not found', null, debugLevel.warn);
+                systemGroupItem.label = 'system (error)';
+                return [];
+            }
+            
+            // Fetch system services with 5-second timeout
+            const timeoutPromise = new Promise<never>((_, reject) => {
+                setTimeout(() => reject(new Error('System services request timed out after 5 seconds')), 5000);
+            });
+            
+            await Promise.race([
+                config.populateSystemServices('System'),
+                timeoutPromise
+            ]);
+            
+            const services = config.getSystemServices();
+            SfUtility.outputLog(`✅ Loaded ${services.length} system services`, null, debugLevel.info);
+            
+            // Update label and fire refresh
+            systemGroupItem.label = `system (${services.length})`;
+            const worstHealth = this.getWorstHealthState(services);
+            systemGroupItem.iconPath = config.getIcon(worstHealth, 'gear') || new vscode.ThemeIcon('gear');
+            this._onDidChangeTreeData.fire(systemGroupItem);
+            
+            // Build and return system service tree items
+            const serviceItems = this.buildSystemServiceItems(services, config, systemGroupItem.resourceUri!, systemGroupItem.clusterEndpoint);
+            systemGroupItem.children = serviceItems;
+            return serviceItems;
+            
+        } catch (error) {
+            SfUtility.outputLog('❌ Failed to load system services group', error, debugLevel.error);
+            systemGroupItem.label = 'system (error)';
+            systemGroupItem.iconPath = new vscode.ThemeIcon('error', new vscode.ThemeColor('errorForeground'));
+            this._onDidChangeTreeData.fire(systemGroupItem);
+            return [];
+        }
     }
     
     private async loadNodeChildren(nodeItem: TreeItem): Promise<TreeItem[]> {

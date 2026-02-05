@@ -18,8 +18,11 @@ export class SfUtility {
 
     static init() { // (context: vscode.ExtensionContext) {
         //SFUtility.context = context;
+        console.log('[SF Extension] SfUtility.init() starting...');
         SfUtility.createDebugLogChannel();
+        console.log('[SF Extension] Output channel created, type:', typeof (this.channel as any).debug === 'function' ? 'LogOutputChannel' : 'OutputChannel');
         SfUtility.createTelemetryClient();
+        console.log('[SF Extension] SfUtility.init() complete');
     }
 
     public static activateOutputChannel(): void {
@@ -47,30 +50,48 @@ export class SfUtility {
     }
     
     private static createTelemetryClient(): ITelemetryLogger | undefined {
-        // @ts-ignore - telemetry is not yet exposed in the vscode api
-        const sender = {
-            flush(): void {
-                // no-op
-            },
-            sendErrorData(error: Error, data?: Record<string, any>): void {
-                // no-op
-            },
-            sendEventData(eventName: string, data?: Record<string, any>): void {
-                // no-op
-            }
-        };
-        // @ts-ignore - telemetry is not yet exposed in the vscode api
-        this.logger = vscode.env.createTelemetryLogger(sender);
+        try {
+            // @ts-ignore - telemetry is not yet exposed in the vscode api
+            const sender = {
+                flush(): void {
+                    // no-op
+                },
+                sendErrorData(error: Error, data?: Record<string, any>): void {
+                    // no-op
+                },
+                sendEventData(eventName: string, data?: Record<string, any>): void {
+                    // no-op
+                }
+            };
+            // @ts-ignore - telemetry is not yet exposed in the vscode api
+            this.logger = vscode.env.createTelemetryLogger(sender);
 
-        // GOOD - uses the logger
-        this.logger.logUsage('myEvent', { myData: 'myValue' });
-        return this.logger;
+            // GOOD - uses the logger (only if it was successfully created)
+            if (this.logger) {
+                this.logger.logUsage('myEvent', { myData: 'myValue' });
+            }
+            return this.logger;
+        } catch (error) {
+            // Telemetry API not available - this is OK, extension can work without it
+            console.warn('[SF Extension] Telemetry API not available:', error);
+            return undefined;
+        }
     }
 
     private static createDebugLogChannel(): void {
-        // @ts-ignore - telemetry is not yet exposed in the vscode api
-        if(!this.channel){
-            this.channel = vscode.window.createOutputChannel("SFRest", { log: true });
+        try {
+            // @ts-ignore - telemetry is not yet exposed in the vscode api
+            if(!this.channel){
+                this.channel = vscode.window.createOutputChannel("SFRest", { log: true });
+            }
+        } catch (error) {
+            // Fallback: create regular output channel if LogOutputChannel not available
+            console.warn('[SF Extension] LogOutputChannel not available, using regular OutputChannel:', error);
+            // @ts-ignore
+            if (!this.channel) {
+                // @ts-ignore
+                this.channel = vscode.window.createOutputChannel("SFRest");
+            }
         }
         //this.channel.show();
         return;
@@ -93,29 +114,50 @@ export class SfUtility {
         }
 
         try {
-            if (level === debugLevel.debug) {
-                this.channel.debug(message);
-            }
-            else if (level === debugLevel.trace) {
-                this.channel.trace(message);
-            }
-            else if (level === debugLevel.error) {
-                this.channel.error(message);
-                this.channel.error(JSON.stringify(console.trace(), null, 2));
-                this.showError(message);
-            }
-            else if (level === debugLevel.warn) {
-                this.channel.warn(message);
-                this.showWarning(message);
-            }
-            else if (level === debugLevel.info) {
-                this.channel.info(message);
-                //this.channel.info(message);
+            // Check if this is a LogOutputChannel (with specialized logging methods) or regular OutputChannel
+            const isLogChannel = typeof (this.channel as any).debug === 'function';
+            
+            if (isLogChannel) {
+                // Use specialized LogOutputChannel methods
+                if (level === debugLevel.debug) {
+                    (this.channel as any).debug(message);
+                }
+                else if (level === debugLevel.trace) {
+                    (this.channel as any).trace(message);
+                }
+                else if (level === debugLevel.error) {
+                    (this.channel as any).error(message);
+                    this.showError(message);
+                }
+                else if (level === debugLevel.warn) {
+                    (this.channel as any).warn(message);
+                    this.showWarning(message);
+                }
+                else if (level === debugLevel.info) {
+                    (this.channel as any).info(message);
+                }
+            } else {
+                // Fallback for regular OutputChannel - use appendLine
+                const levelStr = ['ERROR', 'WARN', 'INFO', 'DEBUG', 'TRACE'][level] || 'INFO';
+                const timestamp = new Date().toISOString();
+                this.channel.appendLine(`[${timestamp}] [${levelStr}] ${message}`);
+                
+                if (level === debugLevel.error) {
+                    this.showError(message);
+                } else if (level === debugLevel.warn) {
+                    this.showWarning(message);
+                }
             }
         }
         catch (error) {
-            this.channel.error(JSON.stringify(error, null, 2));
-            this.showError(message);
+            console.error('[SF Extension] outputLog failed:', error);
+            // Last resort - try to show error to user
+            try {
+                vscode.window.showErrorMessage(`SF Extension logging error: ${message}`);
+            } catch (e) {
+                // Complete failure - at least log to console
+                console.error('[SF Extension]', message);
+            }
         }
     }
 

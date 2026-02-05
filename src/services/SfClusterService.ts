@@ -46,8 +46,8 @@ export class SfClusterService {
 
             SfUtility.outputLog(`Certificate length: ${clusterCertificateInfo?.certificate?.length}`, null, debugLevel.debug);
             
-            // Populate cluster data
-            await config.populate();
+            // Just verify connection works - don't populate data (lazy loading)
+            await config.getSfRest().getClusterVersion();
             
             SfUtility.showInformation(`Successfully connected to cluster: ${endpoint}`);
             SfUtility.outputLog(`Successfully connected to cluster: ${endpoint}`, null, debugLevel.info);
