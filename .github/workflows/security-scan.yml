@@ -188,7 +188,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        node-version: [18]
+        node-version: [20]
     
     steps:
     - name: Checkout repository
@@ -201,10 +201,7 @@ jobs:
         cache: 'npm'
         
     - name: Install dependencies
-      run: |
-        npm ci
-        # Fix undici Node 18 compatibility issue
-        npm install undici@latest --save-dev
+      run: npm ci
       
     - name: Compile TypeScript
       run: npm run compile
@@ -215,11 +212,11 @@ jobs:
       
     - name: Package extension
       run: npm run package
-      if: matrix.os == 'ubuntu-latest' && matrix.node-version == 18
+      if: matrix.os == 'ubuntu-latest' && matrix.node-version == 20
       
     - name: Upload VSIX artifact
       uses: actions/upload-artifact@v4
-      if: matrix.os == 'ubuntu-latest' && matrix.node-version == 18
+      if: matrix.os == 'ubuntu-latest' && matrix.node-version == 20
       with:
         name: vscode-extension
         path: '*.vsix'
