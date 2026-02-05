@@ -180,7 +180,7 @@
         "commands": [
           "git add .",
           "git commit -m 'chore: remove internal docs before public release'",
-          "git push origin master"
+          "git push origin main"
         ]
       }
     ]

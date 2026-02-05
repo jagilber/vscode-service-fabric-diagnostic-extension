@@ -158,7 +158,7 @@ Special thanks to early adopters who tested pre-release versions!
 
 - **Issues**: [GitHub Issues](https://github.com/jagilber/vscode-service-fabric-diagnostic-extension/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/jagilber/vscode-service-fabric-diagnostic-extension/discussions)
-- **Documentation**: [docs/](https://github.com/jagilber/vscode-service-fabric-diagnostic-extension/tree/main/docs)
+See [CHANGELOG.md](https://github.com/jagilber/vscode-service-fabric-diagnostic-extension/blob/main/CHANGELOG.md) for detailed roadmap.
 
 ---
 
