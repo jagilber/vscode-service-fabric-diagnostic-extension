@@ -57,7 +57,7 @@ code --install-extension vscode-service-fabric-diagnostic-extension-1.0.0.vsix
 - **[Quick Start Guide](https://github.com/jagilber/vscode-service-fabric-diagnostic-extension#-quick-start)** - Get started in 60 seconds
 - **[Installation Guide](https://github.com/jagilber/vscode-service-fabric-diagnostic-extension#-installation)** - Detailed installation options
 - **[Configuration Guide](https://github.com/jagilber/vscode-service-fabric-diagnostic-extension#%EF%B8%8F-configuration)** - Certificate setup for secure clusters
-- **[Complete Documentation](https://github.com/jagilber/vscode-service-fabric-diagnostic-extension/tree/master/docs)** - Architecture, guides, best practices
+- **[Complete Documentation](https://github.com/jagilber/vscode-service-fabric-diagnostic-extension/tree/main/docs)** - Architecture, guides, best practices
 
 ## 🚀 Features Highlights
 
@@ -139,7 +139,7 @@ After installing:
 - **v0.4.0**: Azure integration (AAD auth, subscription discovery)
 - **v1.0.0**: Production-ready with comprehensive testing and documentation
 
-See [CHANGELOG.md](https://github.com/jagilber/vscode-service-fabric-diagnostic-extension/blob/master/CHANGELOG.md) for detailed roadmap.
+See [CHANGELOG.md](https://github.com/jagilber/vscode-service-fabric-diagnostic-extension/blob/main/CHANGELOG.md) for detailed roadmap.
 
 ---
 

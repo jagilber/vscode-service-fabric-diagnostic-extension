@@ -38,7 +38,7 @@ flowchart TD
     PeerReview --> Approved{Approved?}
     Approved -->|No| Address[Address Feedback]
     Address --> Code
-    Approved -->|Yes| Merge[Merge to Master]
+    Approved -->|Yes| Merge[Merge to Main]
     Merge --> End([Complete])
     
     style Start fill:#90EE90

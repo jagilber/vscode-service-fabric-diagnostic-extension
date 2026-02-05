@@ -148,7 +148,7 @@ try {
     Write-Host "  1. Review changes: git status" -ForegroundColor White
     Write-Host "  2. Commit cleanup: git add . && git commit -m 'chore: remove internal docs before public release'" -ForegroundColor White
     Write-Host "  3. Optionally delete .git.backup: Remove-Item .git.backup -Recurse -Force" -ForegroundColor White
-    Write-Host "  4. Push to GitHub: git push origin master" -ForegroundColor White
+    Write-Host "  4. Push to GitHub: git push origin main" -ForegroundColor White
     
 } finally {
     Pop-Location

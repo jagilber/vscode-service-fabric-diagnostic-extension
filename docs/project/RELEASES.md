@@ -163,11 +163,11 @@ See [README.md](https://github.com/jagilber/vscode-service-fabric-diagnostic-ext
 - Issue #1: Description and workaround
 - Issue #2: Description and workaround
 
-See [full documentation](https://github.com/jagilber/vscode-service-fabric-diagnostic-extension/tree/master/docs) for detailed usage.
+See [full documentation](https://github.com/jagilber/vscode-service-fabric-diagnostic-extension/tree/main/docs) for detailed usage.
 
 ---
 
-**Full Changelog**: https://github.com/jagilber/vscode-service-fabric-diagnostic-extension/blob/master/CHANGELOG.md
+**Full Changelog**: https://github.com/jagilber/vscode-service-fabric-diagnostic-extension/blob/main/CHANGELOG.md
 ```
 
 ## Marketplace Publication (v0.2.0 Target)

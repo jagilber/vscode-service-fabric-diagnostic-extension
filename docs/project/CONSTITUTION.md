@@ -166,7 +166,7 @@ flowchart TD
     PeerReview[Peer Review] --> Approved{Approved?}
     Approved -->|No| Changes[Request Changes]
     Changes --> Code
-    Approved -->|Yes| Merge[Merge to Master]
+    Approved -->|Yes| Merge[Merge to Main]
     
     style Code fill:#90EE90
     style Merge fill:#4169E1,color:#fff

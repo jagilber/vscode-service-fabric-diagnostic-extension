@@ -72,8 +72,8 @@ Press `F5` in VS Code to launch Extension Development Host.
 - **[README.md](https://github.com/jagilber/vscode-service-fabric-diagnostic-extension#readme)** - Complete user guide
 - **[Installation Guide](https://github.com/jagilber/vscode-service-fabric-diagnostic-extension#-installation)** - All installation methods
 - **[Configuration Guide](https://github.com/jagilber/vscode-service-fabric-diagnostic-extension#%EF%B8%8F-configuration)** - Cluster setup and certificates
-- **[Architecture](https://github.com/jagilber/vscode-service-fabric-diagnostic-extension/tree/master/docs/architecture)** - Technical design
-- **[Contributing](https://github.com/jagilber/vscode-service-fabric-diagnostic-extension/blob/master/CONTRIBUTING.md)** - Development guidelines
+- **[Architecture](https://github.com/jagilber/vscode-service-fabric-diagnostic-extension/tree/main/docs/architecture)** - Technical design
+- **[Contributing](https://github.com/jagilber/vscode-service-fabric-diagnostic-extension/blob/main/CONTRIBUTING.md)** - Development guidelines
 
 ## ⬆️ Upgrade Notes
 
@@ -124,7 +124,7 @@ See [SECURITY.md](https://github.com/jagilber/vscode-service-fabric-diagnostic-e
 
 ## 🤝 Contributing
 
-We welcome contributions! See [CONTRIBUTING.md](https://github.com/jagilber/vscode-service-fabric-diagnostic-extension/blob/master/CONTRIBUTING.md) for:
+We welcome contributions! See [CONTRIBUTING.md](https://github.com/jagilber/vscode-service-fabric-diagnostic-extension/blob/main/CONTRIBUTING.md) for:
 - Development setup
 - Code style guidelines
 - Testing requirements
@@ -141,7 +141,7 @@ npm run compile
 
 ## 📝 Full Changelog
 
-See [CHANGELOG.md](https://github.com/jagilber/vscode-service-fabric-diagnostic-extension/blob/master/CHANGELOG.md) for complete version history.
+See [CHANGELOG.md](https://github.com/jagilber/vscode-service-fabric-diagnostic-extension/blob/main/CHANGELOG.md) for complete version history.
 
 **Commits in this release**: https://github.com/jagilber/vscode-service-fabric-diagnostic-extension/compare/v{PREVIOUS_VERSION}...v{VERSION}
 
@@ -158,7 +158,7 @@ Special thanks to early adopters who tested pre-release versions!
 
 - **Issues**: [GitHub Issues](https://github.com/jagilber/vscode-service-fabric-diagnostic-extension/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/jagilber/vscode-service-fabric-diagnostic-extension/discussions)
-- **Documentation**: [docs/](https://github.com/jagilber/vscode-service-fabric-diagnostic-extension/tree/master/docs)
+- **Documentation**: [docs/](https://github.com/jagilber/vscode-service-fabric-diagnostic-extension/tree/main/docs)
 
 ---
 
