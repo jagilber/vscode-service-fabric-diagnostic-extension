@@ -6,9 +6,7 @@ export const  enum sfExtSettingsList {
     cluster = 'clusters.cluster',
     clusterCertificate = 'clusters.cluster.certificate',
     autorefresh = 'autorefresh',
-    refreshInterval = 'refreshInterval',
-    /** Feature flag: use new enterprise tree view (SfTreeDataProvider) instead of legacy */
-    newTreeView = 'newTreeView'
+    refreshInterval = 'refreshInterval'
 }
 
 export class SfExtSettings {

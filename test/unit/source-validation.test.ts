@@ -5,14 +5,11 @@ import * as path from 'path';
 describe('Source Code Validation - Icon Rendering Patterns', () => {
     const srcPath = path.join(__dirname, '../../src');
     const configPath = path.join(srcPath, 'sfConfiguration.ts');
-    const viewPath = path.join(srcPath, 'serviceFabricClusterView.ts');
 
     let configSource: string;
-    let viewSource: string;
 
     beforeAll(() => {
         configSource = fs.readFileSync(configPath, 'utf8');
-        viewSource = fs.readFileSync(viewPath, 'utf8');
     });
 
     test('RED: sfConfiguration.ts MUST have ThemeColor for all static icons', () => {
@@ -70,79 +67,29 @@ describe('Source Code Validation - Icon Rendering Patterns', () => {
         );
     });
 
-    test('RED: serviceFabricClusterView.ts MUST call buildSystemServiceItems', () => {
-        // Check backgroundFetchSystemServices (around line 508)
-        const backgroundPattern = /systemGroup\.children\s*=\s*this\.buildSystemServiceItems\(/;
+    test('TreeItem model should exist as standalone module', () => {
+        const treeItemPath = path.join(srcPath, 'models', 'TreeItem.ts');
         assert.ok(
-            backgroundPattern.test(viewSource),
-            'backgroundFetchSystemServices MUST assign: systemGroup.children = this.buildSystemServiceItems(...)'
-        );
-
-        // Check loadSystemServicesGroup (around line 638)
-        const loadPattern = /systemGroupItem\.children\s*=\s*\w+;.*return\s+\w+;/s;
-        const hasLoadAssignment = viewSource.includes('systemGroupItem.children = serviceItems') || 
-                                  viewSource.includes('systemGroupItem.children = this.buildSystemServiceItems');
-        assert.ok(
-            hasLoadAssignment,
-            'loadSystemServicesGroup MUST assign children and return them, NOT return []'
-        );
-    });
-
-    test('RED: serviceFabricClusterView.ts MUST have buildSystemServiceItems function', () => {
-        const functionPattern = /private\s+buildSystemServiceItems\s*\(/;
-        assert.ok(
-            functionPattern.test(viewSource),
-            'buildSystemServiceItems function MUST exist'
-        );
-
-        // Check it builds TreeItems properly
-        assert.ok(
-            viewSource.includes('sortedServices.map') && viewSource.includes('buildSystemServiceItems'),
-            'buildSystemServiceItems MUST map services to TreeItems'
-        );
-    });
-
-    test('RED: serviceFabricClusterView.ts MUST refresh static icons after background load', () => {
-        // After refactor: populateRootGroupsInBackground fires refresh on the entire clusterItem
-        // instead of individual static children (to avoid the ThemeColor icon rendering bug).
-        // The comment in the source documents this intentional pattern.
-        assert.ok(
-            viewSource.includes('populateRootGroupsInBackground'),
-            'populateRootGroupsInBackground function MUST exist'
-        );
-
-        // Must mention the static icon types in doc comments  
-        assert.ok(
-            viewSource.includes('essentials') && viewSource.includes('image-store') && 
-            viewSource.includes('manifest') && viewSource.includes('commands'),
-            'MUST reference static icon items (essentials, image-store, manifest, commands)'
+            fs.existsSync(treeItemPath),
+            'TreeItem class should exist at src/models/TreeItem.ts'
         );
         
-        // Verify refresh event is fired (on cluster item or individual items)
+        const treeItemSource = fs.readFileSync(treeItemPath, 'utf8');
         assert.ok(
-            viewSource.includes('_onDidChangeTreeData.fire('),
-            'MUST fire refresh event for tree data updates'
+            treeItemSource.includes('export class TreeItem extends vscode.TreeItem'),
+            'TreeItem must extend vscode.TreeItem'
+        );
+        assert.ok(
+            treeItemSource.includes('export interface TreeItemOptions'),
+            'TreeItemOptions interface must be exported'
         );
     });
 
-    test('RED: serviceFabricClusterView.ts MUST call populateSystemServices with "System" not "fabric:~System"', () => {
-        // Both backgroundFetchSystemServices and loadSystemServicesGroup should use 'System'
-        const correctPattern = /populateSystemServices\s*\(\s*['"]System['"]\s*\)/g;
-        const matches = viewSource.match(correctPattern);
-        
+    test('Legacy serviceFabricClusterView.ts should not exist', () => {
+        const legacyPath = path.join(srcPath, 'serviceFabricClusterView.ts');
         assert.ok(
-            matches && matches.length === 2,
-            `populateSystemServices MUST be called with 'System' exactly 2 times (found ${matches?.length || 0} calls)`
-        );
-
-        // Ensure NOT using wrong format
-        assert.ok(
-            !viewSource.includes("populateSystemServices('fabric:~System')"),
-            'MUST NOT use fabric:~System - SDK expects just "System"'
-        );
-        assert.ok(
-            !viewSource.includes('populateSystemServices("fabric:~System")'),
-            'MUST NOT use fabric:~System - SDK expects just "System"'
+            !fs.existsSync(legacyPath),
+            'Legacy serviceFabricClusterView.ts should be deleted'
         );
     });
 });

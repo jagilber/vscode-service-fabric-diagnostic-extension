@@ -2,7 +2,6 @@ import * as url from 'url';
 import * as https from 'https';
 import * as tls from 'tls';
 import * as vscode from 'vscode';
-import { serviceFabricClusterView } from './serviceFabricClusterView';
 import * as SFConfiguration from './sfConfiguration';
 import { SfUtility, debugLevel } from './sfUtility';
 import { SfRestClient } from './sfRestClient';
@@ -35,7 +34,6 @@ export class SfRest implements IHttpOptionsProvider {
     private logger: vscode.env.TelemetryLogger | undefined;
     // @ts-ignore - telemetry is not yet exposed in the vscode api
     private channel: vscode.LogOutputChannel;
-    private clusterView: serviceFabricClusterView | null = null;
     private resourceManagerEndpoint = "https://management.azure.com";
     
     // Azure SDK client (legacy/fallback)

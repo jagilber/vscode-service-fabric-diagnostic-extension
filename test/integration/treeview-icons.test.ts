@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
-import { TreeItem } from '../../src/serviceFabricClusterView';
+import { TreeItem } from '../../src/models/TreeItem';
 import { SfConfiguration } from '../../src/sfConfiguration';
 
 describe('TreeView Icons Validation Tests - RED/GREEN', () => {

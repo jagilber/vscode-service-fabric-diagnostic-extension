@@ -6,7 +6,7 @@ import { SfUtility, debugLevel } from './sfUtility';
 import { SfClusterFolder } from './sfClusterFolder';
 import * as SfApi from './sdk/servicefabric/servicefabric/src/serviceFabricClientAPIs';
 import * as sfModels from './sdk/servicefabric/servicefabric/src/models';
-import { TreeItem } from './serviceFabricClusterView';
+import { TreeItem } from './models/TreeItem';
 import { SfRestClient } from './sfRestClient';
 import { SfRest } from './sfRest';
 import { SfPs } from './sfPs';

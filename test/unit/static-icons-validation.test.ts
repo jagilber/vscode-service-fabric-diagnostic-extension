@@ -38,23 +38,4 @@ describe('Static Icons Must Render on Load - Validation', () => {
         const healthPattern = /iconPath:\s*this\.getIcon\([^,]+,\s*'heart'\)\s*\|\|\s*new vscode\.ThemeIcon\('heart'\)/;
         assert.ok(healthPattern.test(configSource), 'Health icon MUST have dynamic pattern with fallback');
     });
-
-    test('RED: All static colored icons must be explicitly refreshed', () => {
-        // Check that serviceFabricClusterView.ts references all static icons
-        const viewPath = path.join(srcPath, 'serviceFabricClusterView.ts');
-        const viewSource = fs.readFileSync(viewPath, 'utf8');
-        
-        const hasImageStoreRefresh = viewSource.includes("'image-store'");
-        const hasManifestRefresh = viewSource.includes("'manifest'");
-        
-        assert.ok(hasImageStoreRefresh, 'image-store must be referenced in view');
-        assert.ok(hasManifestRefresh, 'manifest must be referenced in view');
-        
-        // After refactor: the view refreshes the entire cluster item instead of individual
-        // forEach on children. Verify refresh is still triggered via _onDidChangeTreeData.fire.
-        assert.ok(
-            viewSource.includes('_onDidChangeTreeData.fire('),
-            'View must fire tree data change events for icon refresh'
-        );
-    });
 });

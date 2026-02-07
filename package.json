@@ -306,11 +306,6 @@
             "type": "array",
             "default": [],
             "description": "List of saved Service Fabric cluster endpoints"
-          },
-          "sfClusterExplorer.newTreeView": {
-            "type": "boolean",
-            "default": true,
-            "description": "Enable the new enterprise-grade tree view. Set to false to use legacy tree view."
           }
         }
       }

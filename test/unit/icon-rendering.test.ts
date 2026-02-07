@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
-import { TreeItem } from '../../src/serviceFabricClusterView';
+import { TreeItem } from '../../src/models/TreeItem';
 
 describe('Icon Rendering Validation - RED/GREEN Tests', () => {
     const testEndpoint = 'http://localhost:19080';
