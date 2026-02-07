@@ -232,38 +232,6 @@ export class SfRest implements IHttpOptionsProvider {
         };
     }
 
-    public async disableNode(nodeName: string, description: sfModels.DeactivationIntentDescription): Promise<any> {
-        await this.sfApi.disableNode(nodeName, description);
-
-        const nodeState = await this.getNode(nodeName);
-        if (nodeState.nodeDeactivationInfo?.nodeDeactivationStatus?.toLowerCase() !== "none") {
-            SfUtility.showInformation(`Node: ${nodeName} is disabled`);
-        }
-        else {
-            SfUtility.showError(`Node: ${nodeName} is not disabled`);
-        }
-        return;
-    }
-
-    public async enableNode(nodeName: string): Promise<any> {
-        await this.sfApi.enableNode(nodeName);
-
-        const nodeState = await this.getNode(nodeName);
-        if (nodeState.nodeDeactivationInfo?.nodeDeactivationStatus?.toLowerCase() === "none") {
-            SfUtility.showInformation(`Node: ${nodeName} is enabled`);
-        }
-        else {
-            SfUtility.showError(`Node: ${nodeName} is not enabled`);
-        }
-        return;
-    }
-
-    public async getApplication(applicationId: string): Promise<sfModels.ApplicationInfo> {
-        const application = await this.sfApi.getApplicationInfo(applicationId);
-        SfUtility.outputLog('sfRest:getApplication:complete', application);
-        return application;
-    }
-
     /**
      * Generic pagination helper - iteratively fetches all pages
      * Replaces broken recursive logic in continuation token handling
@@ -835,44 +803,6 @@ export class SfRest implements IHttpOptionsProvider {
         }
     }
 
-    /**
-     * Get the size of a folder in the image store
-     * @param path - Relative path of folder (empty for root)
-     * @returns Folder size information
-     */
-    public async getImageStoreFolderSize(path?: string): Promise<sfModels.FolderSizeInfo> {
-        try {
-            SfUtility.outputLog(`sfRest:getImageStoreFolderSize:path=${path || 'root'}`, null, debugLevel.info);
-            
-            // Note: Folder size API is not available in standard Service Fabric SDK
-            // Would need direct REST implementation or use alternative approach
-            throw new Error('Image Store folder size API not yet implemented - requires api-version=6.5');
-        } catch (error) {
-            SfUtility.outputLog(`Failed to get image store folder size at path: ${path}`, error, debugLevel.error);
-            throw new NetworkError('Failed to retrieve image store folder size', { 
-                context: { path },
-                cause: error 
-            });
-        }
-    }
-
-    /**
-     * Delete content from the image store
-     * @param path - Relative path to delete
-     */
-    public async deleteImageStoreContent(path: string): Promise<void> {
-        try {
-            SfUtility.outputLog(`sfRest:deleteImageStoreContent:path=${path}`, null, debugLevel.info);
-            await this.sfApi.deleteImageStoreContent(path);
-            SfUtility.outputLog(`sfRest:deleteImageStoreContent:success`, null, debugLevel.info);
-        } catch (error) {
-            SfUtility.outputLog(` Failed to delete image store content at path: ${path}`, error, debugLevel.error);
-            throw new NetworkError('Failed to delete image store content', { 
-                context: { path },
-                cause: error 
-            });
-        }
-    }
 
     public async getClusters(): Promise<sfModels.GetClusterManifestResponse[]> {
         return new Promise<sfModels.GetClusterManifestResponse[]>((resolve, reject) => {
@@ -1009,12 +939,6 @@ export class SfRest implements IHttpOptionsProvider {
                 continuationToken: response.continuationToken
             };
         });
-    }
-
-    public async getServiceTypes(applicationTypeName: string, applicationTypeVersion: string): Promise<sfModels.GetServiceTypeInfoListResponse> {
-        const serviceInfos = await this.sfApi.getServiceTypeInfoList(applicationTypeName, applicationTypeVersion);
-        SfUtility.outputLog('sfRest:getServiceTypes:', serviceInfos);
-        return serviceInfos;
     }
 
     public async getSystemServices(applicationId: string, continuationToken?: string): Promise<sfModels.ServiceInfoUnion[]> {
