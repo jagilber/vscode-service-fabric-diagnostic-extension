@@ -23,7 +23,7 @@ export class ClusterNode extends BaseTreeNode {
     readonly clusterEndpoint: string;
     readonly ctx: TreeNodeContext;
 
-    private description: string | undefined;
+    private isActive = false;
 
     constructor(ctx: TreeNodeContext, iconService: IconService, cache: DataCache) {
         super(ctx, iconService, cache);
@@ -33,15 +33,21 @@ export class ClusterNode extends BaseTreeNode {
     }
 
     setActive(active: boolean): void {
-        this.description = active ? '⭐ Active' : undefined;
+        this.isActive = active;
     }
 
     getTreeItem(): vscode.TreeItem {
         const hostname = new URL(this.ctx.clusterEndpoint).hostname || this.ctx.clusterEndpoint;
-        const item = new vscode.TreeItem(hostname, vscode.TreeItemCollapsibleState.Expanded);
+
+        // Use TreeItemLabel with highlights to bold the entire label when active
+        const label: vscode.TreeItemLabel = this.isActive
+            ? { label: hostname, highlights: [[0, hostname.length]] }
+            : { label: hostname };
+
+        const item = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.Expanded);
         item.id = this.id;
         item.contextValue = this.contextValue;
-        item.description = this.description;
+        item.description = this.isActive ? 'Active' : undefined;
         item.resourceUri = this.ctx.resourceUri;
 
         // Derive icon from cached cluster health

@@ -44,7 +44,17 @@ export class StaticItemNode implements ITreeNode {
         item.command = {
             command: 'sfClusterExplorer.showItemDetails',
             title: 'Show Details',
-            arguments: [{ itemType: this.itemType, id: this.id, clusterEndpoint: this.ctx.clusterEndpoint }],
+            arguments: [{
+                itemType: this.itemType,
+                id: this.id,
+                clusterEndpoint: this.ctx.clusterEndpoint,
+                // Pass parent context so the handler can make correct API calls
+                nodeName: this.ctx.parentNodeName,
+                applicationId: this.ctx.parentApplicationId,
+                serviceId: this.ctx.parentServiceId,
+                partitionId: this.ctx.parentPartitionId,
+                serviceManifestName: this.ctx.parentServiceManifestName,
+            }],
         };
         return item;
     }

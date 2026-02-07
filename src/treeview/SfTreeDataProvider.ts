@@ -80,6 +80,7 @@ export class SfTreeDataProvider implements vscode.TreeDataProvider<ITreeNode> {
             sfConfig,
             clusterEndpoint: endpoint,
             resourceUri: vscode.Uri.parse(endpoint),
+            requestRefresh: (node) => this.refresh(node),
         };
 
         const clusterNode = new ClusterNode(ctx, this.iconService, this.cache);
@@ -173,6 +174,60 @@ export class SfTreeDataProvider implements vscode.TreeDataProvider<ITreeNode> {
     getSfConfig(endpoint: string): SfConfiguration | undefined {
         const root = this.roots.find(r => r.clusterEndpoint === endpoint);
         return root?.ctx.sfConfig;
+    }
+
+    /**
+     * Eagerly populate group node data in the background after cluster connection.
+     * This mimics the legacy view's `populateRootGroupsInBackground()`:
+     * fetches nodes/apps/system data so labels update from "(…)" to "(N)".
+     */
+    async populateClusterInBackground(endpoint: string): Promise<void> {
+        const root = this.roots.find(r => r.clusterEndpoint === endpoint);
+        if (!root) {
+            SfUtility.outputLog(`populateClusterInBackground: cluster not found: ${endpoint}`, null, debugLevel.warn);
+            return;
+        }
+
+        SfUtility.outputLog(`populateClusterInBackground: starting for ${endpoint}`, null, debugLevel.info);
+
+        try {
+            // Fetch cluster health first so the root icon gets its color
+            await root.ctx.sfConfig.populateClusterHealth();
+
+            // Refresh immediately so root icon updates with health color
+            this.refresh();
+
+            // Ensure cluster node's children are loaded (creates group nodes)
+            const children = await root.getChildren();
+            if (!children) { return; }
+
+            // Find group nodes that support lazy loading
+            const GROUP_TYPES = new Set(['nodes-group', 'applications-group', 'system-group']);
+            const groupNodes = children.filter(c => GROUP_TYPES.has(c.itemType));
+
+            // Pre-fetch all group node data in parallel
+            const results = await Promise.allSettled(
+                groupNodes.map(async (node) => {
+                    try {
+                        await node.getChildren();
+                        SfUtility.outputLog(`populateClusterInBackground: ${node.itemType} loaded`, null, debugLevel.debug);
+                    } catch (err) {
+                        SfUtility.outputLog(`populateClusterInBackground: ${node.itemType} failed`, err, debugLevel.warn);
+                    }
+                })
+            );
+
+            const succeeded = results.filter(r => r.status === 'fulfilled').length;
+            SfUtility.outputLog(
+                `populateClusterInBackground: completed for ${endpoint} (${succeeded}/${groupNodes.length} groups loaded)`,
+                null, debugLevel.info,
+            );
+
+            // Fire full refresh to update all labels + health icons
+            this.refresh();
+        } catch (err) {
+            SfUtility.outputLog(`populateClusterInBackground: error for ${endpoint}`, err, debugLevel.error);
+        }
     }
 
     dispose(): void {

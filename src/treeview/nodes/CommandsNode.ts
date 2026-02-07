@@ -53,7 +53,6 @@ class CommandSectionNode implements ITreeNode {
         private readonly iconService: IconService,
         private readonly section: CommandSection,
     ) {
-        const emoji = section.emoji || '';
         this.id = `cmd-section:${ctx.clusterEndpoint}:${section.label}`;
         this.children = section.categories.map(cat =>
             new CommandCategoryNode(ctx, iconService, cat),
@@ -61,9 +60,8 @@ class CommandSectionNode implements ITreeNode {
     }
 
     getTreeItem(): vscode.TreeItem {
-        const emoji = this.section.emoji ? `${this.section.emoji} ` : '';
         const item = new vscode.TreeItem(
-            `${emoji}${this.section.label}`,
+            this.section.label,
             vscode.TreeItemCollapsibleState.Collapsed,
         );
         item.id = this.id;
@@ -93,7 +91,6 @@ class CommandCategoryNode implements ITreeNode {
         private readonly iconService: IconService,
         private readonly category: CommandCategory,
     ) {
-        const emoji = category.emoji ? `${category.emoji} ` : '';
         this.id = `cmd-cat:${ctx.clusterEndpoint}:${category.label}`;
         this.children = category.commands.map(cmd =>
             new CommandLeafNode(ctx, iconService, cmd),
@@ -101,9 +98,8 @@ class CommandCategoryNode implements ITreeNode {
     }
 
     getTreeItem(): vscode.TreeItem {
-        const emoji = this.category.emoji ? `${this.category.emoji} ` : '';
         const item = new vscode.TreeItem(
-            `${emoji}${this.category.label}`,
+            this.category.label,
             vscode.TreeItemCollapsibleState.Collapsed,
         );
         item.id = this.id;

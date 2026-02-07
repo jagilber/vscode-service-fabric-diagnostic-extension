@@ -142,16 +142,23 @@ async function handleShowItemDetails(
     sfMgr: SfMgr,
     item: any,
 ): Promise<void> {
+    // Normalise: new treeview nodes pass `id`, legacy passes `itemId`
+    const itemId = item?.itemId || item?.id;
+    const itemType = item?.itemType;
+
     SfUtility.outputLog(
-        `showItemDetails called for: ${item?.label}`,
-        { itemType: item?.itemType, itemId: item?.itemId },
+        `showItemDetails called for: ${item?.label ?? itemType}`,
+        { itemType, itemId },
         debugLevel.info,
     );
 
-    if (!item?.itemType || !item?.itemId) {
+    if (!itemType || !itemId) {
         SfUtility.showWarning('No details available for this item');
         return;
     }
+
+    // Attach normalised itemId so downstream code can use item.itemId consistently
+    item.itemId = itemId;
 
     const clusterEndpoint =
         item.clusterEndpoint || sfMgr.getCurrentSfConfig().getClusterEndpoint();
@@ -176,7 +183,31 @@ async function handleShowItemDetails(
     const sfRest = sfConfig.getSfRest();
     let details: any;
 
-    switch (item.itemType) {
+    // Normalise new treeview itemType prefixes to handler switch cases.
+    // New treeview encodes entity context in itemType:
+    //   svc-health:System~SvcName  → service-health
+    //   app-events:MyApp           → app-events  (already matches)
+    //   node-health                → node-health  (already matches)
+    //   part-health:guid           → partition-health
+    //   rep-events:guid            → replica-events
+    const normaliseMap: Record<string, string> = {
+        'svc-health': 'service-health',
+        'svc-events': 'service-events',
+        'svc-manifest': 'service-manifest',
+        'part-health': 'partition-health',
+        'part-events': 'partition-events',
+        'rep-health': 'replica-health',
+        'rep-events': 'replica-events',
+        'app-health': 'application-health',
+        'app-events': 'application-events',
+        'app-manifest': 'application-manifest',
+    };
+    const colonIdx = itemType.indexOf(':');
+    const normalisedItemType = colonIdx >= 0
+        ? (normaliseMap[itemType.substring(0, colonIdx)] ?? itemType)
+        : (normaliseMap[itemType] ?? itemType);
+
+    switch (normalisedItemType) {
         // ---- Cluster-level items ----
         case 'details':
             details = await sfRest.getClusterUpgradeProgress();
@@ -248,15 +279,77 @@ async function handleShowItemDetails(
             };
             break;
 
-        // ---- Node ----
-        case 'node':
-            details = await sfRest.getNodeInfo(item.itemId);
+        // ---- Cluster ----
+        case 'cluster': {
+            const [clHealth, clVersion] = await Promise.all([
+                sfRest.getClusterHealth(),
+                sfRest.getClusterVersion(),
+            ]);
+            details = { health: clHealth, version: clVersion };
             break;
+        }
+
+        // ---- Application Type ----
+        case 'application-type': {
+            const typeName = item.typeName || item.itemId;
+            const appTypes = await sfRest.getApplicationTypes();
+            details = appTypes.find((t: any) => t.name === typeName) || { name: typeName, version: item.typeVersion };
+            break;
+        }
+
+        // ---- Node ----
+        case 'node': {
+            const nodeName = item.nodeName || item.itemId;
+            details = await sfRest.getNodeInfo(nodeName);
+            break;
+        }
+        case 'node-health': {
+            const nhNodeName = item.nodeName || item.itemId;
+            if (!nhNodeName) {
+                throw new Error('Node health requires nodeName');
+            }
+            details = await sfRest.getNodeHealth(nhNodeName);
+            break;
+        }
+        case 'node-events': {
+            const neNodeName = item.nodeName || item.itemId;
+            if (!neNodeName) {
+                throw new Error('Node events requires nodeName');
+            }
+            // Node events are available via EventStore — use cluster events filtered client-side
+            details = {
+                nodeName: neNodeName,
+                message: 'Node events are available through the EventStore service.',
+                note: 'Use the cluster-level events view to see all events, or query the EventStore REST API directly.',
+            };
+            break;
+        }
 
         // ---- Application ----
         case 'application':
-            details = await sfRest.getApplicationInfo(item.itemId);
+            details = await sfRest.getApplicationInfo(item.applicationId || item.itemId);
             break;
+        case 'application-health': {
+            const ahAppId = item.applicationId || item.itemId;
+            if (!ahAppId) {
+                throw new Error('Application health requires applicationId');
+            }
+            details = await sfRest.getApplicationHealth(ahAppId);
+            break;
+        }
+        case 'application-events': {
+            const aeAppId = item.applicationId || item.itemId;
+            if (!aeAppId) {
+                throw new Error('Application events requires applicationId');
+            }
+            // Application events are available via EventStore
+            details = {
+                applicationId: aeAppId,
+                message: 'Application events are available through the EventStore service.',
+                note: 'Use the cluster-level events view to see all events, or query the EventStore REST API directly.',
+            };
+            break;
+        }
 
         // ---- Service ----
         case 'service':
@@ -425,45 +518,91 @@ async function handleShowItemDetails(
 
         // ---- Deployed items ----
         case 'deployed-application': {
-            if (!item.contextValue || !item.applicationId) {
+            // New treeview: item.nodeName + item.applicationId
+            // Legacy: item.contextValue = nodeName, item.applicationId
+            const daNodeName = item.nodeName || item.contextValue;
+            const daAppId = item.applicationId;
+            if (!daNodeName || !daAppId) {
                 throw new Error('Deployed application requires node name and applicationId');
             }
-            details = await sfRest.getDeployedApplicationInfo(item.contextValue, item.applicationId);
+            details = await sfRest.getDeployedApplicationInfo(daNodeName, daAppId);
             break;
         }
         case 'deployed-service-package': {
-            if (!item.contextValue || !item.applicationId) {
-                throw new Error('Deployed service package requires contextValue and applicationId');
+            // New treeview: item.nodeName, item.applicationId, item.serviceManifestName
+            // Legacy: item.contextValue = "nodeName|appId|manifestName"
+            let dspNodeName: string;
+            let dspAppId: string;
+            let dspManifestName: string;
+            if (item.nodeName && item.applicationId && item.serviceManifestName) {
+                dspNodeName = item.nodeName;
+                dspAppId = item.applicationId;
+                dspManifestName = item.serviceManifestName;
+            } else if (item.contextValue) {
+                const pkgParts = item.contextValue.split('|');
+                dspNodeName = pkgParts[0];
+                dspAppId = pkgParts[1];
+                dspManifestName = pkgParts[2] || item.itemId;
+            } else {
+                throw new Error('Deployed service package requires nodeName, applicationId, and serviceManifestName');
             }
-            const pkgParts = item.contextValue.split('|');
-            const packages = await sfRest.getDeployedServicePackages(pkgParts[0], pkgParts[1]);
-            const manifestName = pkgParts[2] || item.itemId;
+            const packages = await sfRest.getDeployedServicePackages(dspNodeName, dspAppId);
             details =
                 packages.find(
-                    (p: any) => p.serviceManifestName === manifestName || p.name === manifestName,
-                ) || { serviceManifestName: manifestName };
+                    (p: any) => p.serviceManifestName === dspManifestName || p.name === dspManifestName,
+                ) || { serviceManifestName: dspManifestName };
             break;
         }
         case 'deployed-code-package': {
-            if (!item.contextValue) {
-                throw new Error('Deployed code package requires contextValue');
+            // New treeview: item.nodeName, item.applicationId, item.serviceManifestName, item.codePackageName
+            // Legacy: item.contextValue = "nodeName|appId|manifestName"
+            let dcpNodeName: string;
+            let dcpAppId: string;
+            let dcpManifestName: string;
+            let dcpCodePkgName: string;
+            if (item.nodeName && item.applicationId && item.serviceManifestName) {
+                dcpNodeName = item.nodeName;
+                dcpAppId = item.applicationId;
+                dcpManifestName = item.serviceManifestName;
+                dcpCodePkgName = item.codePackageName || item.itemId;
+            } else if (item.contextValue) {
+                const codeParts = item.contextValue.split('|');
+                dcpNodeName = codeParts[0];
+                dcpAppId = codeParts[1];
+                dcpManifestName = codeParts[2];
+                dcpCodePkgName = item.itemId;
+            } else {
+                throw new Error('Deployed code package requires nodeName, applicationId, and serviceManifestName');
             }
-            const codeParts = item.contextValue.split('|');
             const codePackages = await sfRest.getDeployedCodePackages(
-                codeParts[0],
-                codeParts[1],
-                codeParts[2],
+                dcpNodeName,
+                dcpAppId,
+                dcpManifestName,
             );
             details =
                 codePackages.find(
-                    (p: any) => p.codePackageName === item.itemId || p.name === item.itemId,
-                ) || { codePackageName: item.itemId };
+                    (p: any) => p.codePackageName === dcpCodePkgName || p.name === dcpCodePkgName,
+                ) || { codePackageName: dcpCodePkgName };
             break;
         }
         case 'deployed-replica': {
-            if (item.contextValue && item.partitionId) {
+            // New treeview: item.nodeName, item.applicationId, item.serviceManifestName, item.replicaId, item.partitionId
+            // Legacy: item.contextValue = "nodeName|appId|manifestName", item.partitionId
+            let drNodeName: string | undefined;
+            let drAppId: string | undefined;
+            let drManifestName: string | undefined;
+            if (item.nodeName && item.applicationId && item.serviceManifestName) {
+                drNodeName = item.nodeName;
+                drAppId = item.applicationId;
+                drManifestName = item.serviceManifestName;
+            } else if (item.contextValue) {
                 const repParts = item.contextValue.split('|');
-                const replicas = await sfRest.getDeployedReplicas(repParts[0], repParts[1], repParts[2]);
+                drNodeName = repParts[0];
+                drAppId = repParts[1];
+                drManifestName = repParts[2];
+            }
+            if (drNodeName && drAppId && drManifestName && item.partitionId) {
+                const replicas = await sfRest.getDeployedReplicas(drNodeName, drAppId, drManifestName);
                 details =
                     replicas.find(
                         (r: any) =>
@@ -481,14 +620,14 @@ async function handleShowItemDetails(
         }
 
         default:
-            SfUtility.showWarning(`Unknown item type: ${item.itemType}`);
+            SfUtility.showWarning(`Unknown item type: ${normalisedItemType} (raw: ${itemType})`);
             return;
     }
 
     // ----- Write JSON to file and open -----
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
     const clusterName = clusterEndpoint.replace(/[^a-zA-Z0-9]/g, '_');
-    const fileName = `${item.itemType}-${timestamp}.json`;
+    const fileName = `${normalisedItemType}-${timestamp}.json`;
     const dirPath = path.join(context.globalStorageUri.fsPath, clusterName);
 
     await vscode.workspace.fs.createDirectory(vscode.Uri.file(dirPath));
@@ -716,7 +855,8 @@ async function handleCommandGuide(
 
     // Merge all generator maps
     const allGenerators = { ...generators, ...operationalGenerators, ...azureCliGenerators };
-    const gen = allGenerators[id];
+    const cmdId = item.commandId || id;
+    const gen = allGenerators[cmdId];
 
     if (gen) {
         const markdown = await gen();

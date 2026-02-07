@@ -61,10 +61,15 @@ export abstract class BaseTreeNode implements ITreeNode {
         try {
             this.children = await this.fetchChildren();
             this._isLoaded = true;
+            // Notify provider that our label may have changed
+            // (e.g., "nodes (...)" → "nodes (5)" after count is set in fetchChildren)
+            this.ctx.requestRefresh?.(this);
             return this.children;
         } catch (err) {
             this.children = [new ErrorNode(err, this)];
             this._isLoaded = true;
+            // Also refresh on error so ErrorNode is visible
+            this.ctx.requestRefresh?.(this);
             return this.children;
         }
     }

@@ -46,7 +46,7 @@
         },
         {
           "id": "serviceFabricManagementPanel",
-          "name": "Management",
+          "name": "Service Fabric Management",
           "type": "webview",
           "when": "serviceFabricActive"
         }
@@ -309,8 +309,8 @@
           },
           "sfClusterExplorer.newTreeView": {
             "type": "boolean",
-            "default": false,
-            "description": "Enable the new enterprise-grade tree view (experimental). Requires extension reload."
+            "default": true,
+            "description": "Enable the new enterprise-grade tree view. Set to false to use legacy tree view."
           }
         }
       }

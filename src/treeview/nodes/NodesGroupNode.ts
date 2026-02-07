@@ -33,6 +33,9 @@ export class NodesGroupNode extends BaseTreeNode {
     }
 
     protected async fetchChildren(): Promise<ITreeNode[]> {
+        // Ensure REST client is configured (cert + endpoint) before making API calls
+        await this.ctx.sfConfig.ensureRestClientReady();
+
         const cacheKey = `nodes:${this.ctx.clusterEndpoint}`;
         let nodes = this.cache.get<sfModels.NodeInfo[]>(cacheKey);
 

@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { SfRest } from '../sfRest';
 import { SfConfiguration } from '../sfConfiguration';
+import { ITreeNode } from './ITreeNode';
 
 /**
  * Typed context passed down the node hierarchy.
@@ -22,6 +23,13 @@ export interface TreeNodeContext {
 
     /** Resource URI for tree items */
     readonly resourceUri: vscode.Uri;
+
+    /**
+     * Callback to request a targeted tree refresh for a specific node.
+     * Used by nodes to update their label after fetchChildren() completes
+     * (e.g., updating "nodes (...)" → "nodes (5)").
+     */
+    readonly requestRefresh?: (node: ITreeNode) => void;
 
     // Parent chain — typed, no pipe-delimited strings
     readonly parentNodeName?: string;

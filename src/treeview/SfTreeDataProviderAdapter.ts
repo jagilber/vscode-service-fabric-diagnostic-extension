@@ -42,9 +42,15 @@ export class SfTreeDataProviderAdapter implements IClusterTreeView {
     }
 
     updateClusterInTree(endpoint: string, _sfConfig: SfConfiguration): void {
-        // New provider doesn't need explicit tree item updates —
-        // the node re-reads from SfConfiguration on next refresh.
+        // Refresh tree to pick up connection status changes
         this.provider.refresh();
+
+        // Eagerly populate group node data in background (nodes, apps, system)
+        // so labels update from "(…)" to "(N)" without waiting for user to expand.
+        this.provider.populateClusterInBackground(endpoint).catch(err => {
+            // Non-fatal: tree will still work, user can expand nodes manually
+            console.warn('Background population failed:', err);
+        });
     }
 
     setRefreshCallback?(_callback: () => Promise<void>): void {

@@ -6,13 +6,11 @@
             "label": "PowerShell Commands",
             "icon": "terminal-powershell",
             "color": "charts.blue",
-            "emoji": "\ud83d\udfe6",
             "categories": [
                 {
                     "label": "Getting Started Guides",
                     "icon": "book",
                     "color": "charts.green",
-                    "emoji": "\ud83d\udcd8",
                     "commands": [
                         { "label": "Connect to Cluster (All Methods)", "icon": "plug", "color": "charts.green", "commandId": "connect-cluster-guide", "contextValue": "powershell-command" },
                         { "label": "Cluster Diagnostics & Health", "icon": "pulse", "color": "charts.red", "commandId": "cluster-diagnostics-guide", "contextValue": "powershell-command" },
@@ -94,13 +92,11 @@
             "label": "Azure CLI Commands",
             "icon": "azure",
             "color": "charts.blue",
-            "emoji": "\ud83d\udd37",
             "categories": [
                 {
                     "label": "Setup & Connection",
                     "icon": "book",
                     "color": "charts.green",
-                    "emoji": "\ud83d\udcd8",
                     "commands": [
                         { "label": "Install Azure CLI sf Extension", "icon": "cloud-download", "color": "charts.green", "commandId": "az-sf-install-extension", "contextValue": "azure-cli-command" },
                         { "label": "Configure Cluster Connection", "icon": "plug", "color": "charts.green", "commandId": "az-sf-cluster-select", "contextValue": "azure-cli-command" },

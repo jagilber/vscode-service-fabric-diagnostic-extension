@@ -34,6 +34,9 @@ export class ApplicationsGroupNode extends BaseTreeNode {
     }
 
     protected async fetchChildren(): Promise<ITreeNode[]> {
+        // Ensure REST client is configured (cert + endpoint) before making API calls
+        await this.ctx.sfConfig.ensureRestClientReady();
+
         const endpoint = this.ctx.clusterEndpoint;
 
         // Fetch application types and applications in parallel
