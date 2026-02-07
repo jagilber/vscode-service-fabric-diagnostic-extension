@@ -58,7 +58,11 @@ jest.mock('vscode', () => ({
     },
     commands: {
         registerCommand: jest.fn(),
-        executeCommand: jest.fn()
+        executeCommand: jest.fn(),
+        getCommands: jest.fn().mockResolvedValue([])
+    },
+    extensions: {
+        getExtension: jest.fn().mockReturnValue(undefined)
     },
     Uri: {
         parse: jest.fn((str) => ({ fsPath: str, toString: () => str })),
@@ -91,10 +95,17 @@ jest.mock('vscode', () => ({
         WorkspaceFolder: 3
     },
     ExtensionContext: class ExtensionContext {
-        subscriptions = [];
+        subscriptions: any[] = [];
         globalStorageUri = { fsPath: '/mock/storage' };
         extensionUri = { fsPath: '/mock/extension' };
         extensionPath = '/mock/extension';
+        globalState = { get: jest.fn(), update: jest.fn(), keys: jest.fn().mockReturnValue([]) };
+        workspaceState = { get: jest.fn(), update: jest.fn(), keys: jest.fn().mockReturnValue([]) };
+        secrets = { get: jest.fn(), store: jest.fn(), delete: jest.fn() };
+    },
+    Disposable: class Disposable {
+        constructor(private callOnDispose: () => void) {}
+        dispose() { this.callOnDispose(); }
     }
 }), { virtual: true });
 

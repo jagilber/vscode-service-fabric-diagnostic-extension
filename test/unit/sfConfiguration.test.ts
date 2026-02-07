@@ -12,11 +12,18 @@ describe('SfConfiguration', () => {
     beforeEach(() => {
         mockContext = {
             extensionPath: '/mock/path',
+            extensionUri: { fsPath: '/mock/extension' },
             globalStorageUri: { fsPath: '/mock/storage' },
-            subscriptions: []
+            subscriptions: [],
+            globalState: { get: jest.fn(), update: jest.fn(), keys: jest.fn().mockReturnValue([]) },
+            workspaceState: { get: jest.fn(), update: jest.fn(), keys: jest.fn().mockReturnValue([]) },
+            secrets: { get: jest.fn(), store: jest.fn(), delete: jest.fn() }
         };
 
-        sfConfig = new SfConfiguration(mockContext, mockData.mockClusterConfig);
+        sfConfig = new SfConfiguration(mockContext, {
+            ...mockData.mockClusterConfig,
+            clusterCertificate: {} // Prevent real TLS connection attempt
+        });
     });
 
     describe('Initialization', () => {
@@ -24,12 +31,18 @@ describe('SfConfiguration', () => {
             expect(sfConfig.getClusterEndpoint()).toBe(mockData.mockClusterConfig.endpoint);
         });
 
-        test('should initialize with cluster name', () => {
-            expect(sfConfig.getClusterName()).toBe(mockData.mockClusterConfig.name);
+        test('should set cluster name from endpoint hostname', () => {
+            // SfConfiguration derives clusterName from url.parse(endpoint).hostname
+            // For 'http://localhost:19080', hostname is 'localhost'
+            const treeItem = sfConfig.createClusterViewTreeItem();
+            expect(treeItem.label).toContain('localhost');
         });
 
         test('should handle secure cluster configuration', () => {
-            const secureConfig = new SfConfiguration(mockContext, mockData.mockSecureClusterConfig);
+            const secureConfig = new SfConfiguration(mockContext, {
+                ...mockData.mockSecureClusterConfig,
+                clusterCertificate: {} // Prevent real TLS connection attempt
+            });
             
             expect(secureConfig.getClusterEndpoint()).toBe(mockData.mockSecureClusterConfig.endpoint);
             expect(secureConfig.getClusterEndpoint()).toContain('https://');
@@ -105,7 +118,8 @@ describe('SfConfiguration', () => {
             const treeItem = sfConfig.createClusterViewTreeItem();
 
             expect(treeItem).toBeDefined();
-            expect(treeItem.label).toContain(mockData.mockClusterConfig.name);
+            // clusterName is set from url.parse(endpoint).hostname => 'localhost'
+            expect(treeItem.label).toContain('localhost');
         });
     });
 });

@@ -27,19 +27,8 @@ export class serviceFabricClusterView implements vscode.TreeDataProvider<TreeIte
         
         this.view = vscode.window.createTreeView('serviceFabricClusterView', { treeDataProvider: this, showCollapseAll: true });
         //context.subscriptions.push(this.view);
-        vscode.commands.registerCommand('serviceFabricClusterView.reveal', async () => {
-            const key = await vscode.window.showInputBox({ placeHolder: 'Type the label of the item to reveal' });
-            if (key) {
-                await this.view.reveal(this.getTreeItem(new TreeItem(key)), { focus: true, select: false, expand: true });
-                //await this.view.reveal({ key }, { focus: true, select: false, expand: true });
-            }
-        });
-        vscode.commands.registerCommand('serviceFabricClusterView.changeTitle', async () => {
-            const title = await vscode.window.showInputBox({ prompt: 'Type the new title for the Test View', placeHolder: this.view.title });
-            if (title) {
-                this.view.title = title;
-            }
-        });
+        // NOTE: 'serviceFabricClusterView.reveal' and 'serviceFabricClusterView.changeTitle'
+        // are now registered centrally in ViewCommands.ts via the CommandRegistry.
     }
 
     public addTreeItem(treeItem: TreeItem, sfConfig?: SfConfiguration): void {
@@ -300,6 +289,8 @@ export class serviceFabricClusterView implements vscode.TreeDataProvider<TreeIte
                 return [];
             }
             
+            await config.ensureRestClientReady();
+            
             // Fetch nodes with 5-second timeout
             SfUtility.outputLog('⏳ Fetching nodes with timeout...', null, debugLevel.info);
             const timeoutPromise = new Promise<never>((_, reject) => {
@@ -417,6 +408,17 @@ export class serviceFabricClusterView implements vscode.TreeDataProvider<TreeIte
             return;
         }
         
+        // Ensure REST client is ready (cert + endpoint configured) before any API calls
+        const config = this.getConfigForTreeItem(clusterItem);
+        if (config) {
+            try {
+                await config.ensureRestClientReady();
+            } catch (error) {
+                SfUtility.outputLog('❌ Failed to ensure REST client ready for background population', error, debugLevel.error);
+                return; // Can't populate without a configured REST client
+            }
+        }
+        
         const nodesGroup = clusterItem.children.find(c => c.itemType === 'nodes-group');
         const appsGroup = clusterItem.children.find(c => c.itemType === 'applications-group');
         const systemGroup = clusterItem.children.find(c => c.itemType === 'system-services-group');
@@ -434,6 +436,14 @@ export class serviceFabricClusterView implements vscode.TreeDataProvider<TreeIte
         Promise.all(promises).then(() => {
             SfUtility.outputLog('✅ Background population complete', null, debugLevel.info);
             
+            // Update the cluster root icon with health state
+            if (config) {
+                const clusterHealth = config.getClusterHealth();
+                if (clusterHealth) {
+                    clusterItem.iconPath = config.getIcon(clusterHealth.aggregatedHealthState) || new vscode.ThemeIcon('cloud');
+                }
+            }
+            
             // Refresh the entire cluster item to update all icons
             this._onDidChangeTreeData.fire(clusterItem);
         });
@@ -444,6 +454,7 @@ export class serviceFabricClusterView implements vscode.TreeDataProvider<TreeIte
             const config = this.getConfigForTreeItem(nodesGroup);
             if (!config) throw new Error('Config not found');
             
+            await config.ensureRestClientReady();
             const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000));
             await Promise.race([config.populateNodes(), timeoutPromise]);
             
@@ -469,6 +480,7 @@ export class serviceFabricClusterView implements vscode.TreeDataProvider<TreeIte
             const config = this.getConfigForTreeItem(appsGroup);
             if (!config) throw new Error('Config not found');
             
+            await config.ensureRestClientReady();
             const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000));
             await Promise.race([config.populateApplications(), timeoutPromise]);
             
@@ -494,6 +506,7 @@ export class serviceFabricClusterView implements vscode.TreeDataProvider<TreeIte
             const config = this.getConfigForTreeItem(systemGroup);
             if (!config) throw new Error('Config not found');
             
+            await config.ensureRestClientReady();
             const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000));
             await Promise.race([config.populateSystemServices('System'), timeoutPromise]);
             
@@ -519,6 +532,8 @@ export class serviceFabricClusterView implements vscode.TreeDataProvider<TreeIte
         try {
             const config = this.getConfigForTreeItem(healthItem);
             if (!config) throw new Error('Config not found');
+            
+            await config.ensureRestClientReady();
             
             const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000));
             await Promise.race([config.populateClusterHealth(), timeoutPromise]);
@@ -601,6 +616,8 @@ export class serviceFabricClusterView implements vscode.TreeDataProvider<TreeIte
                 return [];
             }
             
+            await config.ensureRestClientReady();
+            
             // Fetch applications with 5-second timeout
             const timeoutPromise = new Promise<never>((_, reject) => {
                 setTimeout(() => reject(new Error('Applications request timed out after 5 seconds')), 5000);
@@ -644,6 +661,8 @@ export class serviceFabricClusterView implements vscode.TreeDataProvider<TreeIte
                 systemGroupItem.label = 'system (error)';
                 return [];
             }
+            
+            await config.ensureRestClientReady();
             
             // Fetch system services with 5-second timeout
             const timeoutPromise = new Promise<never>((_, reject) => {

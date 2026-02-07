@@ -1,0 +1,149 @@
+{
+    "$schema": "./commands-schema.json",
+    "$comment": "Command tree data for the SF Cluster Explorer. Each entry maps to a CommandLeafNode in the tree. Decision 1b: data-driven commands tree.",
+    "sections": [
+        {
+            "label": "PowerShell Commands",
+            "icon": "terminal-powershell",
+            "color": "charts.blue",
+            "emoji": "\ud83d\udfe6",
+            "categories": [
+                {
+                    "label": "Getting Started Guides",
+                    "icon": "book",
+                    "color": "charts.green",
+                    "emoji": "\ud83d\udcd8",
+                    "commands": [
+                        { "label": "Connect to Cluster (All Methods)", "icon": "plug", "color": "charts.green", "commandId": "connect-cluster-guide", "contextValue": "powershell-command" },
+                        { "label": "Cluster Diagnostics & Health", "icon": "pulse", "color": "charts.red", "commandId": "cluster-diagnostics-guide", "contextValue": "powershell-command" },
+                        { "label": "Node Management Operations", "icon": "server-process", "color": "charts.blue", "commandId": "node-management-guide", "contextValue": "powershell-command" },
+                        { "label": "Application Management", "icon": "package", "color": "charts.purple", "commandId": "application-management-guide", "contextValue": "powershell-command" }
+                    ]
+                },
+                {
+                    "label": "Cluster Operations",
+                    "icon": "server",
+                    "color": "charts.blue",
+                    "commands": [
+                        { "label": "Start Cluster Upgrade", "icon": "cloud-upload", "color": "charts.blue", "commandId": "start-cluster-upgrade", "contextValue": "cluster-command" },
+                        { "label": "Rollback Cluster Upgrade", "icon": "debug-reverse-continue", "color": "charts.orange", "commandId": "rollback-cluster-upgrade", "contextValue": "cluster-command" },
+                        { "label": "Update Cluster Configuration", "icon": "settings-gear", "color": "charts.green", "commandId": "update-cluster-config", "contextValue": "cluster-command" },
+                        { "label": "Recover System Partitions", "icon": "debug-restart", "color": "charts.red", "commandId": "recover-system-partitions", "contextValue": "cluster-command" },
+                        { "label": "Reset Partition Loads", "icon": "refresh", "color": "charts.purple", "commandId": "reset-partition-loads", "contextValue": "cluster-command" }
+                    ]
+                },
+                {
+                    "label": "Application Lifecycle",
+                    "icon": "package",
+                    "color": "charts.green",
+                    "commands": [
+                        { "label": "Provision Application Type", "icon": "cloud-download", "color": "charts.green", "commandId": "provision-app-type", "contextValue": "app-command" },
+                        { "label": "Create Application", "icon": "add", "color": "charts.green", "commandId": "create-application", "contextValue": "app-command" },
+                        { "label": "Start Application Upgrade", "icon": "rocket", "color": "charts.blue", "commandId": "start-app-upgrade", "contextValue": "app-command" },
+                        { "label": "Rollback Application Upgrade", "icon": "debug-reverse-continue", "color": "charts.orange", "commandId": "rollback-app-upgrade", "contextValue": "app-command" }
+                    ]
+                },
+                {
+                    "label": "Partition & Replica Operations",
+                    "icon": "database",
+                    "color": "charts.purple",
+                    "commands": [
+                        { "label": "Move Primary Replica", "icon": "arrow-right", "color": "charts.blue", "commandId": "move-primary-replica", "contextValue": "partition-command" },
+                        { "label": "Move Secondary Replica", "icon": "arrow-both", "color": "charts.blue", "commandId": "move-secondary-replica", "contextValue": "partition-command" },
+                        { "label": "Reset Partition Load", "icon": "refresh", "color": "charts.purple", "commandId": "reset-partition-load", "contextValue": "partition-command" },
+                        { "label": "Report Custom Health", "icon": "pulse", "color": "charts.red", "commandId": "report-health", "contextValue": "partition-command" }
+                    ]
+                },
+                {
+                    "label": "Testing & Chaos",
+                    "icon": "beaker",
+                    "color": "charts.yellow",
+                    "commands": [
+                        { "label": "Start Chaos Test", "icon": "beaker", "color": "charts.yellow", "commandId": "start-chaos", "contextValue": "chaos-command" },
+                        { "label": "Stop Chaos Test", "icon": "debug-stop", "color": "charts.red", "commandId": "stop-chaos", "contextValue": "chaos-command" },
+                        { "label": "Query Chaos Events", "icon": "search", "color": "charts.blue", "commandId": "query-chaos-events", "contextValue": "chaos-command" },
+                        { "label": "Restart Partition (Data Loss)", "icon": "warning", "color": "charts.orange", "commandId": "restart-partition", "contextValue": "chaos-command" }
+                    ]
+                },
+                {
+                    "label": "Backup & Restore",
+                    "icon": "archive",
+                    "color": "charts.purple",
+                    "commands": [
+                        { "label": "Enable Backup", "icon": "archive", "color": "charts.green", "commandId": "enable-backup", "contextValue": "backup-command" },
+                        { "label": "Disable Backup", "icon": "circle-slash", "color": "charts.orange", "commandId": "disable-backup", "contextValue": "backup-command" },
+                        { "label": "Trigger Ad-hoc Backup", "icon": "cloud-upload", "color": "charts.blue", "commandId": "trigger-backup", "contextValue": "backup-command" },
+                        { "label": "Get Backup Progress", "icon": "sync", "color": "charts.blue", "commandId": "get-backup-progress", "contextValue": "backup-command" },
+                        { "label": "Restore from Backup", "icon": "cloud-download", "color": "charts.purple", "commandId": "restore-backup", "contextValue": "backup-command" }
+                    ]
+                },
+                {
+                    "label": "Repair & Infrastructure",
+                    "icon": "tools",
+                    "color": "charts.orange",
+                    "commands": [
+                        { "label": "View Active Repair Tasks", "icon": "list-tree", "color": "charts.blue", "commandId": "view-repair-tasks", "contextValue": "repair-command" },
+                        { "label": "Create Repair Task", "icon": "tools", "color": "charts.green", "commandId": "create-repair-task", "contextValue": "repair-command" },
+                        { "label": "Cancel Repair Task", "icon": "close", "color": "charts.red", "commandId": "cancel-repair-task", "contextValue": "repair-command" },
+                        { "label": "Force Approve Repair Task", "icon": "check-all", "color": "charts.orange", "commandId": "force-approve-repair", "contextValue": "repair-command" }
+                    ]
+                }
+            ]
+        },
+        {
+            "label": "Azure CLI Commands",
+            "icon": "azure",
+            "color": "charts.blue",
+            "emoji": "\ud83d\udd37",
+            "categories": [
+                {
+                    "label": "Setup & Connection",
+                    "icon": "book",
+                    "color": "charts.green",
+                    "emoji": "\ud83d\udcd8",
+                    "commands": [
+                        { "label": "Install Azure CLI sf Extension", "icon": "cloud-download", "color": "charts.green", "commandId": "az-sf-install-extension", "contextValue": "azure-cli-command" },
+                        { "label": "Configure Cluster Connection", "icon": "plug", "color": "charts.green", "commandId": "az-sf-cluster-select", "contextValue": "azure-cli-command" },
+                        { "label": "Authenticate with Azure", "icon": "key", "color": "charts.blue", "commandId": "az-login", "contextValue": "azure-cli-command" }
+                    ]
+                },
+                {
+                    "label": "Cluster Management",
+                    "icon": "server",
+                    "color": "charts.blue",
+                    "commands": [
+                        { "label": "Get Cluster Health", "icon": "heart", "color": "charts.green", "commandId": "az-sf-cluster-health", "contextValue": "azure-cli-command" },
+                        { "label": "Show Cluster Manifest", "icon": "file-code", "color": "charts.blue", "commandId": "az-sf-cluster-manifest", "contextValue": "azure-cli-command" },
+                        { "label": "List Nodes", "icon": "server", "color": "charts.blue", "commandId": "az-sf-node-list", "contextValue": "azure-cli-command" }
+                    ]
+                },
+                {
+                    "label": "Application Management",
+                    "icon": "package",
+                    "color": "charts.purple",
+                    "commands": [
+                        { "label": "List Applications", "icon": "list-tree", "color": "charts.purple", "commandId": "az-sf-application-list", "contextValue": "azure-cli-command" },
+                        { "label": "Get Application Health", "icon": "heart", "color": "charts.green", "commandId": "az-sf-application-health", "contextValue": "azure-cli-command" },
+                        { "label": "Delete Application", "icon": "trash", "color": "charts.red", "commandId": "az-sf-application-delete", "contextValue": "azure-cli-command" }
+                    ]
+                },
+                {
+                    "label": "Service & Replica Management",
+                    "icon": "gear",
+                    "color": "charts.blue",
+                    "commands": [
+                        { "label": "List Services", "icon": "list-tree", "color": "charts.blue", "commandId": "az-sf-service-list", "contextValue": "azure-cli-command" }
+                    ]
+                },
+                {
+                    "label": "Query & Diagnostics",
+                    "icon": "search",
+                    "color": "charts.purple",
+                    "commands": [
+                        { "label": "Query & Diagnostics Guide", "icon": "search", "color": "charts.purple", "commandId": "az-sf-query-guide", "contextValue": "azure-cli-command" }
+                    ]
+                }
+            ]
+        }
+    ]
+}

@@ -128,7 +128,11 @@ export class SfRest implements IHttpOptionsProvider {
         return this.sfApi;
     }
 
-    public async connectToCluster(endpoint: string, clusterCertificate?: clusterCertificate | undefined): Promise<any> {
+    /**
+     * Configure REST clients with endpoint and certificate (no network calls).
+     * Safe to call multiple times — will reconfigure each time.
+     */
+    public configureClients(endpoint: string, clusterCertificate?: clusterCertificate | undefined): void {
         if (clusterCertificate) {
             this.certificate = clusterCertificate.certificate;
             this.key = (clusterCertificate.key as unknown) as Buffer;
@@ -158,7 +162,13 @@ export class SfRest implements IHttpOptionsProvider {
         });
         
         SfUtility.outputLog(`✅ Clients initialized - using ${this.useDirectRest ? 'DIRECT REST' : 'AZURE SDK'}`, null, debugLevel.info);
-        
+    }
+
+    /**
+     * Configure REST clients and verify connectivity by fetching cluster version.
+     */
+    public async connectToCluster(endpoint: string, clusterCertificate?: clusterCertificate | undefined): Promise<any> {
+        this.configureClients(endpoint, clusterCertificate);
         await this.getClusterVersion();
     }
 
@@ -913,23 +923,37 @@ export class SfRest implements IHttpOptionsProvider {
     }
 
     public async getClusterServerCertificate(clusterHttpEndpoint: string, port = SfConstants.SF_HTTP_GATEWAY_PORT): Promise<tls.PeerCertificate | undefined> {
+        // Parse hostname and port from the URL
+        const parsedUri = url.parse(clusterHttpEndpoint);
+        const host = parsedUri.hostname || 'localhost';
+        const resolvedPort = parsedUri.port ? parseInt(parsedUri.port) : port;
+
         const tlsoptions: tls.ConnectionOptions = {
-            host: clusterHttpEndpoint,
-            port: port,
+            host: host,
+            port: resolvedPort,
             rejectUnauthorized: false,
         };
 
-        let cert: tls.PeerCertificate | undefined;
+        return new Promise<tls.PeerCertificate | undefined>((resolve) => {
+            const tlsClient = tls.connect(tlsoptions, () => {
+                const cert = tlsClient.getPeerCertificate();
+                SfUtility.outputLog(`tls response: fingerprint=${cert?.fingerprint}, CN=${cert?.subject?.CN}`, null, debugLevel.info);
+                tlsClient.end();
+                resolve(cert && cert.fingerprint ? cert : undefined);
+            });
 
-        const tlsClient = await tls.connect(tlsoptions, () => {
-            SfUtility.outputLog('tls response:' + tlsClient.getPeerCertificate());
-            cert = tlsClient.getPeerCertificate();
-            tlsClient.end();
+            tlsClient.on('error', (error) => {
+                SfUtility.outputLog('getClusterServerCertificate: TLS connection error', error, debugLevel.error);
+                resolve(undefined);
+            });
+
+            // Timeout after 5 seconds
+            tlsClient.setTimeout(5000, () => {
+                SfUtility.outputLog('getClusterServerCertificate: TLS connection timed out', null, debugLevel.warn);
+                tlsClient.destroy();
+                resolve(undefined);
+            });
         });
-
-
-        SfUtility.outputLog('SfRestClient:getServerCertificate');
-        return cert;
     }
 
 

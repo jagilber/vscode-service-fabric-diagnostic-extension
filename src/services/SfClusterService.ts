@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
-import { SfConfiguration, clusterCertificate } from '../sfConfiguration';
+import { SfConfiguration } from '../sfConfiguration';
 import { SfRest } from '../sfRest';
-import { SfPs } from '../sfPs';
 import { SfUtility, debugLevel } from '../sfUtility';
 import { 
     ClusterConnectionError, 
@@ -14,12 +13,10 @@ import {
  * Handles authentication, connection establishment, and data population
  */
 export class SfClusterService {
-    private readonly ps: SfPs;
     private readonly context: vscode.ExtensionContext;
 
     constructor(context: vscode.ExtensionContext) {
         this.context = context;
-        this.ps = new SfPs();
     }
 
     /**
@@ -36,17 +33,10 @@ export class SfClusterService {
             const endpoint = config.getClusterEndpoint();
             SfUtility.outputLog(`Connecting to cluster: ${endpoint}`, null, debugLevel.info);
             
-            // Only retrieve certificates for HTTPS endpoints
-            const isHttps = endpoint.toLowerCase().startsWith('https');
-            const clusterCertificateInfo: clusterCertificate | undefined = config.getClusterCertificate();
+            // Ensure REST client is fully configured (discovers cert, retrieves PEM, configures clients)
+            await config.ensureRestClientReady();
             
-            if (isHttps && clusterCertificateInfo && (!clusterCertificateInfo.certificate || !clusterCertificateInfo.key)) {
-                await this.retrieveCertificate(clusterCertificateInfo, endpoint);
-            }
-
-            SfUtility.outputLog(`Certificate length: ${clusterCertificateInfo?.certificate?.length}`, null, debugLevel.debug);
-            
-            // Just verify connection works - don't populate data (lazy loading)
+            // Verify connection works - don't populate data (lazy loading)
             await config.getSfRest().getClusterVersion();
             
             SfUtility.showInformation(`Successfully connected to cluster: ${endpoint}`);
@@ -65,35 +55,6 @@ export class SfClusterService {
             }
             
             throw new ClusterConnectionError(message, { endpoint, cause: error });
-        }
-    }
-
-    /**
-     * Retrieve certificate from local certificate store
-     * @param certInfo Certificate information
-     * @param endpoint Cluster endpoint (for error context)
-     */
-    private async retrieveCertificate(
-        certInfo: clusterCertificate,
-        endpoint: string
-    ): Promise<void> {
-        try {
-            SfUtility.outputLog('Retrieving certificate from local store', null, debugLevel.debug);
-            
-            certInfo.certificate = await this.ps.getPemCertFromLocalCertStore(
-                certInfo.thumbprint ?? certInfo.commonName!
-            );
-            certInfo.key = await this.ps.getPemKeyFromLocalCertStore(
-                certInfo.thumbprint ?? certInfo.commonName!
-            );
-            
-            SfUtility.outputLog('Certificate retrieved successfully', null, debugLevel.debug);
-        } catch (certError) {
-            SfUtility.outputLog('Failed to retrieve certificate from local store', certError, debugLevel.error);
-            throw new CertificateError(
-                'Failed to retrieve certificate for cluster authentication',
-                { endpoint, cause: certError }
-            );
         }
     }
 

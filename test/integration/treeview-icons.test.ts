@@ -6,9 +6,19 @@ import { SfConfiguration } from '../../src/sfConfiguration';
 describe('TreeView Icons Validation Tests - RED/GREEN', () => {
     const testEndpoint = 'http://localhost:19080';
     let config: SfConfiguration;
+    let mockContext: any;
     
     beforeEach(() => {
-        config = new SfConfiguration(testEndpoint);
+        mockContext = {
+            subscriptions: [],
+            extensionPath: '/mock/extension',
+            extensionUri: { fsPath: '/mock/extension' },
+            globalStorageUri: { fsPath: '/mock/storage' },
+            globalState: { get: jest.fn(), update: jest.fn(), keys: jest.fn().mockReturnValue([]) },
+            workspaceState: { get: jest.fn(), update: jest.fn(), keys: jest.fn().mockReturnValue([]) },
+            secrets: { get: jest.fn(), store: jest.fn(), delete: jest.fn() }
+        };
+        config = new SfConfiguration(mockContext, { endpoint: testEndpoint, clusterCertificate: {} });
     });
 
     test('RED: getIcon should NEVER return undefined for valid health states', () => {

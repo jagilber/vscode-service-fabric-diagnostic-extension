@@ -70,6 +70,12 @@ describe('SfRest', () => {
         });
 
         test('should activate node', async () => {
+            // activateNode checks node status first - mock a deactivated node so enableNode is called
+            mockSfApi.getNodeInfo = jest.fn().mockResolvedValue({
+                name: '_Node_0',
+                nodeStatus: 'Disabled',
+                nodeDeactivationInfo: { nodeDeactivationIntent: 'Pause' }
+            });
             await sfRest.activateNode('_Node_0');
             
             expect(mockSfApi.enableNode).toHaveBeenCalledWith('_Node_0');
@@ -85,11 +91,16 @@ describe('SfRest', () => {
         });
 
         test('should restart node', async () => {
+            // restartNode looks for node in response.items (or .Items)
+            mockSfApi.getNodeInfoList = jest.fn().mockResolvedValue({
+                items: mockData.mockNodes
+            });
             await sfRest.restartNode('_Node_0');
             
+            // Node _Node_0 has instanceId '132750000000000000' in mock data
             expect(mockSfApi.restartNode).toHaveBeenCalledWith(
                 '_Node_0',
-                expect.objectContaining({ nodeInstanceId: '0' })
+                expect.objectContaining({ nodeInstanceId: '132750000000000000' })
             );
         });
 

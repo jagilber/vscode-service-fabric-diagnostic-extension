@@ -119,6 +119,8 @@ export class SfConfiguration {
     private expandedPartitions: Set<string> = new Set();
     // Cache for image store availability check (avoid re-parsing manifest)
     private cachedIsNativeImageStore: boolean | null = null;
+    // Concurrency guard for ensureRestClientReady
+    private _restClientReadyPromise: Promise<void> | null = null;
 
     constructor(context: vscode.ExtensionContext, clusterEndpointInfo?: clusterEndpointInfo) {
         this.context = context;
@@ -532,7 +534,8 @@ export class SfConfiguration {
                 iconPath: this.getIcon(this.clusterHealth?.aggregatedHealthState) || new vscode.ThemeIcon('cloud'),
                 contextValue: 'cluster', // Enable context menu for cluster items
                 itemType: 'cluster',
-                itemId: this.clusterHttpEndpoint
+                itemId: this.clusterHttpEndpoint,
+                clusterEndpoint: this.clusterHttpEndpoint
             });
 
             SfUtility.outputLog('clusterViewTreeItem created successfully', null, debugLevel.info);
@@ -562,6 +565,66 @@ export class SfConfiguration {
     
     public getClusterHealth(): any {
         return this.clusterHealth;
+    }
+    
+    /**
+     * Ensure REST client is configured with endpoint and certificate (PEM) before making API calls.
+     * For HTTPS clusters without cert info, discovers server cert via TLS handshake.
+     * Retrieves PEM cert+key from local cert store if needed. Idempotent and concurrency-safe.
+     */
+    public async ensureRestClientReady(): Promise<void> {
+        // Concurrency guard — if another call is already in progress, share that promise
+        if (this._restClientReadyPromise) {
+            return this._restClientReadyPromise;
+        }
+        this._restClientReadyPromise = this._doEnsureRestClientReady();
+        try {
+            await this._restClientReadyPromise;
+        } finally {
+            this._restClientReadyPromise = null;
+        }
+    }
+
+    private async _doEnsureRestClientReady(): Promise<void> {
+        const endpoint = this.clusterHttpEndpoint;
+        if (!endpoint) {
+            SfUtility.outputLog('ensureRestClientReady: no endpoint set', null, debugLevel.warn);
+            return;
+        }
+
+        const isHttps = endpoint.toLowerCase().startsWith('https');
+
+        if (isHttps && this.clusterCertificate) {
+            // Step 1: If no thumbprint/CN yet, discover from server certificate via TLS handshake
+            if (!this.clusterCertificate.thumbprint && !this.clusterCertificate.commonName) {
+                try {
+                    SfUtility.outputLog('ensureRestClientReady: No cert identity — discovering from server TLS handshake...', null, debugLevel.info);
+                    await this.getClusterCertificateFromServer(endpoint);
+                    SfUtility.outputLog(`ensureRestClientReady: Discovered thumbprint=${PiiObfuscation.thumbprint(this.clusterCertificate.thumbprint)}, CN=${this.clusterCertificate.commonName}`, null, debugLevel.info);
+                } catch (tlsError) {
+                    SfUtility.outputLog('ensureRestClientReady: Failed to discover server cert via TLS', tlsError, debugLevel.error);
+                    // Continue anyway — configureClients without cert will be attempted
+                }
+            }
+
+            // Step 2: If we now have thumbprint/CN but no PEM, retrieve from local cert store
+            if ((this.clusterCertificate.thumbprint || this.clusterCertificate.commonName)
+                && (!this.clusterCertificate.certificate || !this.clusterCertificate.key)) {
+                try {
+                    const identifier = this.clusterCertificate.thumbprint ?? this.clusterCertificate.commonName!;
+                    SfUtility.outputLog(`ensureRestClientReady: Retrieving PEM cert for ${PiiObfuscation.thumbprint(identifier)}`, null, debugLevel.info);
+                    this.clusterCertificate.certificate = await this.sfPs.getPemCertFromLocalCertStore(identifier);
+                    this.clusterCertificate.key = await this.sfPs.getPemKeyFromLocalCertStore(identifier);
+                    SfUtility.outputLog('ensureRestClientReady: PEM cert+key retrieved', null, debugLevel.info);
+                } catch (certError) {
+                    SfUtility.outputLog('ensureRestClientReady: Failed to retrieve PEM cert', certError, debugLevel.error);
+                    throw certError;
+                }
+            }
+        }
+
+        // Configure REST client with endpoint and cert (no network call)
+        this.sfRest.configureClients(endpoint, this.clusterCertificate);
     }
         
     public getSfRest(): SfRest {
@@ -595,7 +658,8 @@ export class SfConfiguration {
         if (serverCertificate) {
             SfUtility.outputLog(`sfConfiguration:getClusterCertificateFromServer - thumbprint: ${PiiObfuscation.thumbprint(serverCertificate.fingerprint)}, CN: ${PiiObfuscation.commonName(serverCertificate.subject.CN)}`, null, debugLevel.info);
             //this.clusterCertificate = serverCertificate.raw.toString('base64');
-            this.clusterCertificate.thumbprint = serverCertificate.fingerprint;
+            // Node.js fingerprint uses colons (F8:39:ED:...) but Windows cert store needs plain hex (F839ED...)
+            this.clusterCertificate.thumbprint = serverCertificate.fingerprint.replace(/:/g, '');
             this.clusterCertificate.commonName = serverCertificate.subject.CN;
         }
         else {
@@ -719,7 +783,8 @@ export class SfConfiguration {
             this.cachedIsNativeImageStore = null; // Clear image store cache on refresh
             // Don't clear expandedPartitions - keep tracking which ones user has opened
             
-            this.sfRest.connectToCluster(this.clusterHttpEndpoint, this.clusterCertificate!);
+            // Ensure REST client is configured (retrieves PEM cert if needed)
+            await this.ensureRestClientReady();
             
             // Fetch data in parallel for better performance
             try {

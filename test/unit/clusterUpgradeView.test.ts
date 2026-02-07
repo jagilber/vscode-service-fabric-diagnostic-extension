@@ -80,6 +80,12 @@ describe('ClusterUpgradeView', () => {
             
             // Verify HTML does NOT have unclosed template literals or syntax errors
             assert.ok(!html.includes('${'), 'HTML must not contain unresolved template literals');
+        });
+
+        test('should detect in-progress upgrade AND generate correct HTML', async () => {
+            const mockSfRest = new MockSfRest();
+            const view = new ClusterUpgradeView(mockContext, mockSfRest as any);
+
             const response: sfModels.ClusterUpgradeProgressObject = {
                 codeVersion: '11.3.365.1',
                 configVersion: 'config-v2',
@@ -113,17 +119,18 @@ describe('ClusterUpgradeView', () => {
             const mockSfRest = new MockSfRest();
             const view = new ClusterUpgradeView(mockContext, mockSfRest as any);
 
-            mockSfRest.setMockResponse({
+            const upgradeData: sfModels.ClusterUpgradeProgressObject = {
                 codeVersion: '11.3.365.1',
                 upgradeState: 'RollingForwardInProgress',
                 startTimestampUtc: new Date().toISOString(),
                 upgradeDurationInMilliseconds: '120000', // 2 minutes
                 nextUpgradeDomain: 'UD2',
                 isNodeByNode: false
-            });
+            };
+            mockSfRest.setMockResponse(upgradeData);
 
             await view.show();
-            const html = view.getHtmlContent(mockSfRest.mockUpgradeProgress!);
+            const html = view.getHtmlContent(upgradeData);
             assert.ok(html.includes('UD2'), 'HTML should show next upgrade domain');
         });
 

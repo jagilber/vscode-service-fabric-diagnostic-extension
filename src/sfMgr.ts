@@ -21,6 +21,10 @@ import { SfClusterService } from './services/SfClusterService';
 import * as xmlConverter from 'xml-js';
 //import { serviceFabricClusterViewDragAndDrop } from './serviceFabricClusterViewDragAndDrop';
 import { serviceFabricClusterView, TreeItem } from './serviceFabricClusterView';
+import { IClusterTreeView } from './treeview/IClusterTreeView';
+import { SfTreeDataProvider } from './treeview/SfTreeDataProvider';
+import { SfTreeDataProviderAdapter } from './treeview/SfTreeDataProviderAdapter';
+import { LegacyTreeViewAdapter } from './treeview/LegacyTreeViewAdapter';
 import * as http from 'http';
 import * as https from 'https';
 import * as fs from 'fs';
@@ -41,7 +45,9 @@ export class SfMgr {
     // private certificate = "";
     private subscriptionId = "";
     private context: vscode.ExtensionContext;
-    public sfClusterView: serviceFabricClusterView;
+    public sfClusterView: IClusterTreeView;
+    /** Direct access to legacy view — only used when legacy mode is active. */
+    private _legacyView?: serviceFabricClusterView;
     //public sfClusterViewDD: serviceFabricClusterViewDragAndDrop;
     private sfRest: SfRest;
     // private sfRestClient: SfRestClient;
@@ -66,12 +72,26 @@ export class SfMgr {
             SfUtility.outputLog('SfMgr: Starting constructor...', null, debugLevel.info);
             
             this.context = context;
-            this.sfClusterView = new serviceFabricClusterView(context);
+            // Feature flag: use new enterprise tree view or legacy
+            const useNewTreeView = SfExtSettings.getSetting(sfExtSettingsList.newTreeView) as boolean;
             
-            // Set up auto-refresh callback
-            this.sfClusterView.setRefreshCallback(async () => {
-                await this.refreshAllClusters();
-            });
+            if (useNewTreeView) {
+                SfUtility.outputLog('SfMgr: Using NEW SfTreeDataProvider (enterprise tree view)', null, debugLevel.info);
+                const provider = new SfTreeDataProvider(context);
+                this.sfClusterView = new SfTreeDataProviderAdapter(provider);
+            } else {
+                SfUtility.outputLog('SfMgr: Using LEGACY serviceFabricClusterView', null, debugLevel.info);
+                this._legacyView = new serviceFabricClusterView(context);
+                const adapter = new LegacyTreeViewAdapter(this._legacyView);
+                this.sfClusterView = adapter;
+            }
+            
+            // Set up auto-refresh callback (legacy only — new provider handles internally)
+            if (this.sfClusterView.setRefreshCallback) {
+                this.sfClusterView.setRefreshCallback(async () => {
+                    await this.refreshAllClusters();
+                });
+            }
 
             // set azure log level and output
             setLogLevel("verbose");
@@ -193,9 +213,7 @@ export class SfMgr {
 
         // Create and add tree item BEFORE connecting (so it shows even if connection fails)
         try {
-            const treeItem = this.sfConfig.createClusterViewTreeItem();
-            treeItem.tooltip = `Connecting to ${clusterEndpoint}...`;
-            this.sfClusterView.addTreeItem(treeItem, this.sfConfig);
+            this.sfClusterView.addClusterToTree(this.sfConfig, this.sfConfig.getSfRest());
         } catch (treeError) {
             SfUtility.outputLog('Failed to create tree view', treeError, debugLevel.error);
             SfUtility.showWarning(`Failed to create tree view. Check Output panel for details.`);
@@ -206,12 +224,8 @@ export class SfMgr {
         try {
             await this.clusterService.connectToCluster(this.sfConfig, this.sfRest);
             
-            // Pass sfRest instance to tree view for lazy loading
-            this.sfClusterView.setSfRest(this.sfConfig.getSfRest());
-            
-            // Update tree item with success and set as active
-            const successTreeItem = this.sfConfig.createClusterViewTreeItem();
-            this.sfClusterView.updateTreeItem(clusterEndpoint, successTreeItem);
+            // Update tree with success and set as active
+            this.sfClusterView.updateClusterInTree(clusterEndpoint, this.sfConfig);
             
             // Automatically set as active cluster
             this.setActiveCluster(clusterEndpoint);
@@ -219,11 +233,8 @@ export class SfMgr {
             // Connection failed but keep tree item with error status
             SfUtility.outputLog('Failed to connect to cluster', connectionError, debugLevel.error);
             
-            // Update tree item with error status
-            const errorTreeItem = this.sfConfig.createClusterViewTreeItem();
-            errorTreeItem.tooltip = `Connection failed: ${connectionError instanceof Error ? connectionError.message : String(connectionError)}`;
-            errorTreeItem.iconPath = new vscode.ThemeIcon('error', new vscode.ThemeColor('errorForeground'));
-            this.sfClusterView.updateTreeItem(clusterEndpoint, errorTreeItem);
+            // Update tree with error status
+            this.sfClusterView.updateClusterInTree(clusterEndpoint, this.sfConfig);
             
             throw connectionError; // Re-throw so caller knows it failed
         }

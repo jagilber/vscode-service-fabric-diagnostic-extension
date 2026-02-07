@@ -86,14 +86,6 @@
         "title": "service fabric: adhoc REST query ('/$/GetClusterHealth')"
       },
       {
-        "command": "serviceFabricClusterView.reveal",
-        "title": "Test View: Reveal"
-      },
-      {
-        "command": "serviceFabricClusterView.changeTitle",
-        "title": "Test View: Change Title"
-      },
-      {
         "command": "sfClusterExplorer.showManagementView",
         "title": "Manage Cluster",
         "icon": "$(tools)"
@@ -314,6 +306,11 @@
             "type": "array",
             "default": [],
             "description": "List of saved Service Fabric cluster endpoints"
+          },
+          "sfClusterExplorer.newTreeView": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enable the new enterprise-grade tree view (experimental). Requires extension reload."
           }
         }
       }

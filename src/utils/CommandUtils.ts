@@ -1,13 +1,47 @@
 /**
  * Command registration utilities
  * Provides wrapped command registration with consistent error handling
+ * and safe double-registration protection
  */
 
 import * as vscode from 'vscode';
 import { SfUtility, debugLevel } from '../sfUtility';
 
+/** Tracks all commands registered during this activation to prevent double-registration crashes */
+const registeredCommandIds = new Set<string>();
+
 /**
- * Register a command with automatic error handling wrapper
+ * Safely register a VS Code command, guarding against double-registration.
+ * If a command with the same ID was already registered in this session, logs a warning
+ * and skips registration (preventing the "command already registered" crash that would
+ * abort activation and leave ALL subsequent commands unregistered).
+ *
+ * @returns The disposable if registration succeeded, or undefined if skipped
+ */
+export function safeRegisterCommand(
+    context: vscode.ExtensionContext,
+    commandId: string,
+    handler: (...args: any[]) => any,
+    thisArg?: any
+): vscode.Disposable | undefined {
+    if (registeredCommandIds.has(commandId)) {
+        SfUtility.outputLog(
+            `Command '${commandId}' already registered in this session — skipping duplicate registration`,
+            null,
+            debugLevel.warn
+        );
+        return undefined;
+    }
+
+    const disposable = vscode.commands.registerCommand(commandId, handler, thisArg);
+    registeredCommandIds.add(commandId);
+    context.subscriptions.push(disposable);
+    return disposable;
+}
+
+/**
+ * Register a command with automatic error handling wrapper.
+ * Uses safeRegisterCommand internally to prevent double-registration.
  * 
  * @param context - Extension context
  * @param commandId - Command identifier (e.g., 'sfClusterExplorer.refresh')
@@ -20,7 +54,7 @@ export function registerCommandWithErrorHandling(
     handler: (...args: any[]) => Promise<void> | void,
     friendlyName?: string
 ): void {
-    const disposable = vscode.commands.registerCommand(commandId, async (...args: any[]) => {
+    safeRegisterCommand(context, commandId, async (...args: any[]) => {
         try {
             await handler(...args);
         } catch (error) {
@@ -34,8 +68,6 @@ export function registerCommandWithErrorHandling(
             SfUtility.showError(`Failed to ${actionName}: ${errorText}`);
         }
     });
-    
-    context.subscriptions.push(disposable);
 }
 
 /**
@@ -57,15 +89,15 @@ function extractActionFromCommandId(commandId: string): string {
 }
 
 /**
- * Register a simple synchronous command (no error handling needed)
+ * Register a simple synchronous command (no error handling needed).
+ * Uses safeRegisterCommand internally to prevent double-registration.
  */
 export function registerSimpleCommand(
     context: vscode.ExtensionContext,
     commandId: string,
     handler: (...args: any[]) => void
 ): void {
-    const disposable = vscode.commands.registerCommand(commandId, handler);
-    context.subscriptions.push(disposable);
+    safeRegisterCommand(context, commandId, handler);
 }
 
 /**
