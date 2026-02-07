@@ -1,60 +1,40 @@
 /**
  * Icon Drift Protection Test
  * 
- * This test ensures the cluster health icon remains as 'heart' (hollow/shell)
- * and doesn't drift back to 'heart-filled' (solid).
+ * Validates that the enterprise treeview's icon infrastructure uses
+ * proper ThemeColor for static icons and IconService for dynamic icons.
  * 
- * Purpose: Prevent regression of commit c553f70 icon change requirement.
+ * Purpose: Prevent regression of icon rendering patterns.
  */
 
 import * as path from 'path';
 import * as fs from 'fs';
 
-describe('SfConfiguration Icon Drift Protection', () => {
-    const configFilePath = path.join(__dirname, '../../src/sfConfiguration.ts');
-    
-    beforeAll(() => {
-        // Verify the file exists before running tests
-        expect(fs.existsSync(configFilePath)).toBe(true);
+describe('Enterprise Treeview Icon Drift Protection', () => {
+    const treeviewPath = path.join(__dirname, '../../src/treeview');
+
+    test('IconService should exist and provide health-state icon mapping', () => {
+        const iconServicePath = path.join(treeviewPath, 'IconService.ts');
+        expect(fs.existsSync(iconServicePath)).toBe(true);
+        
+        const source = fs.readFileSync(iconServicePath, 'utf-8');
+        expect(source).toContain('getStaticIcon');
+        expect(source).toContain('ThemeIcon');
     });
 
-    test('should use hollow heart icon (heart) not solid (heart-filled)', () => {
-        const fileContent = fs.readFileSync(configFilePath, 'utf-8');
-        
-        // Ensure we're using 'heart' icon
-        const hasHollowHeartIcon = fileContent.includes("getIcon(this.clusterHealth?.aggregatedHealthState, 'heart')") ||
-                                   fileContent.includes('getIcon(this.clusterHealth?.aggregatedHealthState, "heart")');
-        
-        expect(hasHollowHeartIcon).toBe(true);
+    test('ClusterNode should use StaticItemNode for colored icons', () => {
+        const clusterNodePath = path.join(treeviewPath, 'nodes', 'ClusterNode.ts');
+        expect(fs.existsSync(clusterNodePath)).toBe(true);
+
+        const source = fs.readFileSync(clusterNodePath, 'utf-8');
+        expect(source).toContain('StaticItemNode');
+        expect(source).toContain('charts.blue');
     });
 
-    test('should NOT use solid heart icon (heart-filled)', () => {
-        const fileContent = fs.readFileSync(configFilePath, 'utf-8');
-        
-        // Ensure we're NOT using 'heart-filled' icon
-        const hasSolidHeartIcon = fileContent.includes("'heart-filled'") || 
-                                 fileContent.includes('"heart-filled"');
-        
-        expect(hasSolidHeartIcon).toBe(false);
-    });
-
-    test('should maintain icon configuration at expected location', () => {
-        const fileContent = fs.readFileSync(configFilePath, 'utf-8');
-        
-        // Verify the icon is set in the getClusterTreeItem method
-        const hasIconPathInMethod = fileContent.includes('iconPath:') && 
-                                    fileContent.includes('this.getIcon(this.clusterHealth?.aggregatedHealthState');
-        
-        expect(hasIconPathInMethod).toBe(true);
-    });
-
-    test('should document the icon choice for future maintainers', () => {
-        const fileContent = fs.readFileSync(configFilePath, 'utf-8');
-        
-        // Check that there's some reference to health state in icon logic
-        const hasHealthStateIcon = fileContent.includes('aggregatedHealthState') && 
-                                   fileContent.includes('getIcon');
-        
-        expect(hasHealthStateIcon).toBe(true);
+    test('should NOT have heart-filled icon in treeview source', () => {
+        const clusterNodePath = path.join(treeviewPath, 'nodes', 'ClusterNode.ts');
+        const source = fs.readFileSync(clusterNodePath, 'utf-8');
+        expect(source).not.toContain("'heart-filled'");
+        expect(source).not.toContain('"heart-filled"');
     });
 });

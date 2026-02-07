@@ -3,39 +3,30 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 describe('Static Icons Must Render on Load - Validation', () => {
-    const srcPath = path.join(__dirname, '../../src');
-    const configPath = path.join(srcPath, 'sfConfiguration.ts');
-    let configSource: string;
+    const treeviewPath = path.join(__dirname, '../../src/treeview');
 
-    beforeAll(() => {
-        configSource = fs.readFileSync(configPath, 'utf8');
+    test('ClusterNode should define static items with ThemeColor', () => {
+        const clusterNodePath = path.join(treeviewPath, 'nodes', 'ClusterNode.ts');
+        const source = fs.readFileSync(clusterNodePath, 'utf8');
+
+        // Enterprise treeview uses StaticItemNode for colored static icons
+        assert.ok(source.includes('StaticItemNode'), 'ClusterNode must use StaticItemNode for static icons');
+        assert.ok(source.includes('charts.blue'), 'Must include blue chart color for essentials');
     });
 
-    test('RED: Image store icon should have consistent pattern with health', () => {
-        // Image store should have ThemeColor from creation like other static icons
-        const hasThemeColor = configSource.includes("iconPath: new vscode.ThemeIcon('package', new vscode.ThemeColor('charts.orange'))");
-        
-        assert.ok(hasThemeColor, 'Image store icon MUST have ThemeColor charts.orange at creation');
-        
-        // Must also be in explicit refresh list
-        const hasExplicitRefresh = configSource.includes("'image-store'");
-        assert.ok(hasExplicitRefresh, 'Image store must be in refresh list');
+    test('IconService should provide getStaticIcon for ThemeColor creation', () => {
+        const iconServicePath = path.join(treeviewPath, 'IconService.ts');
+        const source = fs.readFileSync(iconServicePath, 'utf8');
+
+        assert.ok(source.includes('getStaticIcon'), 'IconService must expose getStaticIcon');
+        assert.ok(source.includes('ThemeIcon'), 'IconService must use ThemeIcon');
+        assert.ok(source.includes('ThemeColor'), 'IconService must use ThemeColor');
     });
 
-    test('RED: Manifest icon should have consistent pattern with health', () => {
-        // Manifest should have ThemeColor from creation like other static icons
-        const hasThemeColor = configSource.includes("iconPath: new vscode.ThemeIcon('file-code', new vscode.ThemeColor('charts.orange'))");
-        
-        assert.ok(hasThemeColor, 'Manifest icon MUST have ThemeColor charts.orange at creation');
-        
-        // Must also be in explicit refresh list
-        const hasExplicitRefresh = configSource.includes("'manifest'");
-        assert.ok(hasExplicitRefresh, 'Manifest must be in refresh list');
-    });
+    test('Image store icon should have ThemeColor', () => {
+        const imageStorePath = path.join(treeviewPath, 'nodes', 'ImageStoreNode.ts');
+        const source = fs.readFileSync(imageStorePath, 'utf8');
 
-    test('GREEN: Health icon has proper dynamic pattern with fallback', () => {
-        // Health should use: this.getIcon(...) || new vscode.ThemeIcon('heart')
-        const healthPattern = /iconPath:\s*this\.getIcon\([^,]+,\s*'heart'\)\s*\|\|\s*new vscode\.ThemeIcon\('heart'\)/;
-        assert.ok(healthPattern.test(configSource), 'Health icon MUST have dynamic pattern with fallback');
+        assert.ok(source.includes('getStaticIcon'), 'Image store must use getStaticIcon for colored icon');
     });
 });

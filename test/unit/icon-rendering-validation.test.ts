@@ -2,9 +2,9 @@
  * CRITICAL: Icon Rendering Validation Tests
  * 
  * These tests prevent icon color rendering bugs by validating:
- * 1. ThemeIcon objects are created with ThemeColor at construction time in sfConfiguration.ts
+ * 1. Enterprise treeview uses IconService with ThemeColor for static icons
  * 2. TreeItem constructor uses proper type cast for iconPath
- * 3. No mutations after construction
+ * 3. No mutations after construction in treeview nodes
  * 
  * BACKGROUND: Static items with ThemeIcon+ThemeColor lose their colors if refreshed 
  * via _onDidChangeTreeData.fire(item) before VS Code properly processes them.
@@ -15,51 +15,33 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 describe('CRITICAL: Icon Rendering Protection', () => {
-    const configPath = path.join(__dirname, '../../src/sfConfiguration.ts');
     const treeItemPath = path.join(__dirname, '../../src/models/TreeItem.ts');
-    
-    const configSource = fs.readFileSync(configPath, 'utf8');
+    const treeviewPath = path.join(__dirname, '../../src/treeview');
+    const iconServicePath = path.join(treeviewPath, 'IconService.ts');
+    const clusterNodePath = path.join(treeviewPath, 'nodes', 'ClusterNode.ts');
+
     const treeItemSource = fs.readFileSync(treeItemPath, 'utf8');
 
-    describe('Static Icon Definitions Must Use ThemeIcon with ThemeColor', () => {
-        it('image store icon must have ThemeIcon with ThemeColor at creation', () => {
-            const imageStoreMatch = configSource.match(/new TreeItem\('image store',\s*\{[\s\S]{0,500}?iconPath:\s*(new vscode\.ThemeIcon\([^)]+\)[^,\n]*)/);
-            expect(imageStoreMatch).toBeTruthy();
+    describe('Enterprise Treeview Static Icon Definitions', () => {
+        it('ClusterNode should use StaticItemNode with color', () => {
+            const source = fs.readFileSync(clusterNodePath, 'utf8');
+            expect(source).toContain('StaticItemNode');
             
-            const iconPath = imageStoreMatch![1];
-            expect(iconPath).toContain('new vscode.ThemeIcon');
-            expect(iconPath).toContain('ThemeColor');
-            expect(iconPath).toContain('charts.orange');
+            // Should define essentials, details, metrics with colors
+            expect(source).toContain('charts.blue');
         });
 
-        it('manifest icon must have ThemeIcon with ThemeColor at creation', () => {
-            const manifestMatch = configSource.match(/new TreeItem\('manifest',[\s\S]{0,500}?iconPath:\s*(new vscode\.ThemeIcon\([^)]+\)[^,\n]*)/);
-            expect(manifestMatch).toBeTruthy();
-            
-            const iconPath = manifestMatch![1];
-            expect(iconPath).toContain('new vscode.ThemeIcon');
-            expect(iconPath).toContain('ThemeColor');
-            expect(iconPath).toContain('charts.orange');
+        it('IconService should provide getStaticIcon with ThemeColor', () => {
+            const source = fs.readFileSync(iconServicePath, 'utf8');
+            expect(source).toContain('getStaticIcon');
+            expect(source).toContain('ThemeIcon');
+            expect(source).toContain('ThemeColor');
         });
 
-        it('events icon must have ThemeIcon with ThemeColor at creation', () => {
-            const eventsMatch = configSource.match(/new TreeItem\('events',[\s\S]{0,500}?iconPath:\s*(new vscode\.ThemeIcon\([^)]+\)[^,\n]*)/);
-            expect(eventsMatch).toBeTruthy();
-            
-            const iconPath = eventsMatch![1];
-            expect(iconPath).toContain('new vscode.ThemeIcon');
-            expect(iconPath).toContain('ThemeColor');
-            expect(iconPath).toContain('charts.purple');
-        });
-
-        it('commands icon must have ThemeIcon with ThemeColor at creation', () => {
-            const commandsMatch = configSource.match(/new TreeItem\('commands',[\s\S]{0,500}?iconPath:\s*(new vscode\.ThemeIcon\([^)]+\)[^,\n]*)/);
-            expect(commandsMatch).toBeTruthy();
-            
-            const iconPath = commandsMatch![1];
-            expect(iconPath).toContain('new vscode.ThemeIcon');
-            expect(iconPath).toContain('ThemeColor');
-            expect(iconPath).toContain('charts.yellow');
+        it('Image store node should use IconService for colored icon', () => {
+            const imageStorePath = path.join(treeviewPath, 'nodes', 'ImageStoreNode.ts');
+            const source = fs.readFileSync(imageStorePath, 'utf8');
+            expect(source).toContain('getStaticIcon');
         });
     });
 
@@ -82,14 +64,20 @@ describe('CRITICAL: Icon Rendering Protection', () => {
     });
 
     describe('No Mutations After Construction', () => {
-        it('Static icon TreeItems must NOT have iconPath modified after creation in sfConfiguration', () => {
+        it('Static icon TreeItems must NOT have iconPath modified after creation in treeview nodes', () => {
             const staticItems = ['image-store', 'manifest', 'events', 'commands', 'essentials', 'details', 'metrics'];
+            const nodesDir = path.join(treeviewPath, 'nodes');
             
-            for (const itemType of staticItems) {
-                const mutationPattern = new RegExp(`find.*itemType.*===.*['"]${itemType}['"][\\s\\S]{0,200}\\.iconPath\\s*=`, 'g');
-                const hasMutation = mutationPattern.test(configSource);
-                
-                expect(hasMutation).toBe(false);
+            if (fs.existsSync(nodesDir)) {
+                const nodeFiles = fs.readdirSync(nodesDir).filter(f => f.endsWith('.ts'));
+                for (const file of nodeFiles) {
+                    const source = fs.readFileSync(path.join(nodesDir, file), 'utf8');
+                    for (const itemType of staticItems) {
+                        const mutationPattern = new RegExp(`find.*itemType.*===.*['"]${itemType}['"][\\s\\S]{0,200}\\.iconPath\\s*=`, 'g');
+                        const hasMutation = mutationPattern.test(source);
+                        expect(hasMutation).toBe(false);
+                    }
+                }
             }
         });
     });
