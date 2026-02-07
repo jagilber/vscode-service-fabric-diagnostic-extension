@@ -17,6 +17,10 @@ jest.mock('vscode', () => ({
         showErrorMessage: jest.fn(),
         showQuickPick: jest.fn(),
         showInputBox: jest.fn(),
+        showOpenDialog: jest.fn(),
+        withProgress: jest.fn().mockImplementation(async (_opts: any, handler: any) => {
+            return handler({ report: jest.fn() }, { isCancellationRequested: false });
+        }),
         createOutputChannel: jest.fn(() => ({
             appendLine: jest.fn(),
             append: jest.fn(),
@@ -35,7 +39,15 @@ jest.mock('vscode', () => ({
             dispose: jest.fn(),
             reveal: jest.fn()
         })),
-        registerWebviewViewProvider: jest.fn()
+        registerWebviewViewProvider: jest.fn(),
+        showTextDocument: jest.fn().mockResolvedValue(undefined),
+        onDidChangeActiveTextEditor: jest.fn(),
+        activeTextEditor: undefined,
+        createWebviewPanel: jest.fn(() => ({
+            webview: { html: '', onDidReceiveMessage: jest.fn(), options: {} },
+            dispose: jest.fn(),
+            reveal: jest.fn(),
+        }))
     },
     env: {
         createTelemetryLogger: jest.fn(() => ({
@@ -54,7 +66,22 @@ jest.mock('vscode', () => ({
             has: jest.fn()
         })),
         workspaceFolders: [],
-        onDidChangeConfiguration: jest.fn()
+        onDidChangeConfiguration: jest.fn(),
+        onDidChangeTextDocument: jest.fn(),
+        onDidOpenTextDocument: jest.fn(),
+        onDidCloseTextDocument: jest.fn(),
+        onDidSaveTextDocument: jest.fn(),
+        fs: {
+            createDirectory: jest.fn().mockResolvedValue(undefined),
+            writeFile: jest.fn().mockResolvedValue(undefined),
+            readFile: jest.fn().mockResolvedValue(Buffer.from('')),
+            stat: jest.fn().mockResolvedValue({ type: 1, ctime: 0, mtime: 0, size: 0 }),
+            readDirectory: jest.fn().mockResolvedValue([]),
+            delete: jest.fn().mockResolvedValue(undefined),
+            copy: jest.fn().mockResolvedValue(undefined),
+            rename: jest.fn().mockResolvedValue(undefined),
+        },
+        openTextDocument: jest.fn().mockResolvedValue({ getText: jest.fn().mockReturnValue('') })
     },
     commands: {
         registerCommand: jest.fn(),
@@ -68,6 +95,21 @@ jest.mock('vscode', () => ({
         parse: jest.fn((str) => ({ fsPath: str, toString: () => str })),
         file: jest.fn((str) => ({ fsPath: str, toString: () => str }))
     },
+    Range: class Range {
+        constructor(public start: any, public end: any) {}
+    },
+    Position: class Position {
+        constructor(public line: number, public character: number) {}
+    },
+    ViewColumn: { One: 1, Two: 2, Three: 3 },
+    DataTransfer: class DataTransfer {
+        private items = new Map();
+        get(mime: string) { return this.items.get(mime); }
+        set(mime: string, item: any) { this.items.set(mime, item); }
+    },
+    DataTransferItem: class DataTransferItem {
+        constructor(public value: any) {}
+    },
     TreeItem: class TreeItem {
         constructor(public label: string, public collapsibleState?: any) {}
     },
@@ -75,6 +117,10 @@ jest.mock('vscode', () => ({
         None: 0,
         Collapsed: 1,
         Expanded: 2
+    },
+    QuickPickItemKind: {
+        Separator: -1,
+        Default: 0
     },
     ThemeIcon: class ThemeIcon {
         constructor(public id: string, public color?: any) {}
@@ -106,6 +152,9 @@ jest.mock('vscode', () => ({
     Disposable: class Disposable {
         constructor(private callOnDispose: () => void) {}
         dispose() { this.callOnDispose(); }
+    },
+    MarkdownString: class MarkdownString {
+        constructor(public value?: string, public supportThemeIcons?: boolean) {}
     }
 }), { virtual: true });
 
