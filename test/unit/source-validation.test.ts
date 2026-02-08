@@ -47,7 +47,7 @@ describe('Source Code Validation', () => {
     });
 
     test('Enterprise treeview ClusterNode should exist', () => {
-        const clusterNodePath = path.join(srcPath, 'treeview', 'nodes', 'ClusterNode.ts');
+        const clusterNodePath = path.join(srcPath, 'treeview', 'nodes', 'cluster', 'ClusterNode.ts');
         assert.ok(
             fs.existsSync(clusterNodePath),
             'ClusterNode.ts should exist in enterprise treeview'

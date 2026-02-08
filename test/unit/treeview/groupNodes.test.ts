@@ -14,9 +14,9 @@
 import * as vscode from 'vscode';
 import { DataCache } from '../../../src/treeview/DataCache';
 import { IconService } from '../../../src/treeview/IconService';
-import { ApplicationsGroupNode } from '../../../src/treeview/nodes/ApplicationsGroupNode';
-import { NodesGroupNode } from '../../../src/treeview/nodes/NodesGroupNode';
-import { SystemGroupNode } from '../../../src/treeview/nodes/SystemGroupNode';
+import { ApplicationsGroupNode } from '../../../src/treeview/nodes/cluster/ApplicationsGroupNode';
+import { NodesGroupNode } from '../../../src/treeview/nodes/cluster/NodesGroupNode';
+import { SystemGroupNode } from '../../../src/treeview/nodes/cluster/SystemGroupNode';
 import {
     createTestContext,
     createTestContextWithData,

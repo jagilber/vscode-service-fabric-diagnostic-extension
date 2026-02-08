@@ -13,9 +13,9 @@
 import * as vscode from 'vscode';
 import { DataCache } from '../../../src/treeview/DataCache';
 import { IconService } from '../../../src/treeview/IconService';
-import { ImageStoreNode } from '../../../src/treeview/nodes/ImageStoreNode';
-import { MetricsNode } from '../../../src/treeview/nodes/MetricsNode';
-import { ClusterNode } from '../../../src/treeview/nodes/ClusterNode';
+import { ImageStoreNode } from '../../../src/treeview/nodes/cluster/ImageStoreNode';
+import { MetricsNode } from '../../../src/treeview/nodes/cluster/MetricsNode';
+import { ClusterNode } from '../../../src/treeview/nodes/cluster/ClusterNode';
 import {
     createTestContextWithData,
 } from './helpers';

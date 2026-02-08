@@ -11,8 +11,8 @@
 
 import * as vscode from 'vscode';
 import { SfProjectService } from '../services/SfProjectService';
-import { SfProjectNode, ServicesGroupNode, ParametersGroupNode, ProfilesGroupNode } from './nodes/SfProjectNode';
-import { ServiceRefNode } from './nodes/ServiceRefNode';
+import { SfProjectNode, ServicesGroupNode, ParametersGroupNode, ProfilesGroupNode } from './nodes/applications/SfProjectNode';
+import { ServiceRefNode } from './nodes/applications/ServiceRefNode';
 import { SfUtility, debugLevel } from '../sfUtility';
 
 // Union type for all node types in this tree

@@ -2,11 +2,11 @@
  * Unit tests for SF Application tree node classes.
  */
 import * as vscode from 'vscode';
-import { SfProjectNode, ServicesGroupNode, ParametersGroupNode, ProfilesGroupNode } from '../../../src/treeview/nodes/SfProjectNode';
-import { ServiceRefNode } from '../../../src/treeview/nodes/ServiceRefNode';
-import { ManifestNode } from '../../../src/treeview/nodes/ManifestNode';
-import { ParameterFileNode } from '../../../src/treeview/nodes/ParameterFileNode';
-import { ProfileNode } from '../../../src/treeview/nodes/ProfileNode';
+import { SfProjectNode, ServicesGroupNode, ParametersGroupNode, ProfilesGroupNode } from '../../../src/treeview/nodes/applications/SfProjectNode';
+import { ServiceRefNode } from '../../../src/treeview/nodes/applications/ServiceRefNode';
+import { ManifestNode } from '../../../src/treeview/nodes/shared/ManifestNode';
+import { ParameterFileNode } from '../../../src/treeview/nodes/applications/ParameterFileNode';
+import { ProfileNode } from '../../../src/treeview/nodes/applications/ProfileNode';
 import { SfProjectInfo, ServiceReference, ParameterFileInfo, PublishProfileInfo } from '../../../src/types/ProjectTypes';
 
 jest.mock('vscode');

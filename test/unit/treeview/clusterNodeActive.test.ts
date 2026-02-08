@@ -13,7 +13,7 @@
 import * as vscode from 'vscode';
 import { DataCache } from '../../../src/treeview/DataCache';
 import { IconService } from '../../../src/treeview/IconService';
-import { ClusterNode } from '../../../src/treeview/nodes/ClusterNode';
+import { ClusterNode } from '../../../src/treeview/nodes/cluster/ClusterNode';
 import { ClusterDecorationProvider } from '../../../src/treeview/ClusterDecorationProvider';
 import { createTestContext, createTestContextWithData } from './helpers';
 

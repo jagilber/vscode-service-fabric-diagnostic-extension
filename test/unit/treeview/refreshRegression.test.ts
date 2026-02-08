@@ -12,11 +12,11 @@
 import * as vscode from 'vscode';
 import { DataCache } from '../../../src/treeview/DataCache';
 import { IconService } from '../../../src/treeview/IconService';
-import { ClusterNode } from '../../../src/treeview/nodes/ClusterNode';
-import { ApplicationsGroupNode } from '../../../src/treeview/nodes/ApplicationsGroupNode';
-import { NodesGroupNode } from '../../../src/treeview/nodes/NodesGroupNode';
-import { PartitionsGroupNode } from '../../../src/treeview/nodes/PartitionsGroupNode';
-import { ReplicasGroupNode } from '../../../src/treeview/nodes/ReplicasGroupNode';
+import { ClusterNode } from '../../../src/treeview/nodes/cluster/ClusterNode';
+import { ApplicationsGroupNode } from '../../../src/treeview/nodes/cluster/ApplicationsGroupNode';
+import { NodesGroupNode } from '../../../src/treeview/nodes/cluster/NodesGroupNode';
+import { PartitionsGroupNode } from '../../../src/treeview/nodes/cluster/PartitionsGroupNode';
+import { ReplicasGroupNode } from '../../../src/treeview/nodes/cluster/ReplicasGroupNode';
 import {
     createTestContext,
     createTestContextWithData,

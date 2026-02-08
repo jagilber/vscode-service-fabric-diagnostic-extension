@@ -6,7 +6,7 @@ describe('Static Icons Must Render on Load - Validation', () => {
     const treeviewPath = path.join(__dirname, '../../src/treeview');
 
     test('ClusterNode should define static items with ThemeColor', () => {
-        const clusterNodePath = path.join(treeviewPath, 'nodes', 'ClusterNode.ts');
+        const clusterNodePath = path.join(treeviewPath, 'nodes', 'cluster', 'ClusterNode.ts');
         const source = fs.readFileSync(clusterNodePath, 'utf8');
 
         // Enterprise treeview uses StaticItemNode for colored static icons
@@ -24,7 +24,7 @@ describe('Static Icons Must Render on Load - Validation', () => {
     });
 
     test('Image store icon should have ThemeColor', () => {
-        const imageStorePath = path.join(treeviewPath, 'nodes', 'ImageStoreNode.ts');
+        const imageStorePath = path.join(treeviewPath, 'nodes', 'cluster', 'ImageStoreNode.ts');
         const source = fs.readFileSync(imageStorePath, 'utf8');
 
         assert.ok(source.includes('getStaticIcon'), 'Image store must use getStaticIcon for colored icon');

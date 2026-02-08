@@ -4,7 +4,7 @@ import { IconService } from './IconService';
 import { DataCache } from './DataCache';
 import { RefreshManager } from './RefreshManager';
 import { TreeNodeContext } from './TreeNodeContext';
-import { ClusterNode } from './nodes/ClusterNode';
+import { ClusterNode } from './nodes/cluster/ClusterNode';
 import { SfRest } from '../sfRest';
 import { SfConfiguration } from '../sfConfiguration';
 import { SfUtility, debugLevel } from '../sfUtility';

@@ -18,7 +18,7 @@ describe('CRITICAL: Icon Rendering Protection', () => {
     const treeItemPath = path.join(__dirname, '../../src/models/TreeItem.ts');
     const treeviewPath = path.join(__dirname, '../../src/treeview');
     const iconServicePath = path.join(treeviewPath, 'IconService.ts');
-    const clusterNodePath = path.join(treeviewPath, 'nodes', 'ClusterNode.ts');
+    const clusterNodePath = path.join(treeviewPath, 'nodes', 'cluster', 'ClusterNode.ts');
 
     const treeItemSource = fs.readFileSync(treeItemPath, 'utf8');
 
@@ -39,7 +39,7 @@ describe('CRITICAL: Icon Rendering Protection', () => {
         });
 
         it('Image store node should use IconService for colored icon', () => {
-            const imageStorePath = path.join(treeviewPath, 'nodes', 'ImageStoreNode.ts');
+            const imageStorePath = path.join(treeviewPath, 'nodes', 'cluster', 'ImageStoreNode.ts');
             const source = fs.readFileSync(imageStorePath, 'utf8');
             expect(source).toContain('getStaticIcon');
         });

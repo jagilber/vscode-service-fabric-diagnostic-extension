@@ -23,7 +23,7 @@ describe('Enterprise Treeview Icon Drift Protection', () => {
     });
 
     test('ClusterNode should use StaticItemNode for colored icons', () => {
-        const clusterNodePath = path.join(treeviewPath, 'nodes', 'ClusterNode.ts');
+        const clusterNodePath = path.join(treeviewPath, 'nodes', 'cluster', 'ClusterNode.ts');
         expect(fs.existsSync(clusterNodePath)).toBe(true);
 
         const source = fs.readFileSync(clusterNodePath, 'utf-8');
@@ -32,7 +32,7 @@ describe('Enterprise Treeview Icon Drift Protection', () => {
     });
 
     test('should NOT have heart-filled icon in treeview source', () => {
-        const clusterNodePath = path.join(treeviewPath, 'nodes', 'ClusterNode.ts');
+        const clusterNodePath = path.join(treeviewPath, 'nodes', 'cluster', 'ClusterNode.ts');
         const source = fs.readFileSync(clusterNodePath, 'utf-8');
         expect(source).not.toContain("'heart-filled'");
         expect(source).not.toContain('"heart-filled"');

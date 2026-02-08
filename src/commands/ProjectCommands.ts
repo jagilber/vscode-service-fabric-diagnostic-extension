@@ -12,8 +12,8 @@ import { registerCommandWithErrorHandling } from '../utils/CommandUtils';
 import { SfProjectService } from '../services/SfProjectService';
 import { SfDeployService } from '../services/SfDeployService';
 import { SfApplicationsDataProvider } from '../treeview/SfApplicationsDataProvider';
-import { SfProjectNode } from '../treeview/nodes/SfProjectNode';
-import { ProfileNode } from '../treeview/nodes/ProfileNode';
+import { SfProjectNode } from '../treeview/nodes/applications/SfProjectNode';
+import { ProfileNode } from '../treeview/nodes/applications/ProfileNode';
 import { DeployOptions } from '../types/ProjectTypes';
 
 export function registerProjectCommands(
