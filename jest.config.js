@@ -19,7 +19,6 @@ module.exports = {
         '!src/fileExplorer.ts', // Legacy demo file with pre-existing build errors
         '!src/ftpExplorer.ts', // Legacy demo file with pre-existing build errors
         '!src/jsftp.d.ts', // Type declaration
-        '!src/treeview/**', // New treeview nodes behind feature flag, not active yet
         '!src/types/**', // Type definitions
     ],
     coverageDirectory: 'coverage',
