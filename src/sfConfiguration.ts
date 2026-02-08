@@ -10,25 +10,10 @@ import { PeerCertificate } from 'tls';
 import * as url from 'url';
 import { ClusterConnectionError, NetworkError } from './models/Errors';
 import { PiiObfuscation } from './utils/PiiObfuscation';
+import { nodeType, clusterCertificate, clusterEndpointInfo } from './types/ClusterTypes';
 
-export type nodeType = {
-    name: string;
-    nodes: sfModels.NodeInfo[];
-};
-
-// schema
-export type clusterCertificate = {
-    certificate?: string;
-    thumbprint?: string;
-    commonName?: string;
-    key?: string;
-};
-
-export type clusterEndpointInfo = {
-    endpoint: string;
-    clusterCertificate?: clusterCertificate;
-    manifest?: string;
-};
+// Re-export types for backward compatibility
+export type { nodeType, clusterCertificate, clusterEndpointInfo } from './types/ClusterTypes';
 
 export class SfConfiguration {
     private xmlManifest = "";

@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { debugLevel, SfUtility } from './sfUtility';
-import { SfConfiguration, clusterEndpointInfo, clusterCertificate } from './sfConfiguration';
+import { SfConfiguration } from './sfConfiguration';
+import { clusterEndpointInfo, clusterCertificate } from './types/ClusterTypes';
 import { SfExtSettings, sfExtSettingsList } from './sfExtSettings';
 import { SfRest } from './sfRest';
 import { SfMgr } from './sfMgr';
