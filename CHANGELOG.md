@@ -37,6 +37,30 @@ Primary focus on making extension accessible to:
 
 ## [Unreleased]
 
+### Added - Service Fabric Applications View
+- **New "Service Fabric Applications" view** in the Explorer sidebar for managing `.sfproj`
+  projects. Discovers all Service Fabric application projects in the workspace, showing their
+  services, application parameters, and publish profiles in a tree hierarchy.
+- **Project discovery** — Automatically scans the workspace for `.sfproj` files and parses
+  `ApplicationManifest.xml`, `ServiceManifest.xml`, parameter files, and publish profiles.
+  File watchers trigger automatic refresh when project files change.
+- **Build commands** — Build projects from the tree view context menu using MSBuild or `dotnet build`,
+  with a Quick Pick to choose the build method. Output goes to an integrated terminal.
+- **Deploy commands** — Deploy applications to the active cluster via REST API (upload to image store,
+  provision application type, create application) or generate a PowerShell deploy script.
+  Supports parameter file and publish profile selection during deploy.
+- **SfProjectService** — New service for workspace scanning and XML parsing with caching and
+  `FileSystemWatcher`-based invalidation.
+- **SfDeployService** — Orchestrates build, package discovery, and deployment to clusters.
+- **Tree node classes** — `SfProjectNode`, `ServiceRefNode`, `ManifestNode`, `ParameterFileNode`,
+  `ProfileNode` with appropriate icons and click-to-open behavior.
+- **Deploy REST methods** — Added `uploadToImageStore()`, `provisionApplicationType()`, and
+  `createApplication()` to both `SfRest` and `SfDirectRestClient`.
+- **ProjectCommands** — 4 new commands: `sfApplications.refresh`, `sfApplications.buildProject`,
+  `sfApplications.deployProject`, `sfApplications.openManifest`.
+- **Activation event** — Extension activates on `workspaceContains:**/*.sfproj` in addition to
+  existing activation events.
+
 ### Added - Cluster Persistence & Visual Improvements
 - **Auto-reconnect clusters on activation** — Previously connected clusters are automatically
   restored when VS Code starts. Connected cluster endpoints are persisted in `globalState` and

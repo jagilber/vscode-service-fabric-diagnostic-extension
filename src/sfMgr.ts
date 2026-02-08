@@ -301,6 +301,20 @@ export class SfMgr {
         return this.sfRest; // Fallback if no cluster is selected
     }
 
+    /**
+     * Get the active cluster's endpoint and REST client.
+     * Returns undefined if no cluster is currently active/connected.
+     */
+    public getActiveCluster(): { endpoint: string; sfRest: SfRest } | undefined {
+        const endpoint = SfUtility.readExtensionConfig('activeCluster') as string | undefined;
+        if (!endpoint) { return undefined; }
+        
+        const config = this.getSfConfig(endpoint);
+        if (!config) { return undefined; }
+        
+        return { endpoint, sfRest: config.getSfRest() };
+    }
+
     public async loadSfConfigs(): Promise<void> {
         SfUtility.outputLog('Loading cluster configs from settings...', null, debugLevel.info);
         const clusters: clusterEndpointInfo[] | any = SfExtSettings.getSetting(sfExtSettingsList.clusters);

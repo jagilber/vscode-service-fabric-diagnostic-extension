@@ -128,7 +128,7 @@ export class SfDirectRestClient {
      * @param body Optional request body
      * @param apiVersionOverride Optional API version override (defaults to this.apiVersion)
      */
-    private async makeRequest<T>(method: string, path: string, body?: any, apiVersionOverride?: string): Promise<T> {
+    private async makeRequest<T>(method: string, path: string, body?: any, apiVersionOverride?: string, customHeaders?: Record<string, string>): Promise<T> {
         const parsedUrl = url.parse(this.endpoint);
         const isHttps = parsedUrl.protocol === 'https:';
         
@@ -151,7 +151,8 @@ export class SfDirectRestClient {
             method: method,
             headers: {
                 'Content-Type': 'application/json',
-                'Accept': 'application/json'
+                'Accept': 'application/json',
+                ...customHeaders,
             },
             rejectUnauthorized: false
         };
@@ -260,10 +261,16 @@ export class SfDirectRestClient {
 
             // Send body if provided
             if (body) {
-                const bodyStr = typeof body === 'string' ? body : JSON.stringify(body);
-                SfUtility.outputLog(`📤 Request body: ${bodyStr}`, null, debugLevel.info);
-                req.setHeader('Content-Length', Buffer.byteLength(bodyStr));
-                req.write(bodyStr);
+                if (Buffer.isBuffer(body)) {
+                    SfUtility.outputLog(`📤 Request body: <binary ${body.length} bytes>`, null, debugLevel.info);
+                    req.setHeader('Content-Length', body.length);
+                    req.write(body);
+                } else {
+                    const bodyStr = typeof body === 'string' ? body : JSON.stringify(body);
+                    SfUtility.outputLog(`📤 Request body: ${bodyStr}`, null, debugLevel.info);
+                    req.setHeader('Content-Length', Buffer.byteLength(bodyStr));
+                    req.write(bodyStr);
+                }
             }
 
             req.end();
@@ -493,5 +500,60 @@ export class SfDirectRestClient {
 
     async getRepairTaskList(): Promise<any[]> {
         return this.makeRequest<any[]>('GET', '/$/GetRepairTaskList');
+    }
+
+    // ==================== DEPLOY / PROVISION APIs ====================
+
+    /**
+     * Upload a file to the Image Store.
+     * PUT /ImageStore/{contentPath}?api-version=6.0
+     */
+    async uploadToImageStore(contentPath: string, fileContent: Buffer): Promise<void> {
+        const encodedPath = encodeURIComponent(contentPath);
+        await this.makeRequest<void>(
+            'PUT',
+            `/ImageStore/${encodedPath}`,
+            fileContent,
+            undefined,
+            { 'Content-Type': 'application/octet-stream' },
+        );
+    }
+
+    /**
+     * Provision an application type from the Image Store path.
+     * POST /ApplicationTypes/$/Provision?api-version=6.2
+     */
+    async provisionApplicationType(imageStorePath: string, isAsync: boolean = true): Promise<void> {
+        await this.makeRequest<void>(
+            'POST',
+            '/ApplicationTypes/$/Provision',
+            {
+                Kind: 'ImageStorePath',
+                Async: isAsync,
+                ApplicationTypeBuildPath: imageStorePath,
+            },
+            '6.2',
+        );
+    }
+
+    /**
+     * Create a new application instance.
+     * POST /Applications/$/Create?api-version=6.0
+     */
+    async createApplication(
+        appName: string,
+        typeName: string,
+        typeVersion: string,
+        parameters?: Record<string, string>,
+    ): Promise<void> {
+        const body: any = {
+            Name: appName,
+            TypeName: typeName,
+            TypeVersion: typeVersion,
+        };
+        if (parameters) {
+            body.ParameterList = Object.entries(parameters).map(([Key, Value]) => ({ Key, Value }));
+        }
+        await this.makeRequest<void>('POST', '/Applications/$/Create', body);
     }
 }

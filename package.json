@@ -34,7 +34,9 @@
     "onView:serviceFabricClusterView",
     "onCommand:sfClusterExplorer.refresh",
     "onCommand:sfClusterExplorer.sfSetClusterEndpoint",
-    "onCommand:sfClusterExplorer.sfGetCluster"
+    "onCommand:sfClusterExplorer.sfGetCluster",
+    "onView:serviceFabricApplicationsView",
+    "workspaceContains:**/*.sfproj"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -45,6 +47,10 @@
           "name": "Service Fabric Clusters"
         },
         {
+          "id": "serviceFabricApplicationsView",
+          "name": "Service Fabric Applications"
+        },
+        {
           "id": "serviceFabricManagementPanel",
           "name": "Service Fabric Management",
           "type": "webview",
@@ -52,6 +58,12 @@
         }
       ]
     },
+    "viewsWelcome": [
+      {
+        "view": "serviceFabricApplicationsView",
+        "contents": "No Service Fabric application projects (.sfproj) found in this workspace.\n[Learn more](https://learn.microsoft.com/en-us/azure/service-fabric/service-fabric-application-model)"
+      }
+    ],
     "commands": [
       {
         "command": "sfClusterExplorer.refresh",
@@ -169,6 +181,26 @@
         "command": "sfClusterExplorer.unprovisionApplicationType",
         "title": "Unprovision Application Type",
         "icon": "$(remove)"
+      },
+      {
+        "command": "sfApplications.refresh",
+        "title": "Refresh Projects",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "sfApplications.buildProject",
+        "title": "Build Project",
+        "icon": "$(tools)"
+      },
+      {
+        "command": "sfApplications.deployProject",
+        "title": "Deploy Project",
+        "icon": "$(cloud-upload)"
+      },
+      {
+        "command": "sfApplications.openManifest",
+        "title": "Open Application Manifest",
+        "icon": "$(file-code)"
       }
     ],
     "menus": {
@@ -182,6 +214,11 @@
           "command": "sfClusterExplorer.showManagementView",
           "when": "view == serviceFabricClusterView",
           "group": "navigation"
+        },
+        {
+          "command": "sfApplications.refresh",
+          "when": "view == serviceFabricApplicationsView",
+          "group": "navigation"
         }
       ],
       "view/item/context": [
@@ -189,6 +226,31 @@
           "command": "sfClusterExplorer.showManagementView",
           "when": "view == serviceFabricClusterView && viewItem == cluster",
           "group": "inline@1"
+        },
+        {
+          "command": "sfApplications.buildProject",
+          "when": "view == serviceFabricApplicationsView && viewItem == sfProject",
+          "group": "inline@1"
+        },
+        {
+          "command": "sfApplications.deployProject",
+          "when": "view == serviceFabricApplicationsView && viewItem == sfProject",
+          "group": "inline@2"
+        },
+        {
+          "command": "sfApplications.openManifest",
+          "when": "view == serviceFabricApplicationsView && viewItem == sfProject",
+          "group": "navigation@1"
+        },
+        {
+          "command": "sfApplications.buildProject",
+          "when": "view == serviceFabricApplicationsView && viewItem == sfProject",
+          "group": "project@1"
+        },
+        {
+          "command": "sfApplications.deployProject",
+          "when": "view == serviceFabricApplicationsView && viewItem == sfProject",
+          "group": "project@2"
         },
         {
           "command": "sfClusterExplorer.showManagementView",

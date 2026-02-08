@@ -26,6 +26,10 @@ import { registerNodeCommands } from './NodeCommands';
 import { registerResourceCommands } from './ResourceCommands';
 import { registerViewCommands } from './ViewCommands';
 import { registerReportCommands } from './ReportCommands';
+import { registerProjectCommands } from './ProjectCommands';
+import { SfProjectService } from '../services/SfProjectService';
+import { SfDeployService } from '../services/SfDeployService';
+import { SfApplicationsDataProvider } from '../treeview/SfApplicationsDataProvider';
 
 // ---------------------------------------------------------------------------
 // Command Manifest
@@ -35,7 +39,7 @@ export interface CommandMeta {
     /** User-friendly name shown in error messages */
     friendlyName: string;
     /** Organisational category for logging / validation */
-    category: 'cluster' | 'view' | 'report' | 'node' | 'resource' | 'internal';
+    category: 'cluster' | 'view' | 'report' | 'node' | 'resource' | 'internal' | 'project';
     /** If true, the command handler needs an active cluster connection */
     requiresCluster: boolean;
     /** If true, this is an activation-event command that must always be registered */
@@ -88,6 +92,12 @@ export const COMMAND_MANIFEST: Record<string, CommandMeta> = {
     'sfClusterExplorer.deleteService':             { friendlyName: 'delete service',       category: 'resource', requiresCluster: true },
     'sfClusterExplorer.deleteApplication':         { friendlyName: 'delete application',   category: 'resource', requiresCluster: true },
     'sfClusterExplorer.unprovisionApplicationType':{ friendlyName: 'unprovision app type', category: 'resource', requiresCluster: true },
+
+    // ---- Project commands (SF Applications view) ----
+    'sfApplications.refresh':                      { friendlyName: 'refresh projects',     category: 'project',  requiresCluster: false },
+    'sfApplications.buildProject':                 { friendlyName: 'build project',        category: 'project',  requiresCluster: false },
+    'sfApplications.deployProject':                { friendlyName: 'deploy project',       category: 'project',  requiresCluster: true },
+    'sfApplications.openManifest':                 { friendlyName: 'open manifest',        category: 'project',  requiresCluster: false },
 };
 
 // ---------------------------------------------------------------------------
@@ -104,6 +114,9 @@ export class CommandRegistry {
         context: vscode.ExtensionContext,
         sfMgr: SfMgr,
         sfPrompts: SfPrompts,
+        projectService?: SfProjectService,
+        deployService?: SfDeployService,
+        applicationsProvider?: SfApplicationsDataProvider,
     ): void {
         SfUtility.outputLog('CommandRegistry: registering all commands...', null, debugLevel.info);
 
@@ -121,6 +134,11 @@ export class CommandRegistry {
 
         // 5. Report commands (events, health, metrics, essentials, repair, commands ref, snapshot)
         registerReportCommands(context, sfMgr);
+
+        // 6. Project commands (SF Applications view — build, deploy, refresh)
+        if (projectService && deployService && applicationsProvider) {
+            registerProjectCommands(context, sfMgr, projectService, deployService, applicationsProvider);
+        }
 
         SfUtility.outputLog('CommandRegistry: all commands registered', null, debugLevel.info);
     }

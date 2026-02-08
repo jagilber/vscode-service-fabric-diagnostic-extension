@@ -1224,4 +1224,170 @@ export class SfRest implements IHttpOptionsProvider {
             throw error;
         }
     }
+
+    // ── Deploy / Provision Methods ─────────────────────────────────────
+
+    /**
+     * Upload a single file to the Service Fabric Image Store.
+     * PUT /ImageStore/{contentPath}?api-version=6.0
+     */
+    public async uploadToImageStore(contentPath: string, fileContent: Buffer): Promise<void> {
+        try {
+            SfUtility.outputLog(`sfRest:uploadToImageStore: ${contentPath} (${fileContent.length} bytes)`, null, debugLevel.info);
+            
+            if (this.useDirectRest && this.directClient) {
+                await this.directClient.uploadToImageStore(contentPath, fileContent);
+            } else {
+                // Use direct HTTP PUT since Azure SDK doesn't expose upload
+                await this.directImageStoreUpload(contentPath, fileContent);
+            }
+            
+            SfUtility.outputLog('sfRest:uploadToImageStore:complete', null, debugLevel.info);
+        } catch (error) {
+            SfUtility.outputLog(`Failed to upload to image store: ${contentPath}`, error, debugLevel.error);
+            throw new NetworkError(`Failed to upload to image store: ${contentPath}`, { cause: error });
+        }
+    }
+
+    /**
+     * Upload an entire application package directory to the Image Store.
+     * Recursively uploads all files under the given local directory.
+     */
+    public async uploadApplicationPackage(
+        localPackagePath: string,
+        imageStoreRelativePath: string,
+        progress?: (fileName: string, current: number, total: number) => void,
+    ): Promise<void> {
+        try {
+            SfUtility.outputLog(`sfRest:uploadApplicationPackage: ${localPackagePath} → ${imageStoreRelativePath}`, null, debugLevel.info);
+            
+            const fs = await import('fs');
+            const path = await import('path');
+            
+            // Collect all files recursively
+            const allFiles: string[] = [];
+            const collectFiles = (dir: string): void => {
+                const entries = fs.readdirSync(dir, { withFileTypes: true });
+                for (const entry of entries) {
+                    const full = path.join(dir, entry.name);
+                    if (entry.isDirectory()) {
+                        collectFiles(full);
+                    } else {
+                        allFiles.push(full);
+                    }
+                }
+            };
+            collectFiles(localPackagePath);
+            
+            SfUtility.outputLog(`sfRest:uploadApplicationPackage: uploading ${allFiles.length} file(s)`, null, debugLevel.info);
+            
+            for (let i = 0; i < allFiles.length; i++) {
+                const file = allFiles[i];
+                const relativePath = path.relative(localPackagePath, file).replace(/\\/g, '/');
+                const imageStorePath = `${imageStoreRelativePath}/${relativePath}`;
+                const content = fs.readFileSync(file);
+                
+                progress?.(relativePath, i + 1, allFiles.length);
+                await this.uploadToImageStore(imageStorePath, content);
+            }
+            
+            SfUtility.outputLog('sfRest:uploadApplicationPackage:complete', null, debugLevel.info);
+        } catch (error) {
+            SfUtility.outputLog(`Failed to upload application package from ${localPackagePath}`, error, debugLevel.error);
+            throw new NetworkError(`Failed to upload application package`, { cause: error });
+        }
+    }
+
+    /**
+     * Provision an application type from the Image Store.
+     * POST /ApplicationTypes/$/Provision?api-version=6.2
+     */
+    public async provisionApplicationType(imageStorePath: string, isAsync: boolean = true): Promise<void> {
+        try {
+            SfUtility.outputLog(`sfRest:provisionApplicationType: ${imageStorePath} (async=${isAsync})`, null, debugLevel.info);
+            
+            if (this.useDirectRest && this.directClient) {
+                await this.directClient.provisionApplicationType(imageStorePath, isAsync);
+            } else {
+                const provisionInfo: sfModels.ProvisionApplicationTypeDescriptionBaseUnion = {
+                    kind: 'ImageStorePath',
+                    applicationTypeBuildPath: imageStorePath,
+                    async: isAsync,
+                } as any;
+                await this.sfApi.provisionApplicationType(provisionInfo);
+            }
+            
+            SfUtility.outputLog('sfRest:provisionApplicationType:complete', null, debugLevel.info);
+        } catch (error) {
+            SfUtility.outputLog(`Failed to provision application type from ${imageStorePath}`, error, debugLevel.error);
+            throw new NetworkError(`Failed to provision application type`, { cause: error });
+        }
+    }
+
+    /**
+     * Create a new application instance.
+     * POST /Applications/$/Create?api-version=6.0
+     */
+    public async createApplication(
+        appName: string,
+        typeName: string,
+        typeVersion: string,
+        parameters?: Record<string, string>,
+    ): Promise<void> {
+        try {
+            SfUtility.outputLog(`sfRest:createApplication: ${appName} (${typeName} v${typeVersion})`, null, debugLevel.info);
+            
+            if (this.useDirectRest && this.directClient) {
+                await this.directClient.createApplication(appName, typeName, typeVersion, parameters);
+            } else {
+                const appDescription: sfModels.ApplicationDescription = {
+                    name: appName,
+                    typeName: typeName,
+                    typeVersion: typeVersion,
+                    parameterList: parameters
+                        ? Object.entries(parameters).map(([key, value]) => ({ key, value }))
+                        : undefined,
+                } as any;
+                await this.sfApi.createApplication(appDescription);
+            }
+            
+            SfUtility.outputLog('sfRest:createApplication:complete', null, debugLevel.info);
+        } catch (error) {
+            SfUtility.outputLog(`Failed to create application ${appName}`, error, debugLevel.error);
+            throw new NetworkError(`Failed to create application ${appName}`, { cause: error });
+        }
+    }
+
+    /**
+     * Direct HTTP PUT to image store (fallback when not using directClient).
+     */
+    private async directImageStoreUpload(contentPath: string, fileContent: Buffer): Promise<void> {
+        const encodedPath = encodeURIComponent(contentPath);
+        const requestPath = `/ImageStore/${encodedPath}?api-version=${this.clientApiVersion}`;
+        const options = this.createHttpOptions(requestPath);
+        (options as any).method = 'PUT';
+        (options as any).headers = {
+            ...this.createSfAutoRestHttpHeaders(),
+            'Content-Type': 'application/octet-stream',
+            'Content-Length': fileContent.length,
+        };
+
+        return new Promise((resolve, reject) => {
+            const protocol = this.clusterHttpEndpoint.startsWith('https') ? https : require('http');
+            const req = protocol.request(options, (res: any) => {
+                let body = '';
+                res.on('data', (chunk: string) => { body += chunk; });
+                res.on('end', () => {
+                    if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+                        resolve();
+                    } else {
+                        reject(new Error(`Image store upload failed: HTTP ${res.statusCode} - ${body}`));
+                    }
+                });
+            });
+            req.on('error', reject);
+            req.write(fileContent);
+            req.end();
+        });
+    }
 }

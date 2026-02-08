@@ -20,6 +20,12 @@ jest.mock('../../src/commands/ViewCommands', () => ({
 jest.mock('../../src/commands/ReportCommands', () => ({
     registerReportCommands: jest.fn()
 }));
+jest.mock('../../src/commands/ProjectCommands', () => ({
+    registerProjectCommands: jest.fn()
+}));
+jest.mock('../../src/services/SfProjectService');
+jest.mock('../../src/services/SfDeployService');
+jest.mock('../../src/treeview/SfApplicationsDataProvider');
 
 import { registerClusterCommands } from '../../src/commands/ClusterCommands';
 import { registerNodeCommands } from '../../src/commands/NodeCommands';
@@ -48,7 +54,7 @@ describe('CommandRegistry', () => {
         test('all entries should have required fields', () => {
             for (const [id, meta] of Object.entries(COMMAND_MANIFEST)) {
                 expect(meta.friendlyName).toBeTruthy();
-                expect(['cluster', 'view', 'report', 'node', 'resource', 'internal']).toContain(meta.category);
+                expect(['cluster', 'view', 'report', 'node', 'resource', 'internal', 'project']).toContain(meta.category);
                 expect(typeof meta.requiresCluster).toBe('boolean');
             }
         });
@@ -87,7 +93,7 @@ describe('CommandRegistry', () => {
 
         test('all command IDs should follow naming convention', () => {
             for (const id of Object.keys(COMMAND_MANIFEST)) {
-                expect(id).toMatch(/^(sfClusterExplorer|serviceFabricClusterView)\./);
+                expect(id).toMatch(/^(sfClusterExplorer|serviceFabricClusterView|sfApplications)\./);
             }
         });
     });

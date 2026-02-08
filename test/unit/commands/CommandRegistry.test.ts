@@ -30,7 +30,7 @@ describe('CommandRegistry', () => {
         });
 
         test('every command should have a valid category', () => {
-            const validCategories = ['cluster', 'view', 'report', 'node', 'resource', 'internal'];
+            const validCategories = ['cluster', 'view', 'report', 'node', 'resource', 'internal', 'project'];
             
             for (const [id, meta] of Object.entries(COMMAND_MANIFEST)) {
                 expect(validCategories).toContain(meta.category);

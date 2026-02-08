@@ -47,6 +47,11 @@ jest.mock('vscode', () => ({
             webview: { html: '', onDidReceiveMessage: jest.fn(), options: {} },
             dispose: jest.fn(),
             reveal: jest.fn(),
+        })),
+        createTerminal: jest.fn(() => ({
+            show: jest.fn(),
+            sendText: jest.fn(),
+            dispose: jest.fn(),
         }))
     },
     env: {
@@ -71,6 +76,13 @@ jest.mock('vscode', () => ({
         onDidOpenTextDocument: jest.fn(),
         onDidCloseTextDocument: jest.fn(),
         onDidSaveTextDocument: jest.fn(),
+        findFiles: jest.fn().mockResolvedValue([]),
+        createFileSystemWatcher: jest.fn(() => ({
+            onDidCreate: jest.fn(),
+            onDidChange: jest.fn(),
+            onDidDelete: jest.fn(),
+            dispose: jest.fn(),
+        })),
         fs: {
             createDirectory: jest.fn().mockResolvedValue(undefined),
             writeFile: jest.fn().mockResolvedValue(undefined),

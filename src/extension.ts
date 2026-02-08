@@ -6,10 +6,16 @@ import { SfPrompts } from './sfPrompts';
 import { SfUtility, debugLevel } from './sfUtility';
 import { ManagementWebviewProvider } from './views/ManagementWebviewProvider';
 import { CommandRegistry } from './commands/CommandRegistry';
+import { SfProjectService } from './services/SfProjectService';
+import { SfDeployService } from './services/SfDeployService';
+import { SfApplicationsDataProvider } from './treeview/SfApplicationsDataProvider';
 
 // Global references for cleanup
 let sfMgrInstance: SfMgr | undefined;
 let sfPromptsInstance: SfPrompts | undefined;
+let projectServiceInstance: SfProjectService | undefined;
+let deployServiceInstance: SfDeployService | undefined;
+let applicationsProviderInstance: SfApplicationsDataProvider | undefined;
 
 
 export async function activate(context: vscode.ExtensionContext) {
@@ -92,10 +98,24 @@ export async function activate(context: vscode.ExtensionContext) {
         )
     );
     
+    console.log('[SF Extension] 7.5/10 - Setting up SF Applications view...');
+    // Create project services and applications tree view
+    const projectService = new SfProjectService();
+    const deployService = new SfDeployService();
+    const applicationsProvider = new SfApplicationsDataProvider(projectService, context);
+    
+    projectServiceInstance = projectService;
+    deployServiceInstance = deployService;
+    applicationsProviderInstance = applicationsProvider;
+    
+    context.subscriptions.push(projectService);
+    context.subscriptions.push(deployService);
+    context.subscriptions.push(applicationsProvider);
+    
     console.log('[SF Extension] 8/10 - Registering commands...');
 
     // Register ALL commands via centralized CommandRegistry
-    CommandRegistry.registerAll(context, sfMgr, sfPrompts);
+    CommandRegistry.registerAll(context, sfMgr, sfPrompts, projectService, deployService, applicationsProvider);
 
     console.log('[SF Extension] 9/10 - All commands registered successfully');
 
@@ -134,6 +154,20 @@ export function deactivate(): void {
         if (sfMgrInstance) {
             sfMgrInstance.dispose();
             sfMgrInstance = undefined;
+        }
+        
+        // Dispose project services
+        if (applicationsProviderInstance) {
+            applicationsProviderInstance.dispose();
+            applicationsProviderInstance = undefined;
+        }
+        if (projectServiceInstance) {
+            projectServiceInstance.dispose();
+            projectServiceInstance = undefined;
+        }
+        if (deployServiceInstance) {
+            deployServiceInstance.dispose();
+            deployServiceInstance = undefined;
         }
         
         // Clear prompts instance
