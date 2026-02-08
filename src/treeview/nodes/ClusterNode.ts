@@ -3,6 +3,7 @@ import { BaseTreeNode } from '../BaseTreeNode';
 import { ITreeNode } from '../ITreeNode';
 import { TreeNodeContext } from '../TreeNodeContext';
 import { IconService } from '../IconService';
+import { ClusterDecorationProvider } from '../ClusterDecorationProvider';
 import { DataCache } from '../DataCache';
 import { SfUtility, debugLevel } from '../../sfUtility';
 import { StaticItemNode } from './StaticItemNode';
@@ -56,16 +57,13 @@ export class ClusterNode extends BaseTreeNode {
     getTreeItem(): vscode.TreeItem {
         const hostname = new URL(this.ctx.clusterEndpoint).hostname || this.ctx.clusterEndpoint;
 
-        // Use TreeItemLabel with highlights to bold the entire label when active
-        const label: vscode.TreeItemLabel = this.isActive
-            ? { label: hostname, highlights: [[0, hostname.length]] }
-            : { label: hostname };
-
-        const item = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.Expanded);
+        const item = new vscode.TreeItem(hostname, vscode.TreeItemCollapsibleState.Expanded);
         item.id = this.id;
         item.contextValue = this.contextValue;
         item.description = this.isActive ? 'Active' : undefined;
-        item.resourceUri = this.ctx.resourceUri;
+        // Use custom sf-cluster:// scheme so ClusterDecorationProvider can
+        // tint the active cluster label yellow without affecting other tree items
+        item.resourceUri = ClusterDecorationProvider.buildUri(this.ctx.clusterEndpoint);
 
         // Derive icon from cached cluster health
         const health = this.ctx.sfConfig.getClusterHealth();

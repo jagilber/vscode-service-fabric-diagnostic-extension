@@ -37,6 +37,19 @@ Primary focus on making extension accessible to:
 
 ## [Unreleased]
 
+### Added - Cluster Persistence & Visual Improvements
+- **Auto-reconnect clusters on activation** — Previously connected clusters are automatically
+  restored when VS Code starts. Connected cluster endpoints are persisted in `globalState` and
+  reconnected silently (no toast spam). Controlled by `sfClusterExplorer.autoReconnect` setting
+  (default: `true`).
+- **Active cluster persisted** — The last active cluster is remembered across sessions and
+  restored after auto-reconnect completes.
+- **Yellow label for active cluster** — The active cluster root node now renders with a yellow
+  label color via `FileDecorationProvider`, replacing the previous theme-dependent highlight.
+  Provides a clear, consistent visual indicator across all VS Code themes.
+- **ClusterDecorationProvider** — New `FileDecorationProvider` using custom `sf-cluster://` URI
+  scheme to tint only the active cluster node without affecting other tree items.
+
 ### Added - Phase 1: Foundation & Type Safety
 - **CacheManager** infrastructure class with LRU cache and TTL support
 - **Debounced refresh** mechanism to batch rapid tree view updates

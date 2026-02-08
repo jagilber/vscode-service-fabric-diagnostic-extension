@@ -79,6 +79,8 @@ jest.mock('../../src/sfUtility', () => ({
         showError: jest.fn(),
         createFolder: jest.fn(),
         fileExists: jest.fn().mockReturnValue(false),
+        readExtensionConfig: jest.fn().mockReturnValue(undefined),
+        saveExtensionConfig: jest.fn(),
     },
     debugLevel: { error: 0, warn: 1, info: 2, debug: 3 },
 }));

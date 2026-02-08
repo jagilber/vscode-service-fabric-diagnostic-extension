@@ -64,7 +64,7 @@ function buildRouteMappings(profileDir: string): RouteMapping[] {
         },
         {
             fixtureFile: 'cluster-version.json',
-            patterns: [/^\/\$\/GetClusterVersion$/],
+            patterns: [/^\/\$\/GetClusterVersion$/, /^\/\$\/GetProvisionedCodeVersions$/],
         },
         {
             fixtureFile: 'cluster-manifest.json',
@@ -72,7 +72,7 @@ function buildRouteMappings(profileDir: string): RouteMapping[] {
         },
         {
             fixtureFile: 'cluster-load.json',
-            patterns: [/^\/\$\/GetClusterLoad$/],
+            patterns: [/^\/\$\/GetClusterLoad$/, /^\/\$\/GetLoadInformation$/],
         },
 
         // ── Repair tasks ──
@@ -206,6 +206,50 @@ function buildRouteMappings(profileDir: string): RouteMapping[] {
                     return JSON.parse(fs.readFileSync(svcFile, 'utf-8'));
                 }
                 return [];
+            },
+        },
+
+        // ── Partitions via application-scoped URL ──
+        {
+            fixtureFile: '',
+            patterns: [/^\/Applications\/([^/]+)\/\$\/GetServices\/(.+?)\/\$\/GetPartitions$/],
+            resolver: (sfPath: string, fixturesDir: string) => {
+                const match = sfPath.match(/^\/Applications\/([^/]+)\/\$\/GetServices\/(.+?)\/\$\/GetPartitions$/);
+                if (!match) { return undefined; }
+                const serviceId = decodeURIComponent(match[2]);
+                const safeId = serviceId.replace(/\//g, '_');
+                const partFile = path.join(fixturesDir, 'partitions', `${safeId}.json`);
+                if (fs.existsSync(partFile)) {
+                    return JSON.parse(fs.readFileSync(partFile, 'utf-8'));
+                }
+                return [];
+            },
+        },
+
+        // ── Replicas via application-scoped URL ──
+        {
+            fixtureFile: '',
+            patterns: [/^\/Applications\/([^/]+)\/\$\/GetServices\/(.+?)\/\$\/GetPartitions\/([^/]+)\/\$\/GetReplicas$/],
+            resolver: (sfPath: string, fixturesDir: string) => {
+                const match = sfPath.match(/^\/Applications\/([^/]+)\/\$\/GetServices\/(.+?)\/\$\/GetPartitions\/([^/]+)\/\$\/GetReplicas$/);
+                if (!match) { return undefined; }
+                const partitionId = match[3];
+                const replicaFile = path.join(fixturesDir, 'replicas', `${partitionId}.json`);
+                if (fs.existsSync(replicaFile)) {
+                    return JSON.parse(fs.readFileSync(replicaFile, 'utf-8'));
+                }
+                return [];
+            },
+        },
+
+        // ── Partition health via application-scoped URL ──
+        {
+            fixtureFile: '',
+            patterns: [/^\/Applications\/([^/]+)\/\$\/GetServices\/(.+?)\/\$\/GetPartitions\/([^/]+)\/\$\/GetHealth$/],
+            resolver: (_sfPath: string, _fixturesDir: string) => {
+                const match = _sfPath.match(/^\/Applications\/([^/]+)\/\$\/GetServices\/(.+?)\/\$\/GetPartitions\/([^/]+)\/\$\/GetHealth$/);
+                const partitionId = match ? match[3] : 'unknown';
+                return { AggregatedHealthState: 'Ok', PartitionId: partitionId, HealthEvents: [], UnhealthyEvaluations: [] };
             },
         },
 

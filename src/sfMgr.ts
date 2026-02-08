@@ -183,7 +183,7 @@ export class SfMgr {
         return await this.sdkInstaller.downloadAndInstallSdk();
     }
 
-    public async getCluster(clusterEndpoint: string): Promise<void> {
+    public async getCluster(clusterEndpoint: string, autoConnect: boolean = false): Promise<void> {
         if (!this.getSfConfig(clusterEndpoint)) {
             this.sfConfig = new SfConfiguration(this.context, { endpoint: clusterEndpoint });
             this.addSfConfig(this.sfConfig);
@@ -196,19 +196,24 @@ export class SfMgr {
             this.sfClusterView.addClusterToTree(this.sfConfig, this.sfConfig.getSfRest());
         } catch (treeError) {
             SfUtility.outputLog('Failed to create tree view', treeError, debugLevel.error);
-            SfUtility.showWarning(`Failed to create tree view. Check Output panel for details.`);
+            if (!autoConnect) {
+                SfUtility.showWarning(`Failed to create tree view. Check Output panel for details.`);
+            }
             throw treeError; // Can't proceed without tree item
         }
 
         // Connect to cluster using service
         try {
-            await this.clusterService.connectToCluster(this.sfConfig, this.sfRest);
+            await this.clusterService.connectToCluster(this.sfConfig, this.sfRest, autoConnect);
             
             // Update tree with success and set as active
             this.sfClusterView.updateClusterInTree(clusterEndpoint, this.sfConfig);
             
             // Automatically set as active cluster
-            this.setActiveCluster(clusterEndpoint);
+            this.setActiveCluster(clusterEndpoint, autoConnect);
+
+            // Persist connected cluster in globalState
+            this.persistConnectedCluster(clusterEndpoint);
         } catch (connectionError) {
             // Connection failed but keep tree item with error status
             SfUtility.outputLog('Failed to connect to cluster', connectionError, debugLevel.error);
@@ -259,14 +264,11 @@ export class SfMgr {
         // Remove from tree view
         this.sfClusterView.removeClusterFromTree(clusterEndpoint);
         
-        // Optionally remove from configs array (keep for reconnection ability)
-        // const index = this.sfConfigs.findIndex((config: SfConfiguration) => config.getClusterEndpoint() === clusterEndpoint);
-        // if (index !== -1) {
-        //     this.sfConfigs.splice(index, 1);
-        // }
+        // Remove from persisted connected clusters
+        this.removePersistedCluster(clusterEndpoint);
     }
 
-    public setActiveCluster(clusterEndpoint: string): void {
+    public setActiveCluster(clusterEndpoint: string, autoConnect: boolean = false): void {
         SfUtility.outputLog(`Setting active cluster: ${clusterEndpoint}`, null, debugLevel.info);
         
         const config = this.getSfConfig(clusterEndpoint);
@@ -281,7 +283,12 @@ export class SfMgr {
         // Update tree to show active indicator
         this.sfClusterView.setActiveCluster(clusterEndpoint);
         
-        SfUtility.showInformation(`Active cluster set to: ${clusterEndpoint}`);
+        // Persist active cluster
+        SfUtility.saveExtensionConfig('activeCluster', clusterEndpoint);
+        
+        if (!autoConnect) {
+            SfUtility.showInformation(`Active cluster set to: ${clusterEndpoint}`);
+        }
         SfUtility.outputLog(`Active cluster is now: ${clusterEndpoint}`, null, debugLevel.info);
     }
 
@@ -334,6 +341,85 @@ export class SfMgr {
 
         SfUtility.outputLog(`runPsCommand output:`, response);
         return response;
+    }
+
+    /**
+     * Auto-reconnect to previously connected clusters on activation.
+     * Reads the persisted connected cluster list from globalState and
+     * reconnects silently (no toast notifications). Called once during activation.
+     */
+    public async autoReconnectClusters(): Promise<void> {
+        const autoReconnect = SfExtSettings.getSetting(sfExtSettingsList.autoReconnect);
+        if (autoReconnect === false) {
+            SfUtility.outputLog('Auto-reconnect disabled by setting', null, debugLevel.info);
+            return;
+        }
+
+        const connectedClusters = SfUtility.readExtensionConfig('connectedClusters') as string[] | undefined;
+        if (!connectedClusters || connectedClusters.length === 0) {
+            SfUtility.outputLog('No previously connected clusters to restore', null, debugLevel.info);
+            return;
+        }
+
+        SfUtility.outputLog(`Auto-reconnecting to ${connectedClusters.length} cluster(s): ${connectedClusters.join(', ')}`, null, debugLevel.info);
+
+        const results = await Promise.allSettled(
+            connectedClusters.map(endpoint => this.getCluster(endpoint, true))
+        );
+
+        let succeeded = 0;
+        let failed = 0;
+        for (let i = 0; i < results.length; i++) {
+            const result = results[i];
+            if (result.status === 'fulfilled') {
+                succeeded++;
+            } else {
+                failed++;
+                SfUtility.outputLog(`Auto-reconnect failed for ${connectedClusters[i]}: ${result.reason}`, null, debugLevel.warn);
+            }
+        }
+
+        SfUtility.outputLog(`Auto-reconnect complete: ${succeeded} succeeded, ${failed} failed`, null, debugLevel.info);
+
+        // Restore the last active cluster
+        const lastActive = SfUtility.readExtensionConfig('activeCluster') as string | undefined;
+        if (lastActive && connectedClusters.includes(lastActive)) {
+            const activeResult = results[connectedClusters.indexOf(lastActive)];
+            if (activeResult.status === 'fulfilled') {
+                this.setActiveCluster(lastActive, true);
+            }
+        }
+    }
+
+    /**
+     * Add a cluster endpoint to the persisted connected clusters list in globalState
+     */
+    private persistConnectedCluster(endpoint: string): void {
+        const connected = (SfUtility.readExtensionConfig('connectedClusters') as string[] | undefined) || [];
+        if (!connected.includes(endpoint)) {
+            connected.push(endpoint);
+            SfUtility.saveExtensionConfig('connectedClusters', connected);
+            SfUtility.outputLog(`Persisted connected cluster: ${endpoint} (total: ${connected.length})`, null, debugLevel.debug);
+        }
+    }
+
+    /**
+     * Remove a cluster endpoint from the persisted connected clusters list in globalState
+     */
+    private removePersistedCluster(endpoint: string): void {
+        const connected = (SfUtility.readExtensionConfig('connectedClusters') as string[] | undefined) || [];
+        const index = connected.indexOf(endpoint);
+        if (index !== -1) {
+            connected.splice(index, 1);
+            SfUtility.saveExtensionConfig('connectedClusters', connected);
+            SfUtility.outputLog(`Removed persisted cluster: ${endpoint} (remaining: ${connected.length})`, null, debugLevel.debug);
+        }
+
+        // Clear active cluster if it was the removed one
+        const activeCluster = SfUtility.readExtensionConfig('activeCluster') as string | undefined;
+        if (activeCluster === endpoint) {
+            SfUtility.saveExtensionConfig('activeCluster', undefined);
+        }
     }
 
     /**

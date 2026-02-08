@@ -23,11 +23,13 @@ export class SfClusterService {
      * Connect to a Service Fabric cluster
      * @param config Cluster configuration
      * @param sfRest REST client instance
+     * @param autoConnect When true, suppress toast notifications (used during auto-reconnect)
      * @returns Updated configuration with cluster data
      */
     public async connectToCluster(
         config: SfConfiguration,
-        sfRest: SfRest
+        sfRest: SfRest,
+        autoConnect: boolean = false
     ): Promise<void> {
         try {
             const endpoint = config.getClusterEndpoint();
@@ -39,19 +41,23 @@ export class SfClusterService {
             // Verify connection works - don't populate data (lazy loading)
             await config.getSfRest().getClusterVersion();
             
-            SfUtility.showInformation(`Successfully connected to cluster: ${endpoint}`);
+            if (!autoConnect) {
+                SfUtility.showInformation(`Successfully connected to cluster: ${endpoint}`);
+            }
             SfUtility.outputLog(`Successfully connected to cluster: ${endpoint}`, null, debugLevel.info);
         } catch (error) {
             const endpoint = config.getClusterEndpoint();
             const message = `Failed to connect to cluster: ${endpoint}`;
             SfUtility.outputLog(message, error, debugLevel.error);
             
-            if (error instanceof CertificateError) {
-                SfUtility.showError(`${message}. Certificate authentication failed. Check certificate configuration.`);
-            } else if (error instanceof NetworkError) {
-                SfUtility.showError(`${message}. Network error. Check endpoint and firewall settings.`);
-            } else {
-                SfUtility.showError(`${message}. ${error instanceof Error ? error.message : String(error)}`);
+            if (!autoConnect) {
+                if (error instanceof CertificateError) {
+                    SfUtility.showError(`${message}. Certificate authentication failed. Check certificate configuration.`);
+                } else if (error instanceof NetworkError) {
+                    SfUtility.showError(`${message}. Network error. Check endpoint and firewall settings.`);
+                } else {
+                    SfUtility.showError(`${message}. ${error instanceof Error ? error.message : String(error)}`);
+                }
             }
             
             throw new ClusterConnectionError(message, { endpoint, cause: error });

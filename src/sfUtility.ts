@@ -16,9 +16,11 @@ export class SfUtility {
     private static context: vscode.ExtensionContext;
     private static logger: ITelemetryLogger | undefined;
 
-    static init() { // (context: vscode.ExtensionContext) {
-        //SFUtility.context = context;
+    static init(context?: vscode.ExtensionContext) {
         console.log('[SF Extension] SfUtility.init() starting...');
+        if (context) {
+            SfUtility.context = context;
+        }
         SfUtility.createDebugLogChannel();
         console.log('[SF Extension] Output channel created, type:', typeof (this.channel as any).debug === 'function' ? 'LogOutputChannel' : 'OutputChannel');
         SfUtility.createTelemetryClient();

@@ -8,6 +8,7 @@ import { ClusterNode } from './nodes/ClusterNode';
 import { SfRest } from '../sfRest';
 import { SfConfiguration } from '../sfConfiguration';
 import { SfUtility, debugLevel } from '../sfUtility';
+import { ClusterDecorationProvider } from './ClusterDecorationProvider';
 
 /**
  * Enterprise-grade, lazy-loading TreeDataProvider for Service Fabric clusters.
@@ -31,9 +32,16 @@ export class SfTreeDataProvider implements vscode.TreeDataProvider<ITreeNode> {
     private readonly iconService = new IconService();
     private readonly cache = new DataCache();
     private readonly refreshManager: RefreshManager;
+    private readonly decorationProvider: ClusterDecorationProvider;
 
     constructor(private readonly extensionContext: vscode.ExtensionContext) {
         this.refreshManager = new RefreshManager(this._onDidChangeTreeData);
+        this.decorationProvider = new ClusterDecorationProvider();
+
+        // Register decoration provider so active cluster label is tinted yellow
+        extensionContext.subscriptions.push(
+            vscode.window.registerFileDecorationProvider(this.decorationProvider)
+        );
 
         this.view = vscode.window.createTreeView('serviceFabricClusterView', {
             treeDataProvider: this,
@@ -132,6 +140,8 @@ export class SfTreeDataProvider implements vscode.TreeDataProvider<ITreeNode> {
         for (const root of this.roots) {
             root.setActive(root.clusterEndpoint === endpoint);
         }
+        // Fire decoration change so the active cluster label turns yellow
+        this.decorationProvider.setActive(endpoint);
         // NOTE: Do NOT call this.refresh() here.
         // This is typically called during cluster connection setup,
         // and populateClusterInBackground() will fire refresh after health data arrives.
@@ -304,6 +314,7 @@ export class SfTreeDataProvider implements vscode.TreeDataProvider<ITreeNode> {
 
     dispose(): void {
         this.refreshManager.dispose();
+        this.decorationProvider.dispose();
         for (const root of this.roots) {
             root.dispose();
         }

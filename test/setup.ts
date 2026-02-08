@@ -92,8 +92,20 @@ jest.mock('vscode', () => ({
         getExtension: jest.fn().mockReturnValue(undefined)
     },
     Uri: {
-        parse: jest.fn((str) => ({ fsPath: str, toString: () => str })),
-        file: jest.fn((str) => ({ fsPath: str, toString: () => str }))
+        parse: jest.fn((str) => {
+            // Parse scheme, authority, and path from URI string
+            const match = str.match(/^([a-zA-Z][a-zA-Z0-9+.-]*):\/\/(.*)$/);
+            if (match) {
+                const scheme = match[1];
+                const rest = match[2];
+                const slashIdx = rest.indexOf('/');
+                const authority = slashIdx >= 0 ? rest.substring(0, slashIdx) : rest;
+                const path = slashIdx >= 0 ? rest.substring(slashIdx) : '';
+                return { scheme, authority, path, fsPath: str, toString: () => str };
+            }
+            return { scheme: undefined, authority: undefined, path: str, fsPath: str, toString: () => str };
+        }),
+        file: jest.fn((str) => ({ scheme: 'file', authority: '', path: str, fsPath: str, toString: () => str }))
     },
     Range: class Range {
         constructor(public start: any, public end: any) {}
@@ -131,6 +143,7 @@ jest.mock('vscode', () => ({
     EventEmitter: class EventEmitter {
         event = jest.fn();
         fire = jest.fn();
+        dispose = jest.fn();
     },
     ProgressLocation: {
         Notification: 15

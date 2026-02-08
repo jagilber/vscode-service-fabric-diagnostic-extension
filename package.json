@@ -306,6 +306,11 @@
             "type": "array",
             "default": [],
             "description": "List of saved Service Fabric cluster endpoints"
+          },
+          "sfClusterExplorer.autoReconnect": {
+            "type": "boolean",
+            "default": true,
+            "description": "Automatically reconnect to previously connected clusters when VS Code starts"
           }
         }
       }

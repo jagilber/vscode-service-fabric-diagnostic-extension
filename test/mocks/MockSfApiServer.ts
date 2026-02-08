@@ -61,6 +61,8 @@ export interface RequestLog {
     path: string;
     statusCode: number;
     durationMs: number;
+    responseBody?: any;
+    responseSize?: number;
 }
 
 // ── Mock Server ─────────────────────────────────────────────────────
@@ -72,6 +74,8 @@ export class MockSfApiServer {
     private errorInjections: ErrorInjection[] = [];
     private requestLog: RequestLog[] = [];
     private _port: number = 0;
+    private sseClients: Set<http.ServerResponse> = new Set();
+    private maxLogEntries: number = 500;
 
     constructor(profileName: ProfileName, options?: MockServerOptions) {
         this.profile = loadClusterProfile(profileName);
@@ -206,13 +210,31 @@ export class MockSfApiServer {
         // Check error injections
         const injection = this.checkErrorInjection(sfPath);
         if (injection) {
-            this.sendResponse(res, injection.statusCode, injection.body || {
+            const errBody = injection.body || {
                 Error: {
                     Code: 'FABRIC_E_MOCK_ERROR',
                     Message: `Injected error for ${sfPath}`,
                 },
-            });
-            this.logRequest(method, sfPath, injection.statusCode, startTime);
+            };
+            this.sendResponse(res, injection.statusCode, errBody);
+            this.logRequest(method, sfPath, injection.statusCode, startTime, errBody);
+            return;
+        }
+
+        // Handle dashboard and SSE endpoints
+        if (sfPath === '/_mock/dashboard') {
+            this.serveDashboard(res);
+            return;
+        }
+
+        if (sfPath === '/_mock/events') {
+            this.handleSSE(req, res);
+            return;
+        }
+
+        if (sfPath === '/_mock/log/clear') {
+            this.clearRequestLog();
+            this.sendResponse(res, 200, { cleared: true });
             return;
         }
 
@@ -240,7 +262,6 @@ export class MockSfApiServer {
 
         if (sfPath === '/_mock/log') {
             this.sendResponse(res, 200, this.requestLog);
-            this.logRequest(method, sfPath, 200, startTime);
             return;
         }
 
@@ -252,15 +273,16 @@ export class MockSfApiServer {
 
         if (responseData !== undefined) {
             this.sendResponse(res, 200, responseData);
-            this.logRequest(method, sfPath, 200, startTime);
+            this.logRequest(method, sfPath, 200, startTime, responseData);
         } else {
-            this.sendResponse(res, 404, {
+            const errBody = {
                 Error: {
                     Code: 'FABRIC_E_DOES_NOT_EXIST',
                     Message: `No fixture data for path: ${sfPath}`,
                 },
-            });
-            this.logRequest(method, sfPath, 404, startTime);
+            };
+            this.sendResponse(res, 404, errBody);
+            this.logRequest(method, sfPath, 404, startTime, errBody);
         }
     }
 
@@ -307,16 +329,413 @@ export class MockSfApiServer {
     }
 
     /**
-     * Log a request.
+     * Log a request and broadcast to SSE clients.
      */
-    private logRequest(method: string, path: string, statusCode: number, startTime: number): void {
-        this.requestLog.push({
+    private logRequest(method: string, path: string, statusCode: number, startTime: number, responseBody?: any): void {
+        const entry: RequestLog = {
             timestamp: new Date(),
             method,
             path,
             statusCode,
             durationMs: Date.now() - startTime,
+            responseBody,
+            responseSize: responseBody ? JSON.stringify(responseBody).length : 0,
+        };
+        this.requestLog.push(entry);
+
+        // Trim old entries
+        if (this.requestLog.length > this.maxLogEntries) {
+            this.requestLog = this.requestLog.slice(-this.maxLogEntries);
+        }
+
+        // Broadcast to SSE clients
+        this.broadcastSSE(entry);
+    }
+
+    /**
+     * Handle SSE connection for real-time log streaming.
+     */
+    private handleSSE(req: http.IncomingMessage, res: http.ServerResponse): void {
+        res.writeHead(200, {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+            'Access-Control-Allow-Origin': '*',
         });
+        res.write('data: {"type":"connected","profile":"' + this.profile.name + '"}\n\n');
+        this.sseClients.add(res);
+
+        req.on('close', () => {
+            this.sseClients.delete(res);
+        });
+    }
+
+    /**
+     * Broadcast a log entry to all SSE clients.
+     */
+    private broadcastSSE(entry: RequestLog): void {
+        const data = JSON.stringify({
+            type: 'request',
+            timestamp: entry.timestamp.toISOString(),
+            method: entry.method,
+            path: entry.path,
+            statusCode: entry.statusCode,
+            durationMs: entry.durationMs,
+            responseSize: entry.responseSize,
+            responseBody: entry.responseBody,
+        });
+        for (const client of this.sseClients) {
+            try {
+                client.write(`data: ${data}\n\n`);
+            } catch {
+                this.sseClients.delete(client);
+            }
+        }
+    }
+
+    /**
+     * Serve the real-time monitoring dashboard HTML.
+     */
+    private serveDashboard(res: http.ServerResponse): void {
+        const html = this.getDashboardHtml();
+        res.writeHead(200, {
+            'Content-Type': 'text/html',
+            'Content-Length': Buffer.byteLength(html),
+        });
+        res.end(html);
+    }
+
+    /**
+     * Generate the dashboard HTML with embedded JS for real-time monitoring.
+     */
+    private getDashboardHtml(): string {
+        return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SF Mock API - Live Monitor</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', Consolas, monospace;
+    background: #1e1e1e; color: #d4d4d4;
+    display: flex; flex-direction: column; height: 100vh;
+  }
+  header {
+    background: #252526; padding: 8px 16px;
+    display: flex; align-items: center; gap: 16px;
+    border-bottom: 1px solid #3c3c3c; flex-shrink: 0;
+  }
+  header h1 { font-size: 14px; color: #569cd6; font-weight: 600; }
+  .status { font-size: 12px; display: flex; align-items: center; gap: 6px; }
+  .status .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #f44; display: inline-block;
+  }
+  .status .dot.connected { background: #4ec9b0; }
+  .toolbar {
+    background: #2d2d2d; padding: 6px 16px;
+    display: flex; gap: 8px; align-items: center;
+    border-bottom: 1px solid #3c3c3c; flex-shrink: 0; flex-wrap: wrap;
+  }
+  .toolbar button {
+    background: #0e639c; color: #fff; border: none;
+    padding: 4px 12px; border-radius: 3px; cursor: pointer;
+    font-size: 12px;
+  }
+  .toolbar button:hover { background: #1177bb; }
+  .toolbar button.danger { background: #c72e2e; }
+  .toolbar button.danger:hover { background: #e04040; }
+  .toolbar select, .toolbar input {
+    background: #3c3c3c; color: #d4d4d4; border: 1px solid #555;
+    padding: 3px 8px; border-radius: 3px; font-size: 12px;
+  }
+  .toolbar label { font-size: 12px; color: #888; }
+  .stats {
+    font-size: 11px; color: #888; margin-left: auto;
+    display: flex; gap: 12px;
+  }
+  .stats span { color: #d4d4d4; }
+  .main { display: flex; flex: 1; overflow: hidden; }
+  .log-panel { flex: 1; overflow-y: auto; padding: 0; }
+  .detail-panel {
+    width: 45%; border-left: 1px solid #3c3c3c;
+    overflow-y: auto; display: none; flex-direction: column;
+  }
+  .detail-panel.open { display: flex; }
+  .detail-header {
+    padding: 8px 12px; background: #252526;
+    border-bottom: 1px solid #3c3c3c;
+    display: flex; justify-content: space-between; align-items: center;
+    flex-shrink: 0;
+  }
+  .detail-header h3 { font-size: 12px; color: #569cd6; }
+  .detail-header button {
+    background: none; border: none; color: #888; cursor: pointer; font-size: 16px;
+  }
+  .detail-body { padding: 12px; flex: 1; overflow-y: auto; }
+  .detail-body pre {
+    white-space: pre-wrap; word-break: break-all;
+    font-size: 12px; line-height: 1.5;
+    color: #ce9178;
+  }
+  .detail-meta { font-size: 11px; color: #888; margin-bottom: 8px; }
+  .detail-meta span { color: #d4d4d4; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  thead { position: sticky; top: 0; background: #252526; z-index: 1; }
+  th {
+    text-align: left; padding: 6px 12px;
+    border-bottom: 1px solid #3c3c3c; color: #569cd6;
+    font-weight: 600; font-size: 11px; text-transform: uppercase;
+  }
+  td { padding: 4px 12px; border-bottom: 1px solid #2d2d2d; cursor: pointer; }
+  tr:hover td { background: #2a2d2e; }
+  tr.selected td { background: #264f78; }
+  .s2xx { color: #4ec9b0; }
+  .s4xx { color: #ce9178; }
+  .s5xx { color: #f44747; }
+  .method { color: #dcdcaa; }
+  .path { color: #d4d4d4; }
+  .time { color: #888; font-variant-numeric: tabular-nums; }
+  .size { color: #888; font-variant-numeric: tabular-nums; }
+  .ts { color: #666; font-variant-numeric: tabular-nums; }
+  .filter-active { color: #4ec9b0 !important; }
+  .empty-state {
+    text-align: center; color: #555; padding: 48px;
+    font-size: 14px;
+  }
+  .auto-scroll-indicator {
+    font-size: 11px; color: #4ec9b0;
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>&#9881; SF Mock API Monitor</h1>
+  <div class="status">
+    <span class="dot" id="statusDot"></span>
+    <span id="statusText">Connecting...</span>
+  </div>
+  <div class="stats">
+    Profile: <span id="profileName">-</span>
+    &nbsp;|&nbsp; Requests: <span id="reqCount">0</span>
+    &nbsp;|&nbsp; Errors: <span id="errCount">0</span>
+  </div>
+</header>
+<div class="toolbar">
+  <label>Filter:</label>
+  <input type="text" id="filterInput" placeholder="path or status..." style="width:180px">
+  <label>Status:</label>
+  <select id="statusFilter">
+    <option value="all">All</option>
+    <option value="2xx">2xx</option>
+    <option value="4xx">4xx</option>
+    <option value="5xx">5xx</option>
+  </select>
+  <button onclick="clearLog()">Clear</button>
+  <button class="danger" onclick="clearServer()">Clear Server Log</button>
+  <label>
+    <input type="checkbox" id="autoScroll" checked> Auto-scroll
+  </label>
+  <label>
+    <input type="checkbox" id="captureBody" checked> Capture Bodies
+  </label>
+  <label>
+    <input type="checkbox" id="pauseBtn"> Pause
+  </label>
+</div>
+<div class="main">
+  <div class="log-panel" id="logPanel">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:90px">Time</th>
+          <th style="width:50px">Method</th>
+          <th>Path</th>
+          <th style="width:55px">Status</th>
+          <th style="width:55px">Duration</th>
+          <th style="width:65px">Size</th>
+        </tr>
+      </thead>
+      <tbody id="logBody"></tbody>
+    </table>
+    <div class="empty-state" id="emptyState">Waiting for requests...</div>
+  </div>
+  <div class="detail-panel" id="detailPanel">
+    <div class="detail-header">
+      <h3>Response Detail</h3>
+      <button onclick="closeDetail()">&times;</button>
+    </div>
+    <div class="detail-body">
+      <div class="detail-meta" id="detailMeta"></div>
+      <pre id="detailBody"></pre>
+    </div>
+  </div>
+</div>
+<script>
+const logBody = document.getElementById('logBody');
+const emptyState = document.getElementById('emptyState');
+const detailPanel = document.getElementById('detailPanel');
+const detailMeta = document.getElementById('detailMeta');
+const detailBody = document.getElementById('detailBody');
+const logPanel = document.getElementById('logPanel');
+const statusDot = document.getElementById('statusDot');
+const statusText = document.getElementById('statusText');
+const profileName = document.getElementById('profileName');
+const reqCount = document.getElementById('reqCount');
+const errCount = document.getElementById('errCount');
+const filterInput = document.getElementById('filterInput');
+const statusFilter = document.getElementById('statusFilter');
+
+let entries = [];
+let selectedIdx = -1;
+let totalReqs = 0;
+let totalErrs = 0;
+let evtSource = null;
+
+function connect() {
+  evtSource = new EventSource('/_mock/events');
+  evtSource.onopen = () => {
+    statusDot.className = 'dot connected';
+    statusText.textContent = 'Connected';
+  };
+  evtSource.onmessage = (e) => {
+    const data = JSON.parse(e.data);
+    if (data.type === 'connected') {
+      profileName.textContent = data.profile;
+      return;
+    }
+    if (document.getElementById('pauseBtn').checked) return;
+    if (data.path && data.path.startsWith('/_mock/')) return;
+
+    totalReqs++;
+    if (data.statusCode >= 400) totalErrs++;
+    reqCount.textContent = totalReqs;
+    errCount.textContent = totalErrs;
+
+    const entry = {
+      ts: data.timestamp,
+      method: data.method,
+      path: data.path,
+      status: data.statusCode,
+      duration: data.durationMs,
+      size: data.responseSize || 0,
+      body: document.getElementById('captureBody').checked ? data.responseBody : null,
+    };
+    entries.push(entry);
+    if (entries.length > 2000) entries = entries.slice(-1500);
+    renderEntry(entry, entries.length - 1);
+  };
+  evtSource.onerror = () => {
+    statusDot.className = 'dot';
+    statusText.textContent = 'Disconnected - retrying...';
+  };
+}
+
+function renderEntry(entry, idx) {
+  emptyState.style.display = 'none';
+  const filter = filterInput.value.toLowerCase();
+  const sf = statusFilter.value;
+  if (!matchesFilter(entry, filter, sf)) return;
+
+  const tr = document.createElement('tr');
+  tr.dataset.idx = idx;
+  const sc = entry.status < 300 ? 's2xx' : entry.status < 500 ? 's4xx' : 's5xx';
+  const t = new Date(entry.ts);
+  const ts = t.toLocaleTimeString('en-US', {hour12:false}) + '.' + String(t.getMilliseconds()).padStart(3,'0');
+  tr.innerHTML =
+    '<td class="ts">' + ts + '</td>' +
+    '<td class="method">' + entry.method + '</td>' +
+    '<td class="path">' + escHtml(entry.path) + '</td>' +
+    '<td class="' + sc + '">' + entry.status + '</td>' +
+    '<td class="time">' + entry.duration + 'ms</td>' +
+    '<td class="size">' + formatSize(entry.size) + '</td>';
+  tr.onclick = () => showDetail(idx, tr);
+  logBody.appendChild(tr);
+
+  if (document.getElementById('autoScroll').checked) {
+    logPanel.scrollTop = logPanel.scrollHeight;
+  }
+}
+
+function matchesFilter(entry, filter, sf) {
+  if (sf !== 'all') {
+    const cat = Math.floor(entry.status / 100) + 'xx';
+    if (cat !== sf) return false;
+  }
+  if (filter && !entry.path.toLowerCase().includes(filter) && !String(entry.status).includes(filter)) {
+    return false;
+  }
+  return true;
+}
+
+function showDetail(idx, tr) {
+  const prev = logBody.querySelector('.selected');
+  if (prev) prev.classList.remove('selected');
+  tr.classList.add('selected');
+  selectedIdx = idx;
+  const e = entries[idx];
+  detailMeta.innerHTML =
+    '<div>' + e.method + ' <span>' + escHtml(e.path) + '</span></div>' +
+    '<div>Status: <span class="' + (e.status < 300 ? 's2xx' : e.status < 500 ? 's4xx' : 's5xx') + '">' + e.status + '</span>' +
+    ' &nbsp; Duration: <span>' + e.duration + 'ms</span>' +
+    ' &nbsp; Size: <span>' + formatSize(e.size) + '</span></div>';
+  detailBody.textContent = e.body ? JSON.stringify(e.body, null, 2) : '(body not captured)';
+  detailPanel.classList.add('open');
+}
+
+function closeDetail() {
+  detailPanel.classList.remove('open');
+  const prev = logBody.querySelector('.selected');
+  if (prev) prev.classList.remove('selected');
+  selectedIdx = -1;
+}
+
+function clearLog() {
+  entries = [];
+  logBody.innerHTML = '';
+  emptyState.style.display = '';
+  totalReqs = 0; totalErrs = 0;
+  reqCount.textContent = '0'; errCount.textContent = '0';
+  closeDetail();
+}
+
+function clearServer() {
+  fetch('/_mock/log/clear').then(() => clearLog());
+}
+
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + 'B';
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + 'KB';
+  return (bytes / 1048576).toFixed(1) + 'MB';
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+filterInput.addEventListener('input', refilter);
+statusFilter.addEventListener('change', refilter);
+
+function refilter() {
+  logBody.innerHTML = '';
+  const filter = filterInput.value.toLowerCase();
+  const sf = statusFilter.value;
+  let visible = 0;
+  entries.forEach((e, i) => {
+    if (matchesFilter(e, filter, sf)) {
+      renderEntry(e, i);
+      visible++;
+    }
+  });
+  emptyState.style.display = visible ? 'none' : '';
+}
+
+connect();
+</script>
+</body>
+</html>`;
     }
 }
 
@@ -336,6 +755,7 @@ if (require.main === module) {
         console.log(`  GET ${baseUrl}/Applications`);
         console.log(`  GET ${baseUrl}/_mock/profiles`);
         console.log(`  GET ${baseUrl}/_mock/switch/{profile}`);
+        console.log(`  GET ${baseUrl}/_mock/dashboard   <-- Live Monitor`);
         console.log(`\nPress Ctrl+C to stop`);
     });
 }

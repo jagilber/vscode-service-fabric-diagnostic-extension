@@ -21,7 +21,7 @@ export async function activate(context: vscode.ExtensionContext) {
         let sfPrompts: SfPrompts;
         
         // CRITICAL: Initialize SfUtility FIRST to create output channel
-        SfUtility.init();
+        SfUtility.init(context);
         console.log('[SF Extension] 1.5/10 - SfUtility initialized');
         
         SfUtility.outputLog('Service Fabric extension activating', null, debugLevel.info);
@@ -68,6 +68,12 @@ export async function activate(context: vscode.ExtensionContext) {
 
         console.log('[SF Extension] 4/10 - Creating SfMgr...');
         sfMgr = new SfMgr(context);
+        
+        // Auto-reconnect to previously connected clusters (fire-and-forget)
+        sfMgr.autoReconnectClusters().catch(err => {
+            SfUtility.outputLog('Auto-reconnect failed', err, debugLevel.warn);
+        });
+        
         console.log('[SF Extension] 5/10 - Creating SfPrompts...');
         sfPrompts = new SfPrompts(context);
     
