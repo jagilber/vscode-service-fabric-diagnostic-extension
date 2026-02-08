@@ -485,6 +485,10 @@ export class SfDirectRestClient {
         return this.makeRequest<any[]>('GET', `/EventsStore/Partitions/${partitionId}/$/Replicas/${replicaId}/$/Events?StartTimeUtc=${startTime}&EndTimeUtc=${endTime}`, undefined, '6.4');
     }
 
+    async getClusterEventList(startTime: string, endTime: string): Promise<any[]> {
+        return this.makeRequest<any[]>('GET', `/EventsStore/Cluster/Events?StartTimeUtc=${encodeURIComponent(startTime)}&EndTimeUtc=${encodeURIComponent(endTime)}`, undefined, '6.4');
+    }
+
     // ==================== REPAIR TASK APIs ====================
 
     async getRepairTaskList(): Promise<any[]> {

@@ -9,11 +9,12 @@ import { SfConstants } from './sfConstants';
 import { clusterCertificate } from './types/ClusterTypes';
 import * as sfModels from './sdk/servicefabric/servicefabric/src/models';
 import { ServiceFabricClientAPIs } from './sdk/servicefabric/servicefabric/src/serviceFabricClientAPIs';
-import { NetworkError, HttpError, PaginationError } from './models/Errors';
+import { NetworkError } from './models/Errors';
 import * as xmljs from 'xml-js';
 import { AzureAccount, HttpHeaders, UriParameters } from './types';
 import { IHttpOptionsProvider } from './interfaces/IHttpOptionsProvider';
 import { SfDirectRestClient } from './services/SfDirectRestClient';
+import { getAllPaginated } from './infrastructure/PaginationHelper';
 
 export class SfRest implements IHttpOptionsProvider {
     //https://www.npmjs.com/package/keytar
@@ -81,27 +82,6 @@ export class SfRest implements IHttpOptionsProvider {
         }
         return azureAccount;
     }
-
-    // public async clusterConnect(): Promise<boolean> {
-    //     // uses cluster server certificate to connect to cluster
-    //     // todo: get and verify cluster server certificate
-    //     let result = false;
-    //     if (!this.clusterHttpEndpoint) {
-    //         SFUtility.showError("Cluster endpoint not set");
-    //         return false;
-    //     }
-    //     await this.invokeRestApi("GET", this.clusterHttpEndpoint!, "/$/GetClusterVersion")
-    //         .then((data: any) => {
-    //             SFUtility.outputLog(data);
-    //             result = true;
-    //         })
-    //         .catch((error: any) => {
-    //             SFUtility.outputLog(error);
-    //             SFUtility.showError("Error invoking rest api");
-    //             result = false;
-    //         });
-    //     return result;
-    // }
 
     private initializeClusterConnection(endpoint?: string): ServiceFabricClientAPIs {
         if (endpoint) {
@@ -231,49 +211,9 @@ export class SfRest implements IHttpOptionsProvider {
         };
     }
 
-    /**
-     * Generic pagination helper - iteratively fetches all pages
-     * Replaces broken recursive logic in continuation token handling
-     */
-    private async getAllPaginated<T>(
-        fetchPage: (continuationToken?: string) => Promise<{ items?: T[], continuationToken?: string }>
-    ): Promise<T[]> {
-        const allItems: T[] = [];
-        let continuationToken: string | undefined = undefined;
-        let pageCount = 0;
-        
-        do {
-            try {
-                pageCount++;
-                const response = await fetchPage(continuationToken);
-                
-                if (response.items && response.items.length > 0) {
-                    allItems.push(...response.items);
-                    SfUtility.outputLog(
-                        `Fetched page ${pageCount}: ${response.items.length} items, total: ${allItems.length}`,
-                        null,
-                        debugLevel.info
-                    );
-                } else {
-                    SfUtility.outputLog(`Page ${pageCount} contained no items`, null, debugLevel.debug);
-                }
-                
-                continuationToken = response.continuationToken;
-                
-            } catch (error) {
-                const message = `Pagination failed at page ${pageCount}`;
-                SfUtility.outputLog(message, error, debugLevel.error);
-                throw new PaginationError(message, { page: pageCount, cause: error });
-            }
-        } while (continuationToken);
-        
-        SfUtility.outputLog(`Pagination complete: ${pageCount} pages, ${allItems.length} total items`, null, debugLevel.info);
-        return allItems;
-    }
-
     public async getApplications(continuationToken?: string): Promise<sfModels.ApplicationInfo[]> {
-        // Use new pagination helper instead of manual recursion
-        return this.getAllPaginated(async (token) => {
+        // Use pagination helper instead of manual recursion
+        return getAllPaginated(async (token) => {
             const response = await this.sfApi.getApplicationInfoList({ continuationToken: token });
             return {
                 items: response.items || [],
@@ -298,7 +238,7 @@ export class SfRest implements IHttpOptionsProvider {
                 return response.items || [];
             } else {
                 // Use Azure SDK with pagination
-                return this.getAllPaginated(async (token) => {
+                return getAllPaginated(async (token) => {
                     const response = await this.sfApi.getDeployedApplicationInfoList(nodeName, { continuationToken: token });
                     SfUtility.outputLog(`🔍 AZURE SDK response.items length: ${response.items?.length || 0}`, null, debugLevel.info);
                     return {
@@ -477,7 +417,7 @@ export class SfRest implements IHttpOptionsProvider {
             
             SfUtility.outputLog(`Getting partitions for service: ${serviceId} (formatted: ${formattedServiceId})`, null, debugLevel.info);
             
-            return this.getAllPaginated(async (token) => {
+            return getAllPaginated(async (token) => {
                 const response = await this.sfApi.getPartitionInfoList(formattedServiceId, { continuationToken: token });
                 return {
                     items: response.items || [],
@@ -495,7 +435,7 @@ export class SfRest implements IHttpOptionsProvider {
         try {
             SfUtility.outputLog(`Getting replicas for partition: ${partitionId}`, null, debugLevel.info);
             
-            return this.getAllPaginated(async (token) => {
+            return getAllPaginated(async (token) => {
                 const response = await this.sfApi.getReplicaInfoList(partitionId, { continuationToken: token });
                 return {
                     items: response.items || [],
@@ -635,30 +575,15 @@ export class SfRest implements IHttpOptionsProvider {
             
             SfUtility.outputLog(`Requesting cluster events from ${formattedStart} to ${formattedEnd}`, null, debugLevel.info);
             
-            // Bypass the SDK - call EventStore REST API directly
+            // Use direct REST client for EventStore (bypasses Azure SDK which doesn't support EventStore well)
             // EventStore requires api-version=6.4 per Microsoft Learn docs (locked 2026-02-03)
-            const encodedStart = encodeURIComponent(formattedStart);
-            const encodedEnd = encodeURIComponent(formattedEnd);
-            const path = `/EventsStore/Cluster/Events?api-version=6.4&StartTimeUtc=${encodedStart}&EndTimeUtc=${encodedEnd}`;
-            
-            SfUtility.outputLog(`Direct EventStore request: ${path}`, null, debugLevel.info);
+            if (!this.directClient) {
+                throw new Error('Direct REST client not initialized — call configureClients() first');
+            }
             
             try {
-                const parsedUri = url.parse(this.clusterHttpEndpoint!);
-                const httpOptions: https.RequestOptions = {
-                    host: parsedUri.hostname || "localhost",
-                    method: "GET",
-                    path: path,
-                    headers: this.createSfAutoRestHttpHeaders(),
-                    port: parsedUri.port ? parseInt(parsedUri.port) : SfConstants.SF_HTTP_GATEWAY_PORT,
-                    key: this.key,
-                    cert: this.certificate,
-                    rejectUnauthorized: false
-                };
-                
-                const responseText = await this.invokeRequestOptions(httpOptions);
-                const response = responseText ? JSON.parse(responseText) : [];
-                SfUtility.outputLog(`Retrieved ${response.length || 0} cluster events`, null, debugLevel.info);
+                const response = await this.directClient.getClusterEventList(formattedStart, formattedEnd);
+                SfUtility.outputLog(`Retrieved ${response?.length || 0} cluster events`, null, debugLevel.info);
                 return response || [];
             } catch (error: unknown) {
                 // If 24-hour query fails, try last 1 hour as fallback
@@ -667,26 +592,12 @@ export class SfRest implements IHttpOptionsProvider {
                     SfUtility.outputLog('24-hour query failed, trying 1-hour range', null, debugLevel.warn);
                     const oneHourAgo = new Date();
                     oneHourAgo.setHours(oneHourAgo.getHours() - 1);
-                    const fallbackStart = encodeURIComponent(formatDateForEventStore(oneHourAgo.toISOString()));
-                    const fallbackEnd = encodeURIComponent(formatDateForEventStore(new Date().toISOString()));
-                    const fallbackPath = `/EventsStore/Cluster/Events?api-version=6.4&StartTimeUtc=${fallbackStart}&EndTimeUtc=${fallbackEnd}`;
+                    const fallbackStart = formatDateForEventStore(oneHourAgo.toISOString());
+                    const fallbackEnd = formatDateForEventStore(new Date().toISOString());
                     
                     try {
-                        const parsedUri = url.parse(this.clusterHttpEndpoint!);
-                        const httpOptions: https.RequestOptions = {
-                            host: parsedUri.hostname || "localhost",
-                            method: "GET",
-                            path: fallbackPath,
-                            headers: this.createSfAutoRestHttpHeaders(),
-                            port: parsedUri.port ? parseInt(parsedUri.port) : SfConstants.SF_HTTP_GATEWAY_PORT,
-                            key: this.key,
-                            cert: this.certificate,
-                            rejectUnauthorized: false
-                        };
-                        
-                        const responseText = await this.invokeRequestOptions(httpOptions);
-                        const response = responseText ? JSON.parse(responseText) : [];
-                        SfUtility.outputLog(`Retrieved ${response.length || 0} cluster events (1-hour fallback)`, null, debugLevel.info);
+                        const response = await this.directClient.getClusterEventList(fallbackStart, fallbackEnd);
+                        SfUtility.outputLog(`Retrieved ${response?.length || 0} cluster events (1-hour fallback)`, null, debugLevel.info);
                         return response || [];
                     } catch (fallbackError) {
                         SfUtility.outputLog('1-hour fallback also failed', fallbackError, debugLevel.error);
@@ -715,7 +626,7 @@ export class SfRest implements IHttpOptionsProvider {
     
     public async getApplicationTypes(continuationToken?: string): Promise<sfModels.ApplicationTypeInfo[]> {
         // Use pagination helper instead of manual recursion
-        return this.getAllPaginated(async (token) => {
+        return getAllPaginated(async (token) => {
             const response = await this.sfApi.getApplicationTypeInfoList({ continuationToken: token });
             SfUtility.outputLog('sfRest:getApplicationTypes page fetched', response, debugLevel.debug);
             return {
@@ -807,46 +718,6 @@ export class SfRest implements IHttpOptionsProvider {
         return new Promise<sfModels.GetClusterManifestResponse[]>((resolve, reject) => {
             this.getClusterManifest();
         });
-        //const clusters = await this.sfApi.getClusterInfoList();
-        // public async getClusters(secret: string | null = null, subscriptionId: string | null = null): Promise<any> {
-        //     // uses azure account to enumerate clusters
-        //     return new Promise<any>((resolve, reject) => {
-        //         if (!secret || !subscriptionId) {
-        //             //vscode.commands.executeCommand('azure-account.selectSubscriptions', { allowChanging: true, showCreatingTreeItem: true });
-        //             SFUtility.showWarning("Cluster secret or subscription id not set");
-        //             if (!this.azureConnect()) {
-        //                 SFUtility.showError("Azure account not connected");
-        //                 return null;
-        //             }
-        //         }
-
-        //         const httpOptions: https.RequestOptions | tls.ConnectionOptions = {
-        //             hostname: "management.azure.com",
-        //             method: "GET",
-        //             path: `/subscriptions/${subscriptionId}/providers/Microsoft.ServiceFabric/clusters?api-version=${this.resourceApiVersion}`,
-        //             headers: {
-        //                 "Content-Type": "application/json",
-        //                 "Accept": "application/json"
-        //             },
-        //             port: 443,
-        //             timeout: this.timeOut,
-        //             // key: this.key,
-        //             // cert: this.certificate,
-        //             // enableTrace: true,
-        //             rejectUnauthorized: false
-        //         };
-
-        //         this.invokeRequest(httpOptions)
-        //             .then((data: any) => {
-        //                 SFUtility.outputLog(data);
-        //                 resolve(data);
-        //             })
-        //             .catch((error: any) => {
-        //                 SFUtility.outputLog(error);
-        //                 SFUtility.showError("Error invoking rest api");
-        //                 reject(error);
-        //             });
-        //     });
     }
 
     public async getClusterServerCertificate(clusterHttpEndpoint: string, port = SfConstants.SF_HTTP_GATEWAY_PORT): Promise<tls.PeerCertificate | undefined> {
@@ -900,7 +771,7 @@ export class SfRest implements IHttpOptionsProvider {
     public async getNodes(nodeStatusFilter: sfModels.KnownNodeStatusFilter = sfModels.KnownNodeStatusFilter.Default, continuationToken?: string): Promise<sfModels.NodeInfo[]> {
         try {
             // Use pagination helper instead of manual recursion
-            const nodes = await this.getAllPaginated(async (token) => {
+            const nodes = await getAllPaginated(async (token) => {
                 const response = await this.sfApi.getNodeInfoList({ 
                     continuationToken: token, 
                     nodeStatusFilter: nodeStatusFilter 
@@ -931,7 +802,7 @@ export class SfRest implements IHttpOptionsProvider {
 
     public async getServices(applicationId: string, continuationToken?: string): Promise<sfModels.ServiceInfoUnion[]> {
         // Use pagination helper instead of manual recursion
-        return this.getAllPaginated(async (token) => {
+        return getAllPaginated(async (token) => {
             const response = await this.sfApi.getServiceInfoList(applicationId, { continuationToken: token });
             return {
                 items: response.items || [],
@@ -942,7 +813,7 @@ export class SfRest implements IHttpOptionsProvider {
 
     public async getSystemServices(applicationId: string, continuationToken?: string): Promise<sfModels.ServiceInfoUnion[]> {
         // Use pagination helper instead of manual recursion
-        return this.getAllPaginated(async (token) => {
+        return getAllPaginated(async (token) => {
             const response = await this.sfApi.getServiceInfoList(applicationId, { continuationToken: token });
             return {
                 items: response.items || [],
@@ -1007,26 +878,6 @@ export class SfRest implements IHttpOptionsProvider {
             SfUtility.showError(`invokeRequest failed: ${error}`);
             throw error;
         }
-    }
-
-    public async invokeRequest(stringUri: string): Promise<ClientRequest | string | undefined> {
-        const parsedUri = url.parse(stringUri);
-
-        const httpOptions: tls.ConnectionOptions | RequestOptions = {
-            host: parsedUri!.hostname ? parsedUri.hostname : "localhost",
-            method: "GET",
-            path: parsedUri.path?.replace(/(&|\?)$/, ""),
-            headers: this.createSfAutoRestHttpHeaders(),
-            port: parsedUri.port ? parseInt(parsedUri.port) : 19080,
-            //timeout: this.timeOut,
-            key: this.key,
-            cert: this.certificate,
-            enableTrace: true,
-            rejectUnauthorized: false
-        };
-
-        return await this.invokeRequestOptions(httpOptions);
-
     }
 
     public async invokeRestApi(
