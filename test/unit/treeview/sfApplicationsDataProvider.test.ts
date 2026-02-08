@@ -66,12 +66,11 @@ describe('SfApplicationsDataProvider', () => {
             expect(children[0].label).toBe('MyAppType');
         });
 
-        test('should return info item when no projects found', async () => {
+        test('should return empty array when no projects found (so viewsWelcome shows)', async () => {
             jest.spyOn(projectService, 'discoverProjects').mockResolvedValue([]);
 
             const children = await provider.getChildren();
-            expect(children).toHaveLength(1);
-            expect((children[0] as vscode.TreeItem).label).toContain('No .sfproj');
+            expect(children).toHaveLength(0);
         });
 
         test('should return error item on discovery failure', async () => {

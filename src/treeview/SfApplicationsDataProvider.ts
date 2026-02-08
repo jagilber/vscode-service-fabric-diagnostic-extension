@@ -68,14 +68,9 @@ export class SfApplicationsDataProvider implements vscode.TreeDataProvider<SfApp
             const projects = await this.projectService.discoverProjects();
 
             if (projects.length === 0) {
-                // Return a single "no projects" item
-                const noProjects = new vscode.TreeItem(
-                    'No .sfproj projects found in workspace',
-                    vscode.TreeItemCollapsibleState.None,
-                );
-                noProjects.iconPath = new vscode.ThemeIcon('info');
-                noProjects.tooltip = 'Open a workspace folder containing Service Fabric application projects (.sfproj)';
-                return [noProjects];
+                // Return empty array so VS Code shows the viewsWelcome content
+                // (which has "Add External Project" and "Learn more" buttons)
+                return [];
             }
 
             return projects.map(p => new SfProjectNode(p));
