@@ -131,7 +131,7 @@ describe('SfConfiguration', () => {
         });
 
         test('should return undefined endpoint info when no endpoint', () => {
-            (sfConfig as any).clusterHttpEndpoint = '';
+            (sfConfig as any).connectionManager.setClusterEndpoint('');
             expect(sfConfig.getClusterEndpointInfo()).toBeUndefined();
         });
 
@@ -206,17 +206,18 @@ describe('SfConfiguration', () => {
 
         test('should discover cert for HTTPS endpoint with no thumbprint', async () => {
             sfConfig.setClusterEndpoint('https://mycluster:19080');
-            (sfConfig as any).clusterCertificate = {};
+            (sfConfig as any).connectionManager.setClusterCertificateInfo({});
             await sfConfig.ensureRestClientReady();
             expect(sfConfig.getSfRest().configureClients).toHaveBeenCalled();
         });
 
         test('should retrieve PEM when thumbprint is set but no cert', async () => {
             sfConfig.setClusterEndpoint('https://mycluster:19080');
-            (sfConfig as any).clusterCertificate = { thumbprint: 'ABCD1234' };
+            (sfConfig as any).connectionManager.setClusterCertificateInfo({ thumbprint: 'ABCD1234' });
             await sfConfig.ensureRestClientReady();
-            expect((sfConfig as any).clusterCertificate.certificate).toContain('CERTIFICATE');
-            expect((sfConfig as any).clusterCertificate.key).toContain('PRIVATE KEY');
+            const cert = sfConfig.getClusterCertificate();
+            expect(cert?.certificate).toContain('CERTIFICATE');
+            expect(cert?.key).toContain('PRIVATE KEY');
         });
 
         test('should be concurrency-safe (share promise)', async () => {
@@ -228,14 +229,14 @@ describe('SfConfiguration', () => {
         });
 
         test('should handle no endpoint gracefully', async () => {
-            (sfConfig as any).clusterHttpEndpoint = '';
+            (sfConfig as any).connectionManager.setClusterEndpoint('');
             await sfConfig.ensureRestClientReady();
             // Should not throw, just return
         });
 
         test('should handle TLS discovery failure gracefully', async () => {
             sfConfig.setClusterEndpoint('https://mycluster:19080');
-            (sfConfig as any).clusterCertificate = {};
+            (sfConfig as any).connectionManager.setClusterCertificateInfo({});
             sfConfig.getSfRest().getClusterServerCertificate = jest.fn().mockRejectedValue(new Error('TLS error'));
             await sfConfig.ensureRestClientReady();
             // Should not throw - continues without cert
@@ -243,9 +244,10 @@ describe('SfConfiguration', () => {
 
         test('should throw when PEM retrieval fails', async () => {
             sfConfig.setClusterEndpoint('https://mycluster:19080');
-            (sfConfig as any).clusterCertificate = { thumbprint: 'ABCD1234' };
-            const sfPs = (sfConfig as any).sfPs;
-            sfPs.getPemCertFromLocalCertStore = jest.fn().mockRejectedValue(new Error('Cert store error'));
+            (sfConfig as any).connectionManager.setClusterCertificateInfo({ thumbprint: 'ABCD1234' });
+            // Access sfPs through connectionManager since cert logic is now delegated
+            const connMgr = (sfConfig as any).connectionManager;
+            connMgr.sfPs.getPemCertFromLocalCertStore = jest.fn().mockRejectedValue(new Error('Cert store error'));
             await expect(sfConfig.ensureRestClientReady()).rejects.toThrow('Cert store error');
         });
     });

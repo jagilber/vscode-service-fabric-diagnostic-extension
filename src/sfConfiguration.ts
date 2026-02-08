@@ -1,26 +1,22 @@
 import * as vscode from 'vscode';
-import * as xmlConverter from 'xml-js';
 import { SfUtility, debugLevel } from './sfUtility';
 import { SfClusterFolder } from './sfClusterFolder';
 import * as sfModels from './sdk/servicefabric/servicefabric/src/models';
 import { SfRest } from './sfRest';
 import { SfPs } from './sfPs';
 import { SfConstants } from './sfConstants';
-import { PeerCertificate } from 'tls';
 import * as url from 'url';
 import { ClusterConnectionError, NetworkError } from './models/Errors';
 import { PiiObfuscation } from './utils/PiiObfuscation';
 import { nodeType, clusterCertificate, clusterEndpointInfo } from './types/ClusterTypes';
+import { ManifestService } from './services/ManifestService';
+import { ClusterConnectionManager } from './services/ClusterConnectionManager';
 
 // Re-export types for backward compatibility
 export type { nodeType, clusterCertificate, clusterEndpointInfo } from './types/ClusterTypes';
 
 export class SfConfiguration {
-    private xmlManifest = "";
-    private jsonManifest = "";
-    private jObjectManifest: Record<string, unknown> = {};
     private context: vscode.ExtensionContext;
-    private clusterHttpEndpoint: string = SfConstants.SF_HTTP_GATEWAY_ENDPOINT;
     private clusterName?: string;
     private nodes: sfModels.NodeInfo[] = [];
     private nodeTypes: nodeType[] = [];
@@ -30,7 +26,6 @@ export class SfConfiguration {
     private systemServices: sfModels.ServiceInfo[] = [];
     private sfClusterFolder: SfClusterFolder;
     private sfRest: SfRest;
-    private clusterCertificate: clusterCertificate = {};
     private clusterHealth?: sfModels.ClusterHealth;
     private sfPs: SfPs = new SfPs();
     // Maps to store health states from cluster health query
@@ -39,29 +34,30 @@ export class SfConfiguration {
     private nodeHealthMap: Map<string, string> = new Map();
     private partitionHealthMap: Map<string, string> = new Map();
     private repairTasks: any[] = [];
-    // Cache for image store availability check (avoid re-parsing manifest)
-    private cachedIsNativeImageStore: boolean | null = null;
-    // Concurrency guard for ensureRestClientReady
-    private _restClientReadyPromise: Promise<void> | null = null;
+    // Delegates
+    private manifestService: ManifestService;
+    private connectionManager: ClusterConnectionManager;
 
     constructor(context: vscode.ExtensionContext, clusterEndpointInfo?: clusterEndpointInfo) {
         this.context = context;
         this.sfClusterFolder = new SfClusterFolder(context);
         this.sfRest = new SfRest(context);
+        this.manifestService = new ManifestService();
+        this.connectionManager = new ClusterConnectionManager(this.sfRest, this.sfPs, SfConstants.SF_HTTP_GATEWAY_ENDPOINT);
 
         if (clusterEndpointInfo) {
-            this.setClusterEndpoint(clusterEndpointInfo.endpoint);
+            this.connectionManager.setClusterEndpoint(clusterEndpointInfo.endpoint);
             this.clusterName = url.parse(clusterEndpointInfo.endpoint).hostname!;
 
             if (clusterEndpointInfo.clusterCertificate) {
-                this.setClusterCertificateInfo(clusterEndpointInfo.clusterCertificate);
+                this.connectionManager.setClusterCertificateInfo(clusterEndpointInfo.clusterCertificate);
             }
             else {
-                this.getClusterCertificateFromServer();
+                this.connectionManager.getClusterCertificateFromServer();
             }
 
             if (clusterEndpointInfo.manifest) {
-                this.setManifest(clusterEndpointInfo.manifest);
+                this.manifestService.setManifest(clusterEndpointInfo.manifest);
             }
         }
     }
@@ -85,7 +81,7 @@ export class SfConfiguration {
 
 
     public getClusterEndpoint(): string {
-        return this.clusterHttpEndpoint!;
+        return this.connectionManager.getClusterEndpoint();
     }
 
     public getClusterHealth(): any {
@@ -94,62 +90,10 @@ export class SfConfiguration {
     
     /**
      * Ensure REST client is configured with endpoint and certificate (PEM) before making API calls.
-     * For HTTPS clusters without cert info, discovers server cert via TLS handshake.
-     * Retrieves PEM cert+key from local cert store if needed. Idempotent and concurrency-safe.
+     * Delegates to ClusterConnectionManager.
      */
     public async ensureRestClientReady(): Promise<void> {
-        // Concurrency guard — if another call is already in progress, share that promise
-        if (this._restClientReadyPromise) {
-            return this._restClientReadyPromise;
-        }
-        this._restClientReadyPromise = this._doEnsureRestClientReady();
-        try {
-            await this._restClientReadyPromise;
-        } finally {
-            this._restClientReadyPromise = null;
-        }
-    }
-
-    private async _doEnsureRestClientReady(): Promise<void> {
-        const endpoint = this.clusterHttpEndpoint;
-        if (!endpoint) {
-            SfUtility.outputLog('ensureRestClientReady: no endpoint set', null, debugLevel.warn);
-            return;
-        }
-
-        const isHttps = endpoint.toLowerCase().startsWith('https');
-
-        if (isHttps && this.clusterCertificate) {
-            // Step 1: If no thumbprint/CN yet, discover from server certificate via TLS handshake
-            if (!this.clusterCertificate.thumbprint && !this.clusterCertificate.commonName) {
-                try {
-                    SfUtility.outputLog('ensureRestClientReady: No cert identity — discovering from server TLS handshake...', null, debugLevel.info);
-                    await this.getClusterCertificateFromServer(endpoint);
-                    SfUtility.outputLog(`ensureRestClientReady: Discovered thumbprint=${PiiObfuscation.thumbprint(this.clusterCertificate.thumbprint)}, CN=${this.clusterCertificate.commonName}`, null, debugLevel.info);
-                } catch (tlsError) {
-                    SfUtility.outputLog('ensureRestClientReady: Failed to discover server cert via TLS', tlsError, debugLevel.error);
-                    // Continue anyway — configureClients without cert will be attempted
-                }
-            }
-
-            // Step 2: If we now have thumbprint/CN but no PEM, retrieve from local cert store
-            if ((this.clusterCertificate.thumbprint || this.clusterCertificate.commonName)
-                && (!this.clusterCertificate.certificate || !this.clusterCertificate.key)) {
-                try {
-                    const identifier = this.clusterCertificate.thumbprint ?? this.clusterCertificate.commonName!;
-                    SfUtility.outputLog(`ensureRestClientReady: Retrieving PEM cert for ${PiiObfuscation.thumbprint(identifier)}`, null, debugLevel.info);
-                    this.clusterCertificate.certificate = await this.sfPs.getPemCertFromLocalCertStore(identifier);
-                    this.clusterCertificate.key = await this.sfPs.getPemKeyFromLocalCertStore(identifier);
-                    SfUtility.outputLog('ensureRestClientReady: PEM cert+key retrieved', null, debugLevel.info);
-                } catch (certError) {
-                    SfUtility.outputLog('ensureRestClientReady: Failed to retrieve PEM cert', certError, debugLevel.error);
-                    throw certError;
-                }
-            }
-        }
-
-        // Configure REST client with endpoint and cert (no network call)
-        this.sfRest.configureClients(endpoint, this.clusterCertificate);
+        return this.connectionManager.ensureRestClientReady();
     }
         
     public getSfRest(): SfRest {
@@ -157,50 +101,37 @@ export class SfConfiguration {
     }
     
     public getClientCertificateThumbprint(): string | undefined {
-        return this.clusterCertificate?.thumbprint;
+        return this.connectionManager.getClientCertificateThumbprint();
     }
     
     public getServerCertificateThumbprint(): string | undefined {
-        return this.clusterCertificate?.thumbprint;
+        return this.connectionManager.getServerCertificateThumbprint();
     }
     
     public getClusterEndpointInfo(): clusterEndpointInfo | undefined {
-        if (this.clusterHttpEndpoint) {
+        const endpoint = this.connectionManager.getClusterEndpoint();
+        if (endpoint) {
             return {
-                endpoint: this.clusterHttpEndpoint,
-                clusterCertificate: this.getClusterCertificate()
+                endpoint: endpoint,
+                clusterCertificate: this.connectionManager.getClusterCertificate()
             };
         }
         return undefined;
     }
 
     public getClusterCertificate(): clusterCertificate | undefined {
-        return this.clusterCertificate;
-    }
-
-    private async getClusterCertificateFromServer(clusterHttpEndpoint = this.clusterHttpEndpoint!): Promise<void> {
-        const serverCertificate: PeerCertificate | undefined = await this.sfRest.getClusterServerCertificate(clusterHttpEndpoint);
-        if (serverCertificate) {
-            SfUtility.outputLog(`sfConfiguration:getClusterCertificateFromServer - thumbprint: ${PiiObfuscation.thumbprint(serverCertificate.fingerprint)}, CN: ${PiiObfuscation.commonName(serverCertificate.subject.CN)}`, null, debugLevel.info);
-            //this.clusterCertificate = serverCertificate.raw.toString('base64');
-            // Node.js fingerprint uses colons (F8:39:ED:...) but Windows cert store needs plain hex (F839ED...)
-            this.clusterCertificate.thumbprint = serverCertificate.fingerprint.replace(/:/g, '');
-            this.clusterCertificate.commonName = serverCertificate.subject.CN;
-        }
-        else {
-            SfUtility.outputLog('sfConfiguration:getClusterCertificateFromServer:clusterCertificate:undefined', null, debugLevel.warn);
-        }
-        return Promise.resolve();
+        return this.connectionManager.getClusterCertificate();
     }
 
 
     public getJsonManifest(): string {
-        return this.jsonManifest;
+        return this.manifestService.getJsonManifest();
     }
 
     public async populate(): Promise<void> {
+        const endpoint = this.connectionManager.getClusterEndpoint();
         try {
-            SfUtility.outputLog(`Populating cluster data for: ${PiiObfuscation.endpoint(this.clusterHttpEndpoint)}`, null, debugLevel.info);
+            SfUtility.outputLog(`Populating cluster data for: ${PiiObfuscation.endpoint(endpoint)}`, null, debugLevel.info);
             
             // Clear existing data before repopulating (important for refresh)
             this.applications = [];
@@ -213,7 +144,7 @@ export class SfConfiguration {
             this.nodeHealthMap.clear();
             this.partitionHealthMap.clear();
             this.repairTasks = [];
-            this.cachedIsNativeImageStore = null; // Clear image store cache on refresh
+            this.manifestService.clearCache(); // Clear image store cache on refresh
             
             // Ensure REST client is configured (retrieves PEM cert if needed)
             await this.ensureRestClientReady();
@@ -329,9 +260,9 @@ export class SfConfiguration {
             
             SfUtility.outputLog(`Cluster data population complete`, null, debugLevel.info);
         } catch (error) {
-            const message = `Failed to populate cluster data for ${PiiObfuscation.endpoint(this.clusterHttpEndpoint)}`;
+            const message = `Failed to populate cluster data for ${PiiObfuscation.endpoint(endpoint)}`;
             SfUtility.outputLog(message, error, debugLevel.error);
-            throw new ClusterConnectionError(message, { endpoint: this.clusterHttpEndpoint, cause: error });
+            throw new ClusterConnectionError(message, { endpoint: endpoint, cause: error });
         }
     }
 
@@ -413,7 +344,7 @@ export class SfConfiguration {
     public async populateManifest(): Promise<void> {
         try {
             const data = await this.sfRest.getClusterManifest();
-            this.setManifest(data);
+            this.manifestService.setManifest(data);
             SfUtility.outputLog('Cluster manifest retrieved', null, debugLevel.debug);
         } catch (error) {
             SfUtility.outputLog('Failed to populate cluster manifest', error, debugLevel.error);
@@ -459,73 +390,10 @@ export class SfConfiguration {
 
     /**
      * Check if the native image store service is available
-     * The ImageStore REST API only works with fabric:ImageStore, not file-based stores
-     * @returns true if using fabric:ImageStore, false for file-based stores
+     * Delegates to ManifestService
      */
     public isNativeImageStoreAvailable(): boolean {
-        // Return cached result if available (no logging on cache hit)
-        if (this.cachedIsNativeImageStore !== null) {
-            return this.cachedIsNativeImageStore;
-        }
-
-        try {
-            // Quick check: if manifest not populated yet, return false (will check again on refresh)
-            if (!this.jObjectManifest || Object.keys(this.jObjectManifest).length === 0) {
-                SfUtility.outputLog('Image store check: manifest not yet populated, returning false', null, debugLevel.debug);
-                return false;
-            }
-
-            // Parse cluster manifest to get ImageStoreConnectionString
-            const manifest = this.jObjectManifest as any;
-            if (!manifest?.ClusterManifest?.FabricSettings?.Section) {
-                this.cachedIsNativeImageStore = false;
-                return false;
-            }
-
-            const sections = Array.isArray(manifest.ClusterManifest.FabricSettings.Section)
-                ? manifest.ClusterManifest.FabricSettings.Section
-                : [manifest.ClusterManifest.FabricSettings.Section];
-
-            // Find Management section
-            const managementSection = sections.find((s: any) => 
-                s._attributes?.Name === 'Management'
-            );
-
-            if (!managementSection?.Parameter) {
-                this.cachedIsNativeImageStore = false;
-                return false;
-            }
-
-            const params = Array.isArray(managementSection.Parameter)
-                ? managementSection.Parameter
-                : [managementSection.Parameter];
-
-            // Find ImageStoreConnectionString parameter
-            const imageStoreParam = params.find((p: any) =>
-                p._attributes?.Name === 'ImageStoreConnectionString'
-            );
-
-            const connectionString = imageStoreParam?._attributes?.Value || '';
-            
-            // Native image store uses "fabric:ImageStore"
-            // File-based stores use "file:..." or "xstore:..."
-            const isNative = connectionString.toLowerCase().startsWith('fabric:imagestore');
-            
-            // Only log on FIRST check (cache miss)
-            SfUtility.outputLog(
-                `Image store check (first time): ${connectionString} → ${isNative ? 'NATIVE' : 'FILE-BASED'}`,
-                null,
-                debugLevel.info
-            );
-            
-            // Cache the result
-            this.cachedIsNativeImageStore = isNative;
-            return isNative;
-        } catch (error) {
-            SfUtility.outputLog('Failed to parse image store configuration', error, debugLevel.warn);
-            this.cachedIsNativeImageStore = false;
-            return false; // Default to hiding if we can't determine
-        }
+        return this.manifestService.isNativeImageStoreAvailable();
     }
 
     public async populateServices(applicationId: string): Promise<void> {
@@ -608,49 +476,15 @@ export class SfConfiguration {
 
 
     public async setClusterCertificate(clusterCertificate: string): Promise<void> {
-        if (clusterCertificate.length >= 32 && clusterCertificate.length <= 40 && clusterCertificate.match(/^[0-9a-fA-F]+$/)) {
-            SfUtility.outputLog(`sfConfiguration:setClusterCertificate:thumbprint: ${PiiObfuscation.thumbprint(clusterCertificate)}`, null, debugLevel.info);            //this.clusterCertificateThumbprint = clusterCertificate;
-            this.clusterCertificate.thumbprint = clusterCertificate;
-            this.clusterCertificate.certificate = await this.sfPs.getPemCertFromLocalCertStore(clusterCertificate);
-        }
-        else if (clusterCertificate.toUpperCase().includes('CERTIFICATE')) {
-            SfUtility.outputLog(`sfConfiguration:setClusterCertificate:certificate: ${PiiObfuscation.certificate(clusterCertificate)}`, null, debugLevel.info);
-            this.clusterCertificate.certificate = clusterCertificate;
-        }
-        else {
-            SfUtility.outputLog(`sfConfiguration:setClusterCertificate:common name: ${PiiObfuscation.commonName(clusterCertificate)}`, null, debugLevel.info);
-            this.clusterCertificate.commonName = clusterCertificate;
-            this.clusterCertificate.certificate = await this.sfPs.getPemCertFromLocalCertStore(clusterCertificate, undefined, true);
-        }
-
-        return Promise.resolve();
-    }
-
-    private setClusterCertificateInfo(clusterCertificate: clusterCertificate): void {
-        this.clusterCertificate = clusterCertificate;
+        return this.connectionManager.setClusterCertificate(clusterCertificate);
     }
 
     public setClusterEndpoint(clusterHttpEndpoint: string): void {
-        SfUtility.outputLog(`sfConfiguration:setClusterEndpoint: ${PiiObfuscation.endpoint(clusterHttpEndpoint)}`, null, debugLevel.info);
-        this.clusterHttpEndpoint = clusterHttpEndpoint;
+        this.connectionManager.setClusterEndpoint(clusterHttpEndpoint);
     }
 
     public setManifest(xmlManifest: string | sfModels.ClusterManifest): void {
-        if (typeof xmlManifest === 'string') {
-            this.xmlManifest = xmlManifest;
-        } else {
-            this.xmlManifest = (xmlManifest as any).manifest; // ClusterManifest wrapper
-        }
-        SfUtility.outputLog(`xml manifest: \r\n${this.xmlManifest}`);
-
-        const xmlConverter = require('xml-js');
-        this.jsonManifest = xmlConverter.xml2json(this.xmlManifest, { compact: true, spaces: 2 });
-        SfUtility.outputLog(`json manifest: \r\n${this.jsonManifest}`);
-        this.jObjectManifest = JSON.parse(this.jsonManifest);
-        
-        // Clear cached image store check when manifest changes
-        this.cachedIsNativeImageStore = null;
-        //this.clusterName = this.jObjectManifest.ClusterManifest._attributes.Name;
+        this.manifestService.setManifest(xmlManifest);
     }
 
 }
