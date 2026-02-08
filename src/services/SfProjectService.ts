@@ -75,6 +75,7 @@ export class SfProjectService implements vscode.Disposable {
 
         // Also scan external project paths
         const externalPaths = this.getExternalProjectPaths();
+        SfUtility.outputLog(`SfProjectService: checking ${externalPaths.length} external project path(s)`, null, debugLevel.info);
         for (const extPath of externalPaths) {
             try {
                 if (!fs.existsSync(extPath)) {
@@ -83,12 +84,17 @@ export class SfProjectService implements vscode.Disposable {
                 }
                 // Check if this path was already found via workspace scan
                 if (projects.some(p => path.resolve(p.sfprojPath) === path.resolve(extPath))) {
+                    SfUtility.outputLog(`SfProjectService: external path already in workspace scan: ${extPath}`, null, debugLevel.info);
                     continue;
                 }
+                SfUtility.outputLog(`SfProjectService: parsing external project: ${extPath}`, null, debugLevel.info);
                 const project = await this.parseProject(extPath);
                 if (project) {
                     project.isExternal = true;
                     projects.push(project);
+                    SfUtility.outputLog(`SfProjectService: successfully parsed external project: ${extPath} (appType=${project.appTypeName})`, null, debugLevel.info);
+                } else {
+                    SfUtility.outputLog(`SfProjectService: parseProject returned undefined for external path: ${extPath}. Check that ApplicationManifest.xml exists in ${path.dirname(extPath)}`, null, debugLevel.warn);
                 }
             } catch (err) {
                 SfUtility.outputLog(`SfProjectService: failed to parse external project ${extPath}`, err, debugLevel.warn);
@@ -194,11 +200,42 @@ export class SfProjectService implements vscode.Disposable {
      */
     async parseProject(sfprojPath: string): Promise<SfProjectInfo | undefined> {
         const projectDir = path.dirname(sfprojPath);
+        SfUtility.outputLog(`SfProjectService.parseProject: parsing ${sfprojPath}`, null, debugLevel.info);
+        SfUtility.outputLog(`SfProjectService.parseProject: project directory: ${projectDir}`, null, debugLevel.info);
 
-        // Find ApplicationManifest.xml (should be sibling to .sfproj)
-        const manifestPath = path.join(projectDir, 'ApplicationManifest.xml');
-        if (!fs.existsSync(manifestPath)) {
-            SfUtility.outputLog(`SfProjectService: no ApplicationManifest.xml found for ${sfprojPath}`, null, debugLevel.warn);
+        // Find ApplicationManifest.xml — search multiple common locations
+        const candidatePaths = [
+            path.join(projectDir, 'ApplicationManifest.xml'),
+            path.join(projectDir, 'ApplicationPackageRoot', 'ApplicationManifest.xml'),
+            path.join(projectDir, 'PackageRoot', 'ApplicationManifest.xml'),
+        ];
+
+        let manifestPath: string | undefined;
+        for (const candidate of candidatePaths) {
+            SfUtility.outputLog(`SfProjectService.parseProject: checking for manifest at: ${candidate}`, null, debugLevel.info);
+            if (fs.existsSync(candidate)) {
+                manifestPath = candidate;
+                SfUtility.outputLog(`SfProjectService.parseProject: found ApplicationManifest.xml at: ${candidate}`, null, debugLevel.info);
+                break;
+            }
+        }
+
+        if (!manifestPath) {
+            // List what IS in the directory to help diagnose
+            try {
+                const dirContents = fs.readdirSync(projectDir);
+                SfUtility.outputLog(
+                    `SfProjectService.parseProject: ApplicationManifest.xml not found. ` +
+                    `Searched: ${candidatePaths.join(', ')}. ` +
+                    `Directory contents of ${projectDir}: [${dirContents.join(', ')}]`,
+                    null, debugLevel.warn
+                );
+            } catch {
+                SfUtility.outputLog(
+                    `SfProjectService.parseProject: ApplicationManifest.xml not found and could not read directory ${projectDir}`,
+                    null, debugLevel.warn
+                );
+            }
             return undefined;
         }
 

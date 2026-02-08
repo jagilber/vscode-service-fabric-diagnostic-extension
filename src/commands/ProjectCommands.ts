@@ -245,12 +245,36 @@ export function registerProjectCommands(
                     filters: { 'Service Fabric Project': ['sfproj'] },
                     title: 'Select .sfproj file(s)',
                 });
-                if (!uris || uris.length === 0) { return; }
+                if (!uris || uris.length === 0) {
+                    SfUtility.outputLog('addExternalProject: user cancelled file dialog', null, debugLevel.info);
+                    return;
+                }
 
+                SfUtility.outputLog(`addExternalProject: user selected ${uris.length} file(s): ${uris.map(u => u.fsPath).join(', ')}`, null, debugLevel.info);
+                const results: string[] = [];
                 for (const uri of uris) {
                     await projectService.addExternalProjectPath(uri.fsPath);
+                    results.push(uri.fsPath);
                 }
-                vscode.window.showInformationMessage(`Added ${uris.length} external project(s)`);
+                applicationsProvider.refresh();
+
+                // Verify the projects actually parsed
+                const projects = await projectService.discoverProjects();
+                const addedCount = results.filter(r =>
+                    projects.some(p => path.resolve(p.sfprojPath) === path.resolve(r))
+                ).length;
+
+                if (addedCount > 0) {
+                    vscode.window.showInformationMessage(`Added ${addedCount} external project(s)`);
+                } else {
+                    const failedPaths = results.map(r => path.basename(r)).join(', ');
+                    SfUtility.outputLog(`addExternalProject: paths registered but no projects parsed. Check that ApplicationManifest.xml exists next to the .sfproj file.`, null, debugLevel.warn);
+                    vscode.window.showWarningMessage(
+                        `Registered ${results.length} path(s) but could not parse project(s): ${failedPaths}. ` +
+                        `Ensure ApplicationManifest.xml exists in the same directory as the .sfproj file. Check Output panel for details.`
+                    );
+                }
+                return;
             } else {
                 const uris = await vscode.window.showOpenDialog({
                     canSelectFiles: false,
@@ -260,14 +284,15 @@ export function registerProjectCommands(
                 });
                 if (!uris || uris.length === 0) { return; }
 
+                SfUtility.outputLog(`addExternalProject: user selected folder: ${uris[0].fsPath}`, null, debugLevel.info);
                 const added = await projectService.addExternalFolder(uris[0].fsPath);
                 if (added > 0) {
+                    applicationsProvider.refresh();
                     vscode.window.showInformationMessage(`Found and added ${added} external project(s) from folder`);
                 } else {
                     vscode.window.showWarningMessage('No .sfproj files found in the selected folder');
                 }
             }
-            applicationsProvider.refresh();
         },
         'add external project',
     );

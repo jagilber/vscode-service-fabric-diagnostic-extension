@@ -335,6 +335,43 @@ describe('SfProjectService', () => {
             expect(result!.sfprojPath).toBe(sfprojPath);
             expect(result!.projectDir).toBe(tmpDir);
         });
+
+        test('should find ApplicationManifest.xml in ApplicationPackageRoot subdirectory', async () => {
+            // Create .sfproj
+            const sfprojPath = path.join(tmpDir, 'MyApp.sfproj');
+            fs.writeFileSync(sfprojPath, '<Project />');
+
+            // Place manifest in ApplicationPackageRoot (common .NET SF project layout)
+            const appPkgRoot = path.join(tmpDir, 'ApplicationPackageRoot');
+            fs.mkdirSync(appPkgRoot);
+            const manifestXml = `<?xml version="1.0" encoding="utf-8"?>
+<ApplicationManifest ApplicationTypeName="SubDirAppType" ApplicationTypeVersion="2.0.0"
+                     xmlns="http://schemas.microsoft.com/2011/01/fabric">
+</ApplicationManifest>`;
+            fs.writeFileSync(path.join(appPkgRoot, 'ApplicationManifest.xml'), manifestXml);
+
+            const result = await service.parseProject(sfprojPath);
+            expect(result).toBeDefined();
+            expect(result!.appTypeName).toBe('SubDirAppType');
+            expect(result!.appTypeVersion).toBe('2.0.0');
+        });
+
+        test('should find ApplicationManifest.xml in PackageRoot subdirectory', async () => {
+            const sfprojPath = path.join(tmpDir, 'MyApp.sfproj');
+            fs.writeFileSync(sfprojPath, '<Project />');
+
+            const pkgRoot = path.join(tmpDir, 'PackageRoot');
+            fs.mkdirSync(pkgRoot);
+            const manifestXml = `<?xml version="1.0" encoding="utf-8"?>
+<ApplicationManifest ApplicationTypeName="PkgRootAppType" ApplicationTypeVersion="3.0.0"
+                     xmlns="http://schemas.microsoft.com/2011/01/fabric">
+</ApplicationManifest>`;
+            fs.writeFileSync(path.join(pkgRoot, 'ApplicationManifest.xml'), manifestXml);
+
+            const result = await service.parseProject(sfprojPath);
+            expect(result).toBeDefined();
+            expect(result!.appTypeName).toBe('PkgRootAppType');
+        });
     });
 
     describe('discoverProjects', () => {
