@@ -1,0 +1,62 @@
+{
+  "LastBalancingStartTimeUtc": "2026-02-08T17:32:59.582Z",
+  "LastBalancingEndTimeUtc": "2026-02-08T17:33:04.582Z",
+  "LoadMetricInformation": [
+    {
+      "Name": "Count",
+      "ClusterLoad": 15,
+      "ClusterCapacity": 0,
+      "ClusterRemainingCapacity": -15,
+      "IsClusterCapacityViolation": false,
+      "NodeBufferPercentage": 0,
+      "ClusterBufferedCapacity": 0,
+      "ClusterRemainingBufferedCapacity": 0,
+      "MinimumNodeLoad": 3,
+      "MaximumNodeLoad": 4,
+      "DeviationBefore": 0.05,
+      "DeviationAfter": 0.01
+    },
+    {
+      "Name": "MemoryInMB",
+      "ClusterLoad": 10240,
+      "ClusterCapacity": 40960,
+      "ClusterRemainingCapacity": 30720,
+      "IsClusterCapacityViolation": false,
+      "NodeBufferPercentage": 0,
+      "ClusterBufferedCapacity": 0,
+      "ClusterRemainingBufferedCapacity": 0,
+      "MinimumNodeLoad": 2048,
+      "MaximumNodeLoad": 2049,
+      "DeviationBefore": 0.05,
+      "DeviationAfter": 0.01
+    },
+    {
+      "Name": "DiskSpaceInMB",
+      "ClusterLoad": 51200,
+      "ClusterCapacity": 256000,
+      "ClusterRemainingCapacity": 204800,
+      "IsClusterCapacityViolation": false,
+      "NodeBufferPercentage": 0,
+      "ClusterBufferedCapacity": 0,
+      "ClusterRemainingBufferedCapacity": 0,
+      "MinimumNodeLoad": 10240,
+      "MaximumNodeLoad": 10241,
+      "DeviationBefore": 0.05,
+      "DeviationAfter": 0.01
+    },
+    {
+      "Name": "CpuCores",
+      "ClusterLoad": 12,
+      "ClusterCapacity": 20,
+      "ClusterRemainingCapacity": 8,
+      "IsClusterCapacityViolation": false,
+      "NodeBufferPercentage": 0,
+      "ClusterBufferedCapacity": 0,
+      "ClusterRemainingBufferedCapacity": 0,
+      "MinimumNodeLoad": 2,
+      "MaximumNodeLoad": 4,
+      "DeviationBefore": 0.05,
+      "DeviationAfter": 0.01
+    }
+  ]
+}

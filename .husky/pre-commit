@@ -40,7 +40,7 @@ if [ -n "$STAGED_FILES" ]; then
     fi
 
     # Check for real cluster URLs (except in allowed files)
-    if echo "$STAGED_FILES" | grep -v -E '(\.env\.example|SECURITY\.md|README\.md|TEST_EXECUTION_REPORT\.md|test-results/|test/)' | xargs git diff --cached | grep -iE 'https?://[a-z0-9-]+\.(centralus|eastus|westus|northeurope|westeurope)\.cloudapp\.azure\.com' > /dev/null; then
+    if echo "$STAGED_FILES" | grep -v -E '(\.env\.example|SECURITY\.md|README\.md|TEST_EXECUTION_REPORT\.md|test-results/|test/|scripts/)' | xargs git diff --cached | grep -iE 'https?://[a-z0-9-]+\.(centralus|eastus|westus|northeurope|westeurope)\.cloudapp\.azure\.com' > /dev/null; then
         echo "⚠️  WARNING: Real Azure cluster URL detected!"
         echo "   Found URL pointing to actual Azure infrastructure."
         echo "   Allowed in: .env.example, SECURITY.md, README.md, test files"

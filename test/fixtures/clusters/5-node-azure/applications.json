@@ -1,0 +1,20 @@
+[
+  {
+    "Id": "WebFrontEnd",
+    "Name": "fabric:/WebFrontEnd",
+    "TypeName": "WebFrontEndType",
+    "TypeVersion": "1.0.0",
+    "Status": "Ready",
+    "Parameters": [],
+    "HealthState": "Ok"
+  },
+  {
+    "Id": "BackendApi",
+    "Name": "fabric:/BackendApi",
+    "TypeName": "BackendApiType",
+    "TypeVersion": "1.0.0",
+    "Status": "Ready",
+    "Parameters": [],
+    "HealthState": "Ok"
+  }
+]

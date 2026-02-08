@@ -1,0 +1,14 @@
+[
+  {
+    "Name": "WebFrontEndType",
+    "Version": "1.0.0",
+    "Status": "Available",
+    "DefaultParameterList": []
+  },
+  {
+    "Name": "BackendApiType",
+    "Version": "1.0.0",
+    "Status": "Available",
+    "DefaultParameterList": []
+  }
+]

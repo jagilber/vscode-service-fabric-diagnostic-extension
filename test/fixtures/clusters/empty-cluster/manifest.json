@@ -1,0 +1,9 @@
+{
+  "profileName": "empty-cluster",
+  "generatedAt": "2026-02-08T17:33:04.637Z",
+  "nodeCount": 3,
+  "applicationCount": 0,
+  "serviceCount": 0,
+  "partitionCount": 0,
+  "replicaCount": 0
+}

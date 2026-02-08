@@ -1,0 +1,52 @@
+[
+  {
+    "Id": "System/ClusterManagerService",
+    "Name": "fabric:/System/ClusterManagerService",
+    "TypeName": "ClusterManagerServiceType",
+    "ManifestVersion": "9.1.1583.9590",
+    "HealthState": "Ok",
+    "ServiceStatus": "Active",
+    "ServiceKind": "Stateful",
+    "IsServiceGroup": false
+  },
+  {
+    "Id": "System/NamingService",
+    "Name": "fabric:/System/NamingService",
+    "TypeName": "NamingServiceType",
+    "ManifestVersion": "9.1.1583.9590",
+    "HealthState": "Ok",
+    "ServiceStatus": "Active",
+    "ServiceKind": "Stateful",
+    "IsServiceGroup": false
+  },
+  {
+    "Id": "System/FaultAnalysisService",
+    "Name": "fabric:/System/FaultAnalysisService",
+    "TypeName": "FaultAnalysisServiceType",
+    "ManifestVersion": "9.1.1583.9590",
+    "HealthState": "Warning",
+    "ServiceStatus": "Active",
+    "ServiceKind": "Stateful",
+    "IsServiceGroup": false
+  },
+  {
+    "Id": "System/FailoverManagerService",
+    "Name": "fabric:/System/FailoverManagerService",
+    "TypeName": "FailoverManagerServiceType",
+    "ManifestVersion": "9.1.1583.9590",
+    "HealthState": "Error",
+    "ServiceStatus": "Active",
+    "ServiceKind": "Stateful",
+    "IsServiceGroup": false
+  },
+  {
+    "Id": "System/UpgradeService",
+    "Name": "fabric:/System/UpgradeService",
+    "TypeName": "UpgradeServiceType",
+    "ManifestVersion": "9.1.1583.9590",
+    "HealthState": "Ok",
+    "ServiceStatus": "Active",
+    "ServiceKind": "Stateful",
+    "IsServiceGroup": false
+  }
+]

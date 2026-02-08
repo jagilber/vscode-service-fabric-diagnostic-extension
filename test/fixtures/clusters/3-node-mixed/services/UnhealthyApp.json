@@ -1,0 +1,12 @@
+[
+  {
+    "Id": "UnhealthyApp/FailingService",
+    "Name": "fabric:/UnhealthyApp/FailingService",
+    "TypeName": "FailingServiceType",
+    "ManifestVersion": "1.0.0",
+    "HealthState": "Error",
+    "ServiceStatus": "Active",
+    "ServiceKind": "Stateful",
+    "IsServiceGroup": false
+  }
+]

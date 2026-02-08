@@ -1,0 +1,29 @@
+[
+  {
+    "ReplicaId": "132750000000000000",
+    "ReplicaStatus": "Ready",
+    "HealthState": "Ok",
+    "NodeName": "_NodeType0_0",
+    "Address": "{\"Endpoints\":{\"\":\"http://10.0.0.4:20000\"}}",
+    "ServiceKind": "Stateful",
+    "ReplicaRole": "Primary"
+  },
+  {
+    "ReplicaId": "132750000000000001",
+    "ReplicaStatus": "Ready",
+    "HealthState": "Ok",
+    "NodeName": "_NodeType0_1",
+    "Address": "{\"Endpoints\":{\"\":\"http://10.0.0.5:20001\"}}",
+    "ServiceKind": "Stateful",
+    "ReplicaRole": "ActiveSecondary"
+  },
+  {
+    "ReplicaId": "132750000000000002",
+    "ReplicaStatus": "Ready",
+    "HealthState": "Warning",
+    "NodeName": "_NodeType0_2",
+    "Address": "{\"Endpoints\":{\"\":\"http://10.0.0.6:20002\"}}",
+    "ServiceKind": "Stateful",
+    "ReplicaRole": "ActiveSecondary"
+  }
+]

@@ -1,0 +1,15 @@
+[
+  {
+    "TaskId": "Azure/PlatformUpdate/6f3b781a",
+    "State": "Completed",
+    "Action": "System.Azure.Job.PlatformUpdate",
+    "Target": {
+      "NodeNames": [
+        "_FrontEnd_0"
+      ]
+    },
+    "ResultStatus": "Succeeded",
+    "CreatedTimestamp": "2026-02-07T17:33:04.598Z",
+    "CompletedTimestamp": "2026-02-08T17:33:04.598Z"
+  }
+]

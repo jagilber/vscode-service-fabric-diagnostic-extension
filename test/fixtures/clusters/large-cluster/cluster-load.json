@@ -1,0 +1,76 @@
+{
+  "LastBalancingStartTimeUtc": "2026-02-08T17:32:59.598Z",
+  "LastBalancingEndTimeUtc": "2026-02-08T17:33:04.598Z",
+  "LoadMetricInformation": [
+    {
+      "Name": "Count",
+      "ClusterLoad": 60,
+      "ClusterCapacity": 0,
+      "ClusterRemainingCapacity": -60,
+      "IsClusterCapacityViolation": false,
+      "NodeBufferPercentage": 0,
+      "ClusterBufferedCapacity": 0,
+      "ClusterRemainingBufferedCapacity": 0,
+      "MinimumNodeLoad": 3,
+      "MaximumNodeLoad": 4,
+      "DeviationBefore": 0.05,
+      "DeviationAfter": 0.01
+    },
+    {
+      "Name": "MemoryInMB",
+      "ClusterLoad": 40960,
+      "ClusterCapacity": 163840,
+      "ClusterRemainingCapacity": 122880,
+      "IsClusterCapacityViolation": false,
+      "NodeBufferPercentage": 0,
+      "ClusterBufferedCapacity": 0,
+      "ClusterRemainingBufferedCapacity": 0,
+      "MinimumNodeLoad": 2048,
+      "MaximumNodeLoad": 2049,
+      "DeviationBefore": 0.05,
+      "DeviationAfter": 0.01
+    },
+    {
+      "Name": "DiskSpaceInMB",
+      "ClusterLoad": 204800,
+      "ClusterCapacity": 1024000,
+      "ClusterRemainingCapacity": 819200,
+      "IsClusterCapacityViolation": false,
+      "NodeBufferPercentage": 0,
+      "ClusterBufferedCapacity": 0,
+      "ClusterRemainingBufferedCapacity": 0,
+      "MinimumNodeLoad": 10240,
+      "MaximumNodeLoad": 10241,
+      "DeviationBefore": 0.05,
+      "DeviationAfter": 0.01
+    },
+    {
+      "Name": "CpuCores",
+      "ClusterLoad": 45,
+      "ClusterCapacity": 80,
+      "ClusterRemainingCapacity": 35,
+      "IsClusterCapacityViolation": false,
+      "NodeBufferPercentage": 0,
+      "ClusterBufferedCapacity": 0,
+      "ClusterRemainingBufferedCapacity": 0,
+      "MinimumNodeLoad": 2,
+      "MaximumNodeLoad": 4,
+      "DeviationBefore": 0.05,
+      "DeviationAfter": 0.01
+    },
+    {
+      "Name": "CustomMetric1",
+      "ClusterLoad": 900,
+      "ClusterCapacity": 800,
+      "ClusterRemainingCapacity": -100,
+      "IsClusterCapacityViolation": true,
+      "NodeBufferPercentage": 0,
+      "ClusterBufferedCapacity": 0,
+      "ClusterRemainingBufferedCapacity": 0,
+      "MinimumNodeLoad": 45,
+      "MaximumNodeLoad": 46,
+      "DeviationBefore": 0.05,
+      "DeviationAfter": 0.01
+    }
+  ]
+}

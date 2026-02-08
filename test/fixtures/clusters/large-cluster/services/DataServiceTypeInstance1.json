@@ -1,0 +1,22 @@
+[
+  {
+    "Id": "DataServiceTypeInstance1/DataProcessor",
+    "Name": "fabric:/DataServiceTypeInstance1/DataProcessor",
+    "TypeName": "DataProcessorType",
+    "ManifestVersion": "1.0.0",
+    "HealthState": "Ok",
+    "ServiceStatus": "Active",
+    "ServiceKind": "Stateful",
+    "IsServiceGroup": false
+  },
+  {
+    "Id": "DataServiceTypeInstance1/DataStore",
+    "Name": "fabric:/DataServiceTypeInstance1/DataStore",
+    "TypeName": "DataStoreType",
+    "ManifestVersion": "1.0.0",
+    "HealthState": "Ok",
+    "ServiceStatus": "Active",
+    "ServiceKind": "Stateful",
+    "IsServiceGroup": false
+  }
+]

@@ -1,0 +1,20 @@
+[
+  {
+    "Id": "HealthyApp",
+    "Name": "fabric:/HealthyApp",
+    "TypeName": "HealthyAppType",
+    "TypeVersion": "1.0.0",
+    "Status": "Ready",
+    "Parameters": [],
+    "HealthState": "Ok"
+  },
+  {
+    "Id": "UnhealthyApp",
+    "Name": "fabric:/UnhealthyApp",
+    "TypeName": "UnhealthyAppType",
+    "TypeVersion": "1.0.0",
+    "Status": "Ready",
+    "Parameters": [],
+    "HealthState": "Ok"
+  }
+]

@@ -1,0 +1,11 @@
+{
+  "StoreFolders": [
+    {
+      "StoreRelativePath": "Store"
+    },
+    {
+      "StoreRelativePath": "WindowsFabricStore"
+    }
+  ],
+  "StoreFiles": []
+}

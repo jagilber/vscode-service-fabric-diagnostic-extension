@@ -1,0 +1,56 @@
+[
+  {
+    "Name": "_NodeType0_0",
+    "IpAddressOrFQDN": "10.0.0.4",
+    "Type": "NodeType0",
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "86400",
+    "HealthState": "Ok",
+    "IsSeedNode": true,
+    "UpgradeDomain": "UD0",
+    "FaultDomain": "fd:/0",
+    "Id": {
+      "Id": "3b6464430e296b05"
+    },
+    "InstanceId": "132750000000000000",
+    "IsStopped": false
+  },
+  {
+    "Name": "_NodeType0_1",
+    "IpAddressOrFQDN": "10.0.0.5",
+    "Type": "NodeType0",
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "90000",
+    "HealthState": "Ok",
+    "IsSeedNode": true,
+    "UpgradeDomain": "UD1",
+    "FaultDomain": "fd:/1",
+    "Id": {
+      "Id": "d50164b9587cab73"
+    },
+    "InstanceId": "132750000000000001",
+    "IsStopped": false
+  },
+  {
+    "Name": "_NodeType0_2",
+    "IpAddressOrFQDN": "10.0.0.6",
+    "Type": "NodeType0",
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "93600",
+    "HealthState": "Warning",
+    "IsSeedNode": true,
+    "UpgradeDomain": "UD2",
+    "FaultDomain": "fd:/2",
+    "Id": {
+      "Id": "ba09ccadd17e7bc4"
+    },
+    "InstanceId": "132750000000000002",
+    "IsStopped": false
+  }
+]

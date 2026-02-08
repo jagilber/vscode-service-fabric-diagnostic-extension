@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ApplicationManifest ApplicationTypeName="UnhealthyAppType" ApplicationTypeVersion="1.0.0" xmlns="http://schemas.microsoft.com/2011/01/fabric">
+  <ServiceManifestImport>
+    <ServiceManifestRef ServiceManifestName="FailingServicePkg" ServiceManifestVersion="1.0.0" />
+  </ServiceManifestImport>
+</ApplicationManifest>

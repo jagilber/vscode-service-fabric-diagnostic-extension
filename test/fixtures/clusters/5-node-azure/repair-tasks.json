@@ -1,0 +1,15 @@
+[
+  {
+    "TaskId": "Azure/PlatformUpdate/7bf37582",
+    "State": "Completed",
+    "Action": "System.Azure.Job.PlatformUpdate",
+    "Target": {
+      "NodeNames": [
+        "_nt1vm_0"
+      ]
+    },
+    "ResultStatus": "Succeeded",
+    "CreatedTimestamp": "2026-02-07T17:33:04.582Z",
+    "CompletedTimestamp": "2026-02-08T17:33:04.582Z"
+  }
+]

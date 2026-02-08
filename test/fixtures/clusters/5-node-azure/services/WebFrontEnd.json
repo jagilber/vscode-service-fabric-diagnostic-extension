@@ -1,0 +1,12 @@
+[
+  {
+    "Id": "WebFrontEnd/WebFrontEndService",
+    "Name": "fabric:/WebFrontEnd/WebFrontEndService",
+    "TypeName": "WebFrontEndServiceType",
+    "ManifestVersion": "1.0.0",
+    "HealthState": "Ok",
+    "ServiceStatus": "Active",
+    "ServiceKind": "Stateless",
+    "IsServiceGroup": false
+  }
+]

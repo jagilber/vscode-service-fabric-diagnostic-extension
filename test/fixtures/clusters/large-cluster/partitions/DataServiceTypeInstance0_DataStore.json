@@ -1,0 +1,35 @@
+[
+  {
+    "ServicePartitionKind": "Int64Range",
+    "HealthState": "Ok",
+    "PartitionStatus": "Ready",
+    "PartitionInformation": {
+      "Id": "06aede19-307b-4e37-9817-644398385ffc",
+      "ServicePartitionKind": "Int64Range",
+      "LowKey": "-9223372036854775808",
+      "HighKey": "-9223372036854774809"
+    }
+  },
+  {
+    "ServicePartitionKind": "Int64Range",
+    "HealthState": "Ok",
+    "PartitionStatus": "Ready",
+    "PartitionInformation": {
+      "Id": "02e4f58a-b7a7-451a-9458-1d483a70ce90",
+      "ServicePartitionKind": "Int64Range",
+      "LowKey": "-9223372036854774808",
+      "HighKey": "-9223372036854773809"
+    }
+  },
+  {
+    "ServicePartitionKind": "Int64Range",
+    "HealthState": "Ok",
+    "PartitionStatus": "Ready",
+    "PartitionInformation": {
+      "Id": "cc070a4f-8d65-439e-bbdc-9825f6cffe01",
+      "ServicePartitionKind": "Int64Range",
+      "LowKey": "-9223372036854773808",
+      "HighKey": "-9223372036854772809"
+    }
+  }
+]

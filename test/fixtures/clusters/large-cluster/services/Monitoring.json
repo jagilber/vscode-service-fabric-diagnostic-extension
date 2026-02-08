@@ -1,0 +1,22 @@
+[
+  {
+    "Id": "Monitoring/MetricsCollector",
+    "Name": "fabric:/Monitoring/MetricsCollector",
+    "TypeName": "MetricsCollectorType",
+    "ManifestVersion": "1.0.0",
+    "HealthState": "Ok",
+    "ServiceStatus": "Active",
+    "ServiceKind": "Stateless",
+    "IsServiceGroup": false
+  },
+  {
+    "Id": "Monitoring/AlertService",
+    "Name": "fabric:/Monitoring/AlertService",
+    "TypeName": "AlertServiceType",
+    "ManifestVersion": "1.0.0",
+    "HealthState": "Ok",
+    "ServiceStatus": "Active",
+    "ServiceKind": "Stateful",
+    "IsServiceGroup": false
+  }
+]

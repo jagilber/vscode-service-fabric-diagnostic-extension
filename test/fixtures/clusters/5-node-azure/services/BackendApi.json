@@ -1,0 +1,22 @@
+[
+  {
+    "Id": "BackendApi/ApiService",
+    "Name": "fabric:/BackendApi/ApiService",
+    "TypeName": "ApiServiceType",
+    "ManifestVersion": "1.0.0",
+    "HealthState": "Ok",
+    "ServiceStatus": "Active",
+    "ServiceKind": "Stateful",
+    "IsServiceGroup": false
+  },
+  {
+    "Id": "BackendApi/CacheService",
+    "Name": "fabric:/BackendApi/CacheService",
+    "TypeName": "CacheServiceType",
+    "ManifestVersion": "1.0.0",
+    "HealthState": "Ok",
+    "ServiceStatus": "Active",
+    "ServiceKind": "Stateful",
+    "IsServiceGroup": false
+  }
+]

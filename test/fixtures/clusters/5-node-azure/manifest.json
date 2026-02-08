@@ -1,0 +1,9 @@
+{
+  "profileName": "5-node-azure",
+  "generatedAt": "2026-02-08T17:33:04.597Z",
+  "nodeCount": 5,
+  "applicationCount": 2,
+  "serviceCount": 3,
+  "partitionCount": 5,
+  "replicaCount": 17
+}

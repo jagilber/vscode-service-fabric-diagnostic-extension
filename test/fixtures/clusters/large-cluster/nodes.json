@@ -1,0 +1,362 @@
+[
+  {
+    "Name": "_FrontEnd_0",
+    "IpAddressOrFQDN": "10.0.0.4",
+    "Type": "FrontEnd",
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "86400",
+    "HealthState": "Ok",
+    "IsSeedNode": true,
+    "UpgradeDomain": "UD0",
+    "FaultDomain": "fd:/0",
+    "Id": {
+      "Id": "3b6464430e296b05"
+    },
+    "InstanceId": "132750000000000000",
+    "IsStopped": false
+  },
+  {
+    "Name": "_FrontEnd_1",
+    "IpAddressOrFQDN": "10.0.0.5",
+    "Type": "FrontEnd",
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "90000",
+    "HealthState": "Ok",
+    "IsSeedNode": true,
+    "UpgradeDomain": "UD1",
+    "FaultDomain": "fd:/1",
+    "Id": {
+      "Id": "d50164b9587cab73"
+    },
+    "InstanceId": "132750000000000001",
+    "IsStopped": false
+  },
+  {
+    "Name": "_FrontEnd_2",
+    "IpAddressOrFQDN": "10.0.0.6",
+    "Type": "FrontEnd",
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "93600",
+    "HealthState": "Ok",
+    "IsSeedNode": true,
+    "UpgradeDomain": "UD2",
+    "FaultDomain": "fd:/2",
+    "Id": {
+      "Id": "ba09ccadd17e7bc4"
+    },
+    "InstanceId": "132750000000000002",
+    "IsStopped": false
+  },
+  {
+    "Name": "_FrontEnd_3",
+    "IpAddressOrFQDN": "10.0.0.7",
+    "Type": "FrontEnd",
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "97200",
+    "HealthState": "Ok",
+    "IsSeedNode": false,
+    "UpgradeDomain": "UD3",
+    "FaultDomain": "fd:/0",
+    "Id": {
+      "Id": "7f911e5c00800c9e"
+    },
+    "InstanceId": "132750000000000003",
+    "IsStopped": false
+  },
+  {
+    "Name": "_FrontEnd_4",
+    "IpAddressOrFQDN": "10.0.0.8",
+    "Type": "FrontEnd",
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "100800",
+    "HealthState": "Ok",
+    "IsSeedNode": false,
+    "UpgradeDomain": "UD4",
+    "FaultDomain": "fd:/1",
+    "Id": {
+      "Id": "fb6c0dd4eb71ef54"
+    },
+    "InstanceId": "132750000000000004",
+    "IsStopped": false
+  },
+  {
+    "Name": "_Backend_0",
+    "IpAddressOrFQDN": "10.0.0.9",
+    "Type": "Backend",
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "104400",
+    "HealthState": "Ok",
+    "IsSeedNode": true,
+    "UpgradeDomain": "UD0",
+    "FaultDomain": "fd:/0",
+    "Id": {
+      "Id": "3363145215dc2f53"
+    },
+    "InstanceId": "132750000000000005",
+    "IsStopped": false
+  },
+  {
+    "Name": "_Backend_1",
+    "IpAddressOrFQDN": "10.0.0.10",
+    "Type": "Backend",
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "108000",
+    "HealthState": "Ok",
+    "IsSeedNode": true,
+    "UpgradeDomain": "UD1",
+    "FaultDomain": "fd:/1",
+    "Id": {
+      "Id": "bdc7b10b1c1eba5a"
+    },
+    "InstanceId": "132750000000000006",
+    "IsStopped": false
+  },
+  {
+    "Name": "_Backend_2",
+    "IpAddressOrFQDN": "10.0.0.11",
+    "Type": "Backend",
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "111600",
+    "HealthState": "Ok",
+    "IsSeedNode": true,
+    "UpgradeDomain": "UD2",
+    "FaultDomain": "fd:/2",
+    "Id": {
+      "Id": "55271b1846fe7832"
+    },
+    "InstanceId": "132750000000000007",
+    "IsStopped": false
+  },
+  {
+    "Name": "_Backend_3",
+    "IpAddressOrFQDN": "10.0.0.12",
+    "Type": "Backend",
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "115200",
+    "HealthState": "Ok",
+    "IsSeedNode": false,
+    "UpgradeDomain": "UD3",
+    "FaultDomain": "fd:/0",
+    "Id": {
+      "Id": "73cb2f5a11381b67"
+    },
+    "InstanceId": "132750000000000008",
+    "IsStopped": false
+  },
+  {
+    "Name": "_Backend_4",
+    "IpAddressOrFQDN": "10.0.0.13",
+    "Type": "Backend",
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "118800",
+    "HealthState": "Ok",
+    "IsSeedNode": false,
+    "UpgradeDomain": "UD4",
+    "FaultDomain": "fd:/1",
+    "Id": {
+      "Id": "6505a629e1094006"
+    },
+    "InstanceId": "132750000000000009",
+    "IsStopped": false
+  },
+  {
+    "Name": "_Backend_5",
+    "IpAddressOrFQDN": "10.0.0.14",
+    "Type": "Backend",
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "122400",
+    "HealthState": "Ok",
+    "IsSeedNode": false,
+    "UpgradeDomain": "UD0",
+    "FaultDomain": "fd:/2",
+    "Id": {
+      "Id": "60bd28cc30da8add"
+    },
+    "InstanceId": "132750000000000010",
+    "IsStopped": false
+  },
+  {
+    "Name": "_Backend_6",
+    "IpAddressOrFQDN": "10.0.0.15",
+    "Type": "Backend",
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "126000",
+    "HealthState": "Ok",
+    "IsSeedNode": false,
+    "UpgradeDomain": "UD1",
+    "FaultDomain": "fd:/0",
+    "Id": {
+      "Id": "87f982a26667297d"
+    },
+    "InstanceId": "132750000000000011",
+    "IsStopped": false
+  },
+  {
+    "Name": "_Backend_7",
+    "IpAddressOrFQDN": "10.0.0.16",
+    "Type": "Backend",
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "129600",
+    "HealthState": "Ok",
+    "IsSeedNode": false,
+    "UpgradeDomain": "UD2",
+    "FaultDomain": "fd:/1",
+    "Id": {
+      "Id": "2b75eab3ce7bad72"
+    },
+    "InstanceId": "132750000000000012",
+    "IsStopped": false
+  },
+  {
+    "Name": "_Backend_8",
+    "IpAddressOrFQDN": "10.0.0.17",
+    "Type": "Backend",
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "133200",
+    "HealthState": "Ok",
+    "IsSeedNode": false,
+    "UpgradeDomain": "UD3",
+    "FaultDomain": "fd:/2",
+    "Id": {
+      "Id": "806e23deb7644d4d"
+    },
+    "InstanceId": "132750000000000013",
+    "IsStopped": false
+  },
+  {
+    "Name": "_Backend_9",
+    "IpAddressOrFQDN": "10.0.0.18",
+    "Type": "Backend",
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "136800",
+    "HealthState": "Ok",
+    "IsSeedNode": false,
+    "UpgradeDomain": "UD4",
+    "FaultDomain": "fd:/0",
+    "Id": {
+      "Id": "a10ce87c4c2d4632"
+    },
+    "InstanceId": "132750000000000014",
+    "IsStopped": false
+  },
+  {
+    "Name": "_Management_0",
+    "IpAddressOrFQDN": "10.0.0.19",
+    "Type": "Management",
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "140400",
+    "HealthState": "Warning",
+    "IsSeedNode": true,
+    "UpgradeDomain": "UD0",
+    "FaultDomain": "fd:/0",
+    "Id": {
+      "Id": "052915ac7a39ee4b"
+    },
+    "InstanceId": "132750000000000015",
+    "IsStopped": false
+  },
+  {
+    "Name": "_Management_1",
+    "IpAddressOrFQDN": "10.0.0.20",
+    "Type": "Management",
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "144000",
+    "HealthState": "Warning",
+    "IsSeedNode": true,
+    "UpgradeDomain": "UD1",
+    "FaultDomain": "fd:/1",
+    "Id": {
+      "Id": "50d726501b25713b"
+    },
+    "InstanceId": "132750000000000016",
+    "IsStopped": false
+  },
+  {
+    "Name": "_Management_2",
+    "IpAddressOrFQDN": "10.0.0.21",
+    "Type": "Management",
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "147600",
+    "HealthState": "Warning",
+    "IsSeedNode": true,
+    "UpgradeDomain": "UD2",
+    "FaultDomain": "fd:/2",
+    "Id": {
+      "Id": "27edffac0331ae8e"
+    },
+    "InstanceId": "132750000000000017",
+    "IsStopped": false
+  },
+  {
+    "Name": "_Management_3",
+    "IpAddressOrFQDN": "10.0.0.22",
+    "Type": "Management",
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "NodeStatus": "Down",
+    "NodeUpTimeInSeconds": "0",
+    "HealthState": "Error",
+    "IsSeedNode": false,
+    "UpgradeDomain": "UD3",
+    "FaultDomain": "fd:/0",
+    "Id": {
+      "Id": "6c35edab66ad0f3f"
+    },
+    "InstanceId": "132750000000000018",
+    "IsStopped": true
+  },
+  {
+    "Name": "_Management_4",
+    "IpAddressOrFQDN": "10.0.0.23",
+    "Type": "Management",
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "NodeStatus": "Down",
+    "NodeUpTimeInSeconds": "0",
+    "HealthState": "Error",
+    "IsSeedNode": false,
+    "UpgradeDomain": "UD4",
+    "FaultDomain": "fd:/1",
+    "Id": {
+      "Id": "50b4edc5e6fc99c8"
+    },
+    "InstanceId": "132750000000000019",
+    "IsStopped": true
+  }
+]

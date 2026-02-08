@@ -1,0 +1,117 @@
+{
+  "AggregatedHealthState": "Error",
+  "HealthEvents": [],
+  "UnhealthyEvaluations": [],
+  "NodeHealthStates": [
+    {
+      "Name": "_FrontEnd_0",
+      "AggregatedHealthState": "Ok"
+    },
+    {
+      "Name": "_FrontEnd_1",
+      "AggregatedHealthState": "Ok"
+    },
+    {
+      "Name": "_FrontEnd_2",
+      "AggregatedHealthState": "Ok"
+    },
+    {
+      "Name": "_FrontEnd_3",
+      "AggregatedHealthState": "Ok"
+    },
+    {
+      "Name": "_FrontEnd_4",
+      "AggregatedHealthState": "Ok"
+    },
+    {
+      "Name": "_Backend_0",
+      "AggregatedHealthState": "Ok"
+    },
+    {
+      "Name": "_Backend_1",
+      "AggregatedHealthState": "Ok"
+    },
+    {
+      "Name": "_Backend_2",
+      "AggregatedHealthState": "Ok"
+    },
+    {
+      "Name": "_Backend_3",
+      "AggregatedHealthState": "Ok"
+    },
+    {
+      "Name": "_Backend_4",
+      "AggregatedHealthState": "Ok"
+    },
+    {
+      "Name": "_Backend_5",
+      "AggregatedHealthState": "Ok"
+    },
+    {
+      "Name": "_Backend_6",
+      "AggregatedHealthState": "Ok"
+    },
+    {
+      "Name": "_Backend_7",
+      "AggregatedHealthState": "Ok"
+    },
+    {
+      "Name": "_Backend_8",
+      "AggregatedHealthState": "Ok"
+    },
+    {
+      "Name": "_Backend_9",
+      "AggregatedHealthState": "Ok"
+    },
+    {
+      "Name": "_Management_0",
+      "AggregatedHealthState": "Warning"
+    },
+    {
+      "Name": "_Management_1",
+      "AggregatedHealthState": "Warning"
+    },
+    {
+      "Name": "_Management_2",
+      "AggregatedHealthState": "Warning"
+    },
+    {
+      "Name": "_Management_3",
+      "AggregatedHealthState": "Error"
+    },
+    {
+      "Name": "_Management_4",
+      "AggregatedHealthState": "Error"
+    }
+  ],
+  "ApplicationHealthStates": [
+    {
+      "Name": "fabric:/System",
+      "AggregatedHealthState": "Ok"
+    },
+    {
+      "Name": "fabric:/WebAppTypeInstance0",
+      "AggregatedHealthState": "Ok"
+    },
+    {
+      "Name": "fabric:/WebAppTypeInstance1",
+      "AggregatedHealthState": "Ok"
+    },
+    {
+      "Name": "fabric:/WebAppTypeInstance2",
+      "AggregatedHealthState": "Ok"
+    },
+    {
+      "Name": "fabric:/DataServiceTypeInstance0",
+      "AggregatedHealthState": "Ok"
+    },
+    {
+      "Name": "fabric:/DataServiceTypeInstance1",
+      "AggregatedHealthState": "Ok"
+    },
+    {
+      "Name": "fabric:/Monitoring",
+      "AggregatedHealthState": "Ok"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+[
+  {
+    "Id": "WebAppTypeInstance1/WebService",
+    "Name": "fabric:/WebAppTypeInstance1/WebService",
+    "TypeName": "WebServiceType",
+    "ManifestVersion": "1.0.0",
+    "HealthState": "Ok",
+    "ServiceStatus": "Active",
+    "ServiceKind": "Stateless",
+    "IsServiceGroup": false
+  }
+]

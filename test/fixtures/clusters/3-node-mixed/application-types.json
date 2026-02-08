@@ -1,0 +1,14 @@
+[
+  {
+    "Name": "HealthyAppType",
+    "Version": "1.0.0",
+    "Status": "Available",
+    "DefaultParameterList": []
+  },
+  {
+    "Name": "UnhealthyAppType",
+    "Version": "1.0.0",
+    "Status": "Available",
+    "DefaultParameterList": []
+  }
+]

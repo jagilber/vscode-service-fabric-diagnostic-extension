@@ -1,0 +1,29 @@
+[
+  {
+    "ReplicaId": "132750000000000110",
+    "ReplicaStatus": "Ready",
+    "HealthState": "Ok",
+    "NodeName": "_nt1vm_0",
+    "Address": "{\"Endpoints\":{\"\":\"http://10.0.0.4:20110\"}}",
+    "ServiceKind": "Stateful",
+    "ReplicaRole": "Primary"
+  },
+  {
+    "ReplicaId": "132750000000000111",
+    "ReplicaStatus": "Ready",
+    "HealthState": "Ok",
+    "NodeName": "_nt1vm_1",
+    "Address": "{\"Endpoints\":{\"\":\"http://10.0.0.5:20111\"}}",
+    "ServiceKind": "Stateful",
+    "ReplicaRole": "ActiveSecondary"
+  },
+  {
+    "ReplicaId": "132750000000000112",
+    "ReplicaStatus": "Ready",
+    "HealthState": "Ok",
+    "NodeName": "_nt1vm_2",
+    "Address": "{\"Endpoints\":{\"\":\"http://10.0.0.6:20112\"}}",
+    "ServiceKind": "Stateful",
+    "ReplicaRole": "ActiveSecondary"
+  }
+]

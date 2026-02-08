@@ -1,0 +1,42 @@
+[
+  {
+    "ReplicaId": "132750000000000100",
+    "ReplicaStatus": "Ready",
+    "HealthState": "Ok",
+    "NodeName": "_FrontEnd_0",
+    "Address": "{\"Endpoints\":{\"\":\"http://10.0.0.4:20100\"}}",
+    "ServiceKind": "Stateless"
+  },
+  {
+    "ReplicaId": "132750000000000101",
+    "ReplicaStatus": "Ready",
+    "HealthState": "Ok",
+    "NodeName": "_FrontEnd_1",
+    "Address": "{\"Endpoints\":{\"\":\"http://10.0.0.5:20101\"}}",
+    "ServiceKind": "Stateless"
+  },
+  {
+    "ReplicaId": "132750000000000102",
+    "ReplicaStatus": "Ready",
+    "HealthState": "Ok",
+    "NodeName": "_FrontEnd_2",
+    "Address": "{\"Endpoints\":{\"\":\"http://10.0.0.6:20102\"}}",
+    "ServiceKind": "Stateless"
+  },
+  {
+    "ReplicaId": "132750000000000103",
+    "ReplicaStatus": "Ready",
+    "HealthState": "Ok",
+    "NodeName": "_FrontEnd_3",
+    "Address": "{\"Endpoints\":{\"\":\"http://10.0.0.7:20103\"}}",
+    "ServiceKind": "Stateless"
+  },
+  {
+    "ReplicaId": "132750000000000104",
+    "ReplicaStatus": "Ready",
+    "HealthState": "Ok",
+    "NodeName": "_FrontEnd_4",
+    "Address": "{\"Endpoints\":{\"\":\"http://10.0.0.8:20104\"}}",
+    "ServiceKind": "Stateless"
+  }
+]

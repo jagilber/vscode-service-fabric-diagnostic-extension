@@ -1,0 +1,56 @@
+[
+  {
+    "Id": "WebAppTypeInstance0",
+    "Name": "fabric:/WebAppTypeInstance0",
+    "TypeName": "WebAppType",
+    "TypeVersion": "1.0.0",
+    "Status": "Ready",
+    "Parameters": [],
+    "HealthState": "Ok"
+  },
+  {
+    "Id": "WebAppTypeInstance1",
+    "Name": "fabric:/WebAppTypeInstance1",
+    "TypeName": "WebAppType",
+    "TypeVersion": "1.0.0",
+    "Status": "Ready",
+    "Parameters": [],
+    "HealthState": "Ok"
+  },
+  {
+    "Id": "WebAppTypeInstance2",
+    "Name": "fabric:/WebAppTypeInstance2",
+    "TypeName": "WebAppType",
+    "TypeVersion": "1.0.0",
+    "Status": "Ready",
+    "Parameters": [],
+    "HealthState": "Ok"
+  },
+  {
+    "Id": "DataServiceTypeInstance0",
+    "Name": "fabric:/DataServiceTypeInstance0",
+    "TypeName": "DataServiceType",
+    "TypeVersion": "1.0.0",
+    "Status": "Ready",
+    "Parameters": [],
+    "HealthState": "Ok"
+  },
+  {
+    "Id": "DataServiceTypeInstance1",
+    "Name": "fabric:/DataServiceTypeInstance1",
+    "TypeName": "DataServiceType",
+    "TypeVersion": "1.0.0",
+    "Status": "Ready",
+    "Parameters": [],
+    "HealthState": "Ok"
+  },
+  {
+    "Id": "Monitoring",
+    "Name": "fabric:/Monitoring",
+    "TypeName": "MonitoringType",
+    "TypeVersion": "1.0.0",
+    "Status": "Ready",
+    "Parameters": [],
+    "HealthState": "Ok"
+  }
+]

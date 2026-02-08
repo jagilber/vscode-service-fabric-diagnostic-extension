@@ -1,0 +1,11 @@
+[
+  {
+    "ServicePartitionKind": "Singleton",
+    "HealthState": "Ok",
+    "PartitionStatus": "Ready",
+    "PartitionInformation": {
+      "Id": "68a6716b-323f-4549-a99e-853da8352316",
+      "ServicePartitionKind": "Singleton"
+    }
+  }
+]

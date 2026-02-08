@@ -1,0 +1,9 @@
+{
+  "profileName": "1-node-dev",
+  "generatedAt": "2026-02-08T17:33:04.565Z",
+  "nodeCount": 1,
+  "applicationCount": 1,
+  "serviceCount": 1,
+  "partitionCount": 1,
+  "replicaCount": 1
+}

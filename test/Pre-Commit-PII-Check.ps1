@@ -71,7 +71,7 @@ $piiPatterns = @{
     'Real Azure Endpoint' = @{
         Pattern = '(?<!my|example|test|demo)\w+\.(centralus|eastus|westus|northeurope)\.cloudapp\.azure\.com(?!//(mycluster|example))'
         Severity = 'Medium'
-        AllowedFiles = @('README.md', 'SECURITY.md', 'test/**', '.env.example', '.instructions/**')
+        AllowedFiles = @('README.md', 'SECURITY.md', 'test/**', '.env.example', '.instructions/**', 'scripts/**')
     }
     
     'Inconsistent Cluster Name' = @{

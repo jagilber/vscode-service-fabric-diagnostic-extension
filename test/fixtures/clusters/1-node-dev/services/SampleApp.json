@@ -1,0 +1,12 @@
+[
+  {
+    "Id": "SampleApp/SampleService",
+    "Name": "fabric:/SampleApp/SampleService",
+    "TypeName": "SampleServiceType",
+    "ManifestVersion": "1.0.0",
+    "HealthState": "Ok",
+    "ServiceStatus": "Active",
+    "ServiceKind": "Stateless",
+    "IsServiceGroup": false
+  }
+]

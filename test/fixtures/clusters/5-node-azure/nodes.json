@@ -1,0 +1,92 @@
+[
+  {
+    "Name": "_nt1vm_0",
+    "IpAddressOrFQDN": "10.0.0.4",
+    "Type": "nt1vm",
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "86400",
+    "HealthState": "Ok",
+    "IsSeedNode": true,
+    "UpgradeDomain": "UD0",
+    "FaultDomain": "fd:/0",
+    "Id": {
+      "Id": "3b6464430e296b05"
+    },
+    "InstanceId": "132750000000000000",
+    "IsStopped": false
+  },
+  {
+    "Name": "_nt1vm_1",
+    "IpAddressOrFQDN": "10.0.0.5",
+    "Type": "nt1vm",
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "90000",
+    "HealthState": "Ok",
+    "IsSeedNode": true,
+    "UpgradeDomain": "UD1",
+    "FaultDomain": "fd:/1",
+    "Id": {
+      "Id": "d50164b9587cab73"
+    },
+    "InstanceId": "132750000000000001",
+    "IsStopped": false
+  },
+  {
+    "Name": "_nt1vm_2",
+    "IpAddressOrFQDN": "10.0.0.6",
+    "Type": "nt1vm",
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "93600",
+    "HealthState": "Ok",
+    "IsSeedNode": true,
+    "UpgradeDomain": "UD2",
+    "FaultDomain": "fd:/2",
+    "Id": {
+      "Id": "ba09ccadd17e7bc4"
+    },
+    "InstanceId": "132750000000000002",
+    "IsStopped": false
+  },
+  {
+    "Name": "_nt1vm_3",
+    "IpAddressOrFQDN": "10.0.0.7",
+    "Type": "nt1vm",
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "97200",
+    "HealthState": "Ok",
+    "IsSeedNode": false,
+    "UpgradeDomain": "UD3",
+    "FaultDomain": "fd:/0",
+    "Id": {
+      "Id": "7f911e5c00800c9e"
+    },
+    "InstanceId": "132750000000000003",
+    "IsStopped": false
+  },
+  {
+    "Name": "_nt1vm_4",
+    "IpAddressOrFQDN": "10.0.0.8",
+    "Type": "nt1vm",
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "100800",
+    "HealthState": "Ok",
+    "IsSeedNode": false,
+    "UpgradeDomain": "UD4",
+    "FaultDomain": "fd:/1",
+    "Id": {
+      "Id": "fb6c0dd4eb71ef54"
+    },
+    "InstanceId": "132750000000000004",
+    "IsStopped": false
+  }
+]

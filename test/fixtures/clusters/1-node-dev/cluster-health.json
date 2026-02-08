@@ -1,0 +1,21 @@
+{
+  "AggregatedHealthState": "Ok",
+  "HealthEvents": [],
+  "UnhealthyEvaluations": [],
+  "NodeHealthStates": [
+    {
+      "Name": "_NodeType0_0",
+      "AggregatedHealthState": "Ok"
+    }
+  ],
+  "ApplicationHealthStates": [
+    {
+      "Name": "fabric:/System",
+      "AggregatedHealthState": "Ok"
+    },
+    {
+      "Name": "fabric:/SampleApp",
+      "AggregatedHealthState": "Ok"
+    }
+  ]
+}

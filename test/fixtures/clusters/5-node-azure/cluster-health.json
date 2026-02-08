@@ -1,0 +1,41 @@
+{
+  "AggregatedHealthState": "Ok",
+  "HealthEvents": [],
+  "UnhealthyEvaluations": [],
+  "NodeHealthStates": [
+    {
+      "Name": "_nt1vm_0",
+      "AggregatedHealthState": "Ok"
+    },
+    {
+      "Name": "_nt1vm_1",
+      "AggregatedHealthState": "Ok"
+    },
+    {
+      "Name": "_nt1vm_2",
+      "AggregatedHealthState": "Ok"
+    },
+    {
+      "Name": "_nt1vm_3",
+      "AggregatedHealthState": "Ok"
+    },
+    {
+      "Name": "_nt1vm_4",
+      "AggregatedHealthState": "Ok"
+    }
+  ],
+  "ApplicationHealthStates": [
+    {
+      "Name": "fabric:/System",
+      "AggregatedHealthState": "Ok"
+    },
+    {
+      "Name": "fabric:/WebFrontEnd",
+      "AggregatedHealthState": "Ok"
+    },
+    {
+      "Name": "fabric:/BackendApi",
+      "AggregatedHealthState": "Ok"
+    }
+  ]
+}

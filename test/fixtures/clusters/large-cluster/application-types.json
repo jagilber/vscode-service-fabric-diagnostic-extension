@@ -1,0 +1,20 @@
+[
+  {
+    "Name": "WebAppType",
+    "Version": "1.0.0",
+    "Status": "Available",
+    "DefaultParameterList": []
+  },
+  {
+    "Name": "DataServiceType",
+    "Version": "1.0.0",
+    "Status": "Available",
+    "DefaultParameterList": []
+  },
+  {
+    "Name": "MonitoringType",
+    "Version": "1.0.0",
+    "Status": "Available",
+    "DefaultParameterList": []
+  }
+]

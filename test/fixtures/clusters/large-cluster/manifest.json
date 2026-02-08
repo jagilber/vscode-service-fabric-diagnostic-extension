@@ -1,0 +1,9 @@
+{
+  "profileName": "large-cluster",
+  "generatedAt": "2026-02-08T17:33:04.629Z",
+  "nodeCount": 20,
+  "applicationCount": 6,
+  "serviceCount": 9,
+  "partitionCount": 21,
+  "replicaCount": 81
+}

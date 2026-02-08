@@ -1,0 +1,10 @@
+[
+  {
+    "ReplicaId": "132750000000000000",
+    "ReplicaStatus": "Ready",
+    "HealthState": "Ok",
+    "NodeName": "_NodeType0_0",
+    "Address": "{\"Endpoints\":{\"\":\"http://10.0.0.4:20000\"}}",
+    "ServiceKind": "Stateless"
+  }
+]

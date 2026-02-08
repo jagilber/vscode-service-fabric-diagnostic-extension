@@ -1,0 +1,33 @@
+{
+  "AggregatedHealthState": "Error",
+  "HealthEvents": [],
+  "UnhealthyEvaluations": [],
+  "NodeHealthStates": [
+    {
+      "Name": "_NodeType0_0",
+      "AggregatedHealthState": "Ok"
+    },
+    {
+      "Name": "_NodeType0_1",
+      "AggregatedHealthState": "Ok"
+    },
+    {
+      "Name": "_NodeType0_2",
+      "AggregatedHealthState": "Warning"
+    }
+  ],
+  "ApplicationHealthStates": [
+    {
+      "Name": "fabric:/System",
+      "AggregatedHealthState": "Error"
+    },
+    {
+      "Name": "fabric:/HealthyApp",
+      "AggregatedHealthState": "Ok"
+    },
+    {
+      "Name": "fabric:/UnhealthyApp",
+      "AggregatedHealthState": "Ok"
+    }
+  ]
+}

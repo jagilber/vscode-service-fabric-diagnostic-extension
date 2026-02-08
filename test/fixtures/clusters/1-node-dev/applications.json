@@ -1,0 +1,11 @@
+[
+  {
+    "Id": "SampleApp",
+    "Name": "fabric:/SampleApp",
+    "TypeName": "SampleAppType",
+    "TypeVersion": "1.0.0",
+    "Status": "Ready",
+    "Parameters": [],
+    "HealthState": "Ok"
+  }
+]

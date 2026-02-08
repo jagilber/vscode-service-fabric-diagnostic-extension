@@ -1,0 +1,12 @@
+[
+  {
+    "Id": "HealthyApp/HealthyService",
+    "Name": "fabric:/HealthyApp/HealthyService",
+    "TypeName": "HealthyServiceType",
+    "ManifestVersion": "1.0.0",
+    "HealthState": "Ok",
+    "ServiceStatus": "Active",
+    "ServiceKind": "Stateful",
+    "IsServiceGroup": false
+  }
+]

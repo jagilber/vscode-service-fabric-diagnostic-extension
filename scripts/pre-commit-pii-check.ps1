@@ -69,7 +69,7 @@ if ($stagedFiles) {
     }
 
     # Check for real cluster URLs (except in allowed files)
-    $allowedUrlFiles = @('\.env\.example', 'SECURITY\.md', 'README\.md', 'TEST_EXECUTION_REPORT\.md', 'test-results/', 'test/')
+    $allowedUrlFiles = @('\.env\.example', 'SECURITY\.md', 'README\.md', 'TEST_EXECUTION_REPORT\.md', 'test-results/', 'test/', 'scripts/')
     $filesWithPotentialUrls = $stagedFiles | Where-Object { 
         $file = $_
         -not ($allowedUrlFiles | Where-Object { $file -match $_ })

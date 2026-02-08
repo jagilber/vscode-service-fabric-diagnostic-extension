@@ -1,0 +1,9 @@
+{
+  "profileName": "3-node-mixed",
+  "generatedAt": "2026-02-08T17:33:04.581Z",
+  "nodeCount": 3,
+  "applicationCount": 2,
+  "serviceCount": 2,
+  "partitionCount": 2,
+  "replicaCount": 6
+}
