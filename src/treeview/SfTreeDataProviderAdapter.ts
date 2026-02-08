@@ -42,8 +42,9 @@ export class SfTreeDataProviderAdapter implements IClusterTreeView {
     }
 
     updateClusterInTree(endpoint: string, _sfConfig: SfConfiguration): void {
-        // Refresh tree to pick up connection status changes
-        this.provider.refresh();
+        // NOTE: Do NOT call this.provider.refresh() here.
+        // populateClusterInBackground() fetches health FIRST, then calls refresh().
+        // Calling refresh() prematurely would render clusters without health data (plain icons).
 
         // Eagerly populate group node data in background (nodes, apps, system)
         // so labels update from "(…)" to "(N)" without waiting for user to expand.

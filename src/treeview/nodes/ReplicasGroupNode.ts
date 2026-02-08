@@ -38,7 +38,23 @@ export class ReplicasGroupNode extends BaseTreeNode {
         item.id = this.id;
         item.iconPath = this.iconService.getHealthIcon(this.healthState, 'copy');
         item.resourceUri = this.ctx.resourceUri;
+
+        // Prefetch replica data in background so count/health populate
+        // without waiting for the user to expand this node
+        if (this.replicaCount === undefined && !this.isLoaded) {
+            this.getChildren();
+        }
+
         return item;
+    }
+
+    /**
+     * Preserve replicaCount and healthState across invalidation so
+     * getTreeItem() shows the last known values instead of "..." / grey.
+     */
+    invalidate(): void {
+        super.invalidate();
+        // replicaCount and healthState are NOT cleared — they survive refresh
     }
 
     protected async fetchChildren(): Promise<ITreeNode[]> {
@@ -52,6 +68,11 @@ export class ReplicasGroupNode extends BaseTreeNode {
 
         this.replicaCount = replicas.length;
         this.healthState = IconService.worstHealthState(replicas.map(r => r.healthState));
+
+        // Schedule a label/icon refresh after VS Code finishes processing getChildren()
+        if (this.ctx.requestRefresh) {
+            setTimeout(() => this.ctx.requestRefresh!(this), 0);
+        }
 
         return replicas.map(replica => new ReplicaNode(
             deriveContext(this.ctx, {

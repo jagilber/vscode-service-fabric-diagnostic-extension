@@ -13,7 +13,8 @@ import { SfUtility, debugLevel } from '../sfUtility';
 export class RefreshManager {
     private debounceTimer: NodeJS.Timeout | undefined;
     private autoRefreshTimer: NodeJS.Timeout | undefined;
-    private invalidateCallback: (() => void) | undefined;
+    private invalidateCallback: (() => void | Promise<void>) | undefined;
+    private pendingFullRefresh = false;
 
     constructor(
         private readonly emitter: vscode.EventEmitter<ITreeNode | undefined | void>,
@@ -23,33 +24,36 @@ export class RefreshManager {
     /**
      * Debounced refresh. Batches multiple calls within debounceMs window.
      * 
-     * @param node Specific node to refresh, or undefined for full tree.
-     *             StaticItemNodes are automatically promoted to parent/full refresh.
+     * CRITICAL: A full tree refresh (node=undefined) is never downgraded to an
+     * individual node refresh. If _doFetch calls requestRefresh(node) while a
+     * full refresh is pending, the individual request is absorbed.
+     * This prevents VS Code's ThemeColor bug (fire(node) drops icon color).
      */
     refresh(node?: ITreeNode): void {
+        // If a full refresh is already pending, absorb individual requests
+        if (node && this.pendingFullRefresh) {
+            return;
+        }
+
         if (this.debounceTimer) {
             clearTimeout(this.debounceTimer);
         }
 
+        if (!node) {
+            this.pendingFullRefresh = true;
+        }
+
         this.debounceTimer = setTimeout(() => {
-            // CRITICAL: Check if this is a static item — promote to full refresh
-            if (node && isStaticItem(node.itemType)) {
-                SfUtility.outputLog(
-                    `RefreshManager: promoting static item '${node.itemType}' to full refresh (icon bug prevention)`,
-                    null, debugLevel.debug,
-                );
-                this.emitter.fire(undefined);
-            } else {
-                this.emitter.fire(node as any);
-            }
+            this.emitter.fire(this.pendingFullRefresh ? undefined : node as any);
             this.debounceTimer = undefined;
+            this.pendingFullRefresh = false;
         }, this.debounceMs);
     }
 
     /**
      * Start auto-refresh cycle based on extension settings.
      */
-    startAutoRefresh(invalidateCallback: () => void): void {
+    startAutoRefresh(invalidateCallback: () => void | Promise<void>): void {
         if (this.autoRefreshTimer) { return; }
         this.invalidateCallback = invalidateCallback;
 
@@ -64,11 +68,21 @@ export class RefreshManager {
 
         this.autoRefreshTimer = setInterval(() => {
             SfUtility.outputLog('RefreshManager: auto-refresh tick', null, debugLevel.debug);
-            try {
-                this.invalidateCallback?.();
+            // Await the callback (which fetches fresh data) before firing re-render
+            // so the tree never renders with stale/empty data.
+            const maybePromise = this.invalidateCallback?.();
+            if (maybePromise && typeof (maybePromise as Promise<void>).then === 'function') {
+                (maybePromise as Promise<void>).then(() => {
+                    SfUtility.outputLog('RefreshManager: emitter.fire(undefined) after async callback (health-only or invalidate)', null, debugLevel.info);
+                    this.emitter.fire(undefined);
+                }).catch(err => {
+                    SfUtility.outputLog('RefreshManager: auto-refresh callback error', err, debugLevel.error);
+                    // Still re-render so error nodes appear
+                    this.emitter.fire(undefined);
+                });
+            } else {
+                SfUtility.outputLog('RefreshManager: emitter.fire(undefined) sync path', null, debugLevel.info);
                 this.emitter.fire(undefined);
-            } catch (err) {
-                SfUtility.outputLog('RefreshManager: auto-refresh error', err, debugLevel.error);
             }
         }, intervalMs);
     }
@@ -87,7 +101,7 @@ export class RefreshManager {
     /**
      * Restart auto-refresh (e.g. when settings change).
      */
-    restartAutoRefresh(invalidateCallback: () => void): void {
+    restartAutoRefresh(invalidateCallback: () => void | Promise<void>): void {
         this.stopAutoRefresh();
         this.startAutoRefresh(invalidateCallback);
     }

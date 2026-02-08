@@ -61,15 +61,15 @@ export abstract class BaseTreeNode implements ITreeNode {
         try {
             this.children = await this.fetchChildren();
             this._isLoaded = true;
-            // Notify provider that our label may have changed
-            // (e.g., "nodes (...)" → "nodes (5)" after count is set in fetchChildren)
-            this.ctx.requestRefresh?.(this);
+            // Do NOT call requestRefresh(this) here.
+            // VS Code is already awaiting the getChildren() Promise.
+            // When it resolves, VS Code renders the children.
+            // Calling requestRefresh would fire a SECOND individual fire(node)
+            // which triggers VS Code's ThemeColor bug — icons lose their color.
             return this.children;
         } catch (err) {
             this.children = [new ErrorNode(err, this)];
             this._isLoaded = true;
-            // Also refresh on error so ErrorNode is visible
-            this.ctx.requestRefresh?.(this);
             return this.children;
         }
     }

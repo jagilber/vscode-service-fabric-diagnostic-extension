@@ -53,6 +53,7 @@ export class StaticItemNode implements ITreeNode {
                 applicationId: this.ctx.parentApplicationId,
                 serviceId: this.ctx.parentServiceId,
                 partitionId: this.ctx.parentPartitionId,
+                replicaId: this.ctx.parentReplicaId,
                 serviceManifestName: this.ctx.parentServiceManifestName,
             }],
         };

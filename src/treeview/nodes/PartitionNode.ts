@@ -55,6 +55,7 @@ export class PartitionNode extends BaseTreeNode {
             arguments: [{
                 itemType: this.itemType,
                 id: this.id,
+                itemId: this.partitionId,
                 clusterEndpoint: this.ctx.clusterEndpoint,
                 applicationId: this.applicationId,
                 serviceId: this.serviceId,

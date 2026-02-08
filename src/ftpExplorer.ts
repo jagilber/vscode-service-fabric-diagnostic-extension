@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import * as Client from 'ftp';
+import Client from 'ftp';
 import { basename, dirname, join } from 'path';
 
 interface IEntry {

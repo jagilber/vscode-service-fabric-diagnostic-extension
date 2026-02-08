@@ -24,10 +24,29 @@ export class NodesGroupNode extends BaseTreeNode {
     }
 
     getTreeItem(): vscode.TreeItem {
-        const label = this.nodeCount !== undefined ? `nodes (${this.nodeCount})` : 'nodes (...)';
+        // Prefer locally-computed values (from fetchChildren), fall back to
+        // sfConfig's pre-populated cluster health so icons are coloured even
+        // when children haven't been fetched yet (after invalidateAll).
+        let nodeCount = this.nodeCount;
+        let healthState = this.healthState;
+
+        if (nodeCount === undefined || healthState === undefined) {
+            const clusterHealth = this.ctx.sfConfig.getClusterHealth();
+            const nodeStates: any[] | undefined = clusterHealth?.nodeHealthStates;
+            if (nodeStates) {
+                if (nodeCount === undefined) { nodeCount = nodeStates.length; }
+                if (healthState === undefined) {
+                    healthState = IconService.worstHealthState(
+                        nodeStates.map((n: any) => n.aggregatedHealthState),
+                    );
+                }
+            }
+        }
+
+        const label = nodeCount !== undefined ? `nodes (${nodeCount})` : 'nodes (...)';
         const item = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.Collapsed);
         item.id = this.id;
-        item.iconPath = this.iconService.getHealthIcon(this.healthState, 'server');
+        item.iconPath = this.iconService.getHealthIcon(healthState, 'server');
         item.resourceUri = this.ctx.resourceUri;
         return item;
     }

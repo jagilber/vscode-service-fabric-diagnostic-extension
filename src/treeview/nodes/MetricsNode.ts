@@ -46,6 +46,7 @@ export class MetricsNode extends BaseTreeNode {
                 'Last Balancing',
                 new Date(loadInfo.lastBalancingStartTimeUtc).toLocaleString(),
                 'clock',
+                'charts.blue',
             ));
         }
 
@@ -55,7 +56,8 @@ export class MetricsNode extends BaseTreeNode {
                 this.iconService,
                 'Balancing Duration',
                 `${new Date(loadInfo.lastBalancingEndTimeUtc).getTime() - new Date(loadInfo.lastBalancingStartTimeUtc || 0).getTime()}ms`,
-                'watch',
+                'history',
+                'charts.blue',
             ));
         }
 
@@ -66,12 +68,14 @@ export class MetricsNode extends BaseTreeNode {
             );
 
             for (const metric of sorted) {
+                const color = metric.isClusterCapacityViolation ? 'charts.red' : 'charts.green';
                 children.push(new MetricLeafNode(
                     this.ctx,
                     this.iconService,
                     metric.name || 'Unknown',
                     this.formatMetricValue(metric),
-                    'dashboard',
+                    'pulse',
+                    color,
                     this.buildMetricTooltip(metric),
                 ));
             }
@@ -84,6 +88,7 @@ export class MetricsNode extends BaseTreeNode {
                 'No metrics available',
                 '',
                 'info',
+                'charts.orange',
             ));
         }
 
@@ -138,6 +143,7 @@ class MetricLeafNode implements ITreeNode {
         private readonly label: string,
         private readonly value: string,
         private readonly iconId: string,
+        private readonly colorId: string,
         private readonly tooltipText?: string,
     ) {
         this.id = `metric:${ctx.clusterEndpoint}:${label}`;
@@ -146,9 +152,22 @@ class MetricLeafNode implements ITreeNode {
     getTreeItem(): vscode.TreeItem {
         const item = new vscode.TreeItem(this.label, vscode.TreeItemCollapsibleState.None);
         item.id = this.id;
+        item.contextValue = 'metricItem';
         item.description = this.value;
-        item.iconPath = this.iconService.getPlainIcon(this.iconId);
+        item.iconPath = this.iconService.getStaticIcon(this.iconId, this.colorId);
         item.tooltip = this.tooltipText || `${this.label}: ${this.value}`;
+
+        // Copy metric value on click
+        item.command = {
+            command: 'sfClusterExplorer.showItemDetails',
+            title: 'Show Details',
+            arguments: [{
+                itemType: 'metrics',
+                id: this.id,
+                clusterEndpoint: this.ctx.clusterEndpoint,
+            }],
+        };
+
         return item;
     }
 

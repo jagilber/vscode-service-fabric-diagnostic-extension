@@ -25,10 +25,33 @@ export class ApplicationsGroupNode extends BaseTreeNode {
     }
 
     getTreeItem(): vscode.TreeItem {
-        const label = this.appCount !== undefined ? `applications (${this.appCount})` : 'applications (...)';
+        // Prefer locally-computed values (from fetchChildren), fall back to
+        // sfConfig's pre-populated cluster health so icons are coloured even
+        // when children haven't been fetched yet (after invalidateAll).
+        let appCount = this.appCount;
+        let healthState = this.healthState;
+
+        if (appCount === undefined || healthState === undefined) {
+            const clusterHealth = this.ctx.sfConfig.getClusterHealth();
+            const appStates: any[] | undefined = clusterHealth?.applicationHealthStates;
+            if (appStates) {
+                // Exclude fabric:/System — it's shown in the system group
+                const userApps = appStates.filter(
+                    (a: any) => a.name && !a.name.toLowerCase().startsWith('fabric:/system'),
+                );
+                if (appCount === undefined) { appCount = userApps.length; }
+                if (healthState === undefined) {
+                    healthState = IconService.worstHealthState(
+                        userApps.map((a: any) => a.aggregatedHealthState),
+                    );
+                }
+            }
+        }
+
+        const label = appCount !== undefined ? `applications (${appCount})` : 'applications (...)';
         const item = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.Collapsed);
         item.id = this.id;
-        item.iconPath = this.iconService.getHealthIcon(this.healthState, 'package');
+        item.iconPath = this.iconService.getHealthIcon(healthState, 'package');
         item.resourceUri = this.ctx.resourceUri;
         return item;
     }

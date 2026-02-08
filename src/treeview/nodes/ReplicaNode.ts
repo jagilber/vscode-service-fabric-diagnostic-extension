@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { BaseTreeNode } from '../BaseTreeNode';
 import { ITreeNode } from '../ITreeNode';
-import { TreeNodeContext } from '../TreeNodeContext';
+import { TreeNodeContext, deriveContext } from '../TreeNodeContext';
 import { IconService } from '../IconService';
 import { DataCache } from '../DataCache';
 import { StaticItemNode } from './StaticItemNode';
@@ -54,6 +54,7 @@ export class ReplicaNode extends BaseTreeNode {
             arguments: [{
                 itemType: this.itemType,
                 id: this.id,
+                itemId: this.replicaId,
                 clusterEndpoint: this.ctx.clusterEndpoint,
                 applicationId: this.applicationId,
                 serviceId: this.serviceId,
@@ -69,9 +70,15 @@ export class ReplicaNode extends BaseTreeNode {
     protected async fetchChildren(): Promise<ITreeNode[]> {
         const idSuffix = `${this.applicationId}:${this.serviceId}:${this.partitionId}:${this.replicaId}`;
 
+        // Derive context with replicaId so StaticItemNode children can pass it in commands
+        const childCtx = deriveContext(this.ctx, {
+            parentPartitionId: this.partitionId,
+            parentReplicaId: this.replicaId,
+        });
+
         return [
-            new StaticItemNode(this.ctx, this.iconService, 'health', `rep-health:${idSuffix}`, 'heart', 'charts.green', 'replica-health'),
-            new StaticItemNode(this.ctx, this.iconService, 'events', `rep-events:${idSuffix}`, 'calendar', 'charts.purple', 'replica-events'),
+            new StaticItemNode(childCtx, this.iconService, 'health', `rep-health:${idSuffix}`, 'heart', 'charts.green', 'replica-health'),
+            new StaticItemNode(childCtx, this.iconService, 'events', `rep-events:${idSuffix}`, 'calendar', 'charts.purple', 'replica-events'),
         ];
     }
 

@@ -25,12 +25,30 @@ export class SystemGroupNode extends BaseTreeNode {
     }
 
     getTreeItem(): vscode.TreeItem {
+        // Prefer locally-computed health (from fetchChildren), fall back to
+        // sfConfig's pre-populated cluster health for the fabric:/System app
+        // so the icon is coloured even before children are fetched.
+        let healthState = this.healthState;
+
+        if (healthState === undefined) {
+            const clusterHealth = this.ctx.sfConfig.getClusterHealth();
+            const appStates: any[] | undefined = clusterHealth?.applicationHealthStates;
+            if (appStates) {
+                const systemApp = appStates.find(
+                    (a: any) => a.name && a.name.toLowerCase() === 'fabric:/system',
+                );
+                if (systemApp) {
+                    healthState = systemApp.aggregatedHealthState;
+                }
+            }
+        }
+
         const label = this.serviceCount !== undefined
             ? `system (${this.serviceCount})`
             : 'system (...)';
         const item = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.Collapsed);
         item.id = this.id;
-        item.iconPath = this.iconService.getHealthIcon(this.healthState, 'gear');
+        item.iconPath = this.iconService.getHealthIcon(healthState, 'gear');
         item.resourceUri = this.ctx.resourceUri;
         return item;
     }

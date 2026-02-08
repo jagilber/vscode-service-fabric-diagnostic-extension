@@ -36,6 +36,7 @@ export interface TreeNodeContext {
     readonly parentApplicationId?: string;
     readonly parentServiceId?: string;
     readonly parentPartitionId?: string;
+    readonly parentReplicaId?: string;
     readonly parentServiceManifestName?: string;
 }
 

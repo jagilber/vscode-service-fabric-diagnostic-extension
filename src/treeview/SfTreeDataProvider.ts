@@ -63,6 +63,8 @@ export class SfTreeDataProvider implements vscode.TreeDataProvider<ITreeNode> {
 
     /**
      * Add a cluster to the tree view.
+     * Does NOT fire refresh — health data isn't available yet.
+     * populateClusterInBackground() will fire the first refresh after health is fetched.
      */
     addCluster(sfConfig: SfConfiguration, sfRest: SfRest): void {
         const endpoint = sfConfig.getClusterEndpoint();
@@ -87,10 +89,14 @@ export class SfTreeDataProvider implements vscode.TreeDataProvider<ITreeNode> {
         this.roots.push(clusterNode);
 
         this.updateViewVisibility();
-        this.refresh();
+        // NOTE: Do NOT call this.refresh() here.
+        // The cluster has no health data yet, so getTreeItem() would render a plain icon.
+        // Instead, let populateClusterInBackground() call refresh() AFTER health is fetched.
 
         // Start auto-refresh if we have clusters
-        this.refreshManager.startAutoRefresh(() => this.invalidateAll());
+        // Use health-only refresh to avoid destroying/recreating children every cycle
+        // (which causes ThemeColor loss on group nodes that start with healthState=undefined)
+        this.refreshManager.startAutoRefresh(async () => this.invalidateAll());
 
         SfUtility.outputLog(`SfTreeDataProvider: cluster added: ${endpoint}`, null, debugLevel.info);
     }
@@ -126,7 +132,10 @@ export class SfTreeDataProvider implements vscode.TreeDataProvider<ITreeNode> {
         for (const root of this.roots) {
             root.setActive(root.clusterEndpoint === endpoint);
         }
-        this.refresh();
+        // NOTE: Do NOT call this.refresh() here.
+        // This is typically called during cluster connection setup,
+        // and populateClusterInBackground() will fire refresh after health data arrives.
+        // Firing here would re-render ALL clusters, including ones without health yet.
     }
 
     /**
@@ -144,9 +153,72 @@ export class SfTreeDataProvider implements vscode.TreeDataProvider<ITreeNode> {
     }
 
     /**
-     * Invalidate all cluster data (called by auto-refresh).
+     * Lightweight health-only refresh (used by auto-refresh timer).
+     * 
+     * ONLY fetches fresh cluster health data — does NOT invalidate or recreate
+     * child nodes. This prevents the VS Code ThemeColor bug where newly created
+     * child nodes (with healthState=undefined) render gray icons before their
+     * async fetchChildren() completes.
+     * 
+     * Children retain their existing healthState from the last fetchChildren() call.
+     * Structural changes (new apps, removed nodes) appear on manual refresh.
      */
-    invalidateAll(): void {
+    async refreshHealthOnly(): Promise<void> {
+        SfUtility.outputLog('refreshHealthOnly: fetching health data (no tree invalidation)', null, debugLevel.info);
+        const healthResults = await Promise.allSettled(
+            this.roots.map(async root => {
+                await root.ctx.sfConfig.populateClusterHealth();
+                SfUtility.outputLog(
+                    `Health refresh: cluster health updated for ${root.clusterEndpoint}`,
+                    null, debugLevel.debug,
+                );
+            })
+        );
+
+        for (let i = 0; i < healthResults.length; i++) {
+            if (healthResults[i].status === 'rejected') {
+                SfUtility.outputLog(
+                    `Health refresh: cluster health fetch failed for ${this.roots[i]?.clusterEndpoint}`,
+                    (healthResults[i] as PromiseRejectedResult).reason, debugLevel.debug,
+                );
+            }
+        }
+        // NOTE: No cache.clear(), no root.invalidate().
+        // getTreeItem() on ClusterNode reads live health from sfConfig.
+        // Children stay loaded — no gray-icon flash from recreating nodes.
+    }
+
+    /**
+     * Full structural refresh — invalidates all cached data and forces tree rebuild.
+     * Used by manual refresh commands, NOT by the auto-refresh timer.
+     * 
+     * This WILL cause a brief moment where child nodes have no health data
+     * (gray icons) while their async fetchChildren() runs. That's acceptable
+     * for an explicit user action but NOT for a background timer.
+     */
+    async invalidateAll(): Promise<void> {
+        SfUtility.outputLog('invalidateAll: FULL tree rebuild (cache clear + invalidate)', null, debugLevel.info);
+        // Step 1: Fetch fresh cluster health BEFORE clearing cache.
+        const healthResults = await Promise.allSettled(
+            this.roots.map(async root => {
+                await root.ctx.sfConfig.populateClusterHealth();
+                SfUtility.outputLog(
+                    `Full refresh: cluster health updated for ${root.clusterEndpoint}`,
+                    null, debugLevel.debug,
+                );
+            })
+        );
+
+        for (let i = 0; i < healthResults.length; i++) {
+            if (healthResults[i].status === 'rejected') {
+                SfUtility.outputLog(
+                    `Full refresh: cluster health fetch failed for ${this.roots[i]?.clusterEndpoint}`,
+                    (healthResults[i] as PromiseRejectedResult).reason, debugLevel.debug,
+                );
+            }
+        }
+
+        // Step 2: Clear cache and invalidate so getChildren() re-fetches with fresh data.
         this.cache.clear();
         for (const root of this.roots) {
             root.invalidate();
@@ -157,7 +229,7 @@ export class SfTreeDataProvider implements vscode.TreeDataProvider<ITreeNode> {
      * Restart auto-refresh (e.g. when settings change).
      */
     restartAutoRefresh(): void {
-        this.refreshManager.restartAutoRefresh(() => this.invalidateAll());
+        this.refreshManager.restartAutoRefresh(async () => this.invalidateAll());
     }
 
     /**

@@ -4,6 +4,7 @@ import { ITreeNode } from '../ITreeNode';
 import { TreeNodeContext } from '../TreeNodeContext';
 import { IconService } from '../IconService';
 import { DataCache } from '../DataCache';
+import { SfUtility, debugLevel } from '../../sfUtility';
 
 /**
  * Image Store node. Lazy-loads image store contents.
@@ -64,17 +65,30 @@ export class ImageStoreNode extends BaseTreeNode {
     }
 
     protected async fetchChildren(): Promise<ITreeNode[]> {
-        // Check if native image store is available
-        if (this.isRoot && !this.ctx.sfConfig.isNativeImageStoreAvailable()) {
-            return [new ImageStoreUnavailableNode(this.ctx)];
+        // Log image store type for debugging — but don't block non-native stores.
+        // The REST API works on Azure clusters (xstore) via the SF gateway proxy.
+        if (this.isRoot) {
+            const isNative = this.ctx.sfConfig.isNativeImageStoreAvailable();
+            SfUtility.outputLog(
+                `ImageStoreNode: native=${isNative}, endpoint=${this.ctx.clusterEndpoint}`,
+                null, debugLevel.info,
+            );
         }
 
         const cacheKey = `image-store-content:${this.ctx.clusterEndpoint}:${this.storePath || 'root'}`;
         let content = this.cache.get<any>(cacheKey);
 
         if (!content) {
-            content = await this.ctx.sfRest.getImageStoreContent(this.storePath || undefined);
-            this.cache.set(cacheKey, content);
+            try {
+                content = await this.ctx.sfRest.getImageStoreContent(this.storePath || undefined);
+                this.cache.set(cacheKey, content);
+            } catch (error: any) {
+                SfUtility.outputLog(
+                    `ImageStoreNode: failed to fetch content for path '${this.storePath || 'root'}'`,
+                    error, debugLevel.warn,
+                );
+                return [new ImageStoreUnavailableNode(this.ctx, error?.message)];
+            }
         }
 
         const children: ITreeNode[] = [];
@@ -167,18 +181,23 @@ class ImageStoreUnavailableNode implements ITreeNode {
     readonly itemType = 'image-store-unavailable';
     readonly isLoaded = true;
 
-    constructor(ctx: TreeNodeContext) {
+    constructor(ctx: TreeNodeContext, private readonly errorMessage?: string) {
         this.id = `image-store-unavailable:${ctx.clusterEndpoint}`;
     }
 
     getTreeItem(): vscode.TreeItem {
+        const label = this.errorMessage
+            ? `Image Store error: ${this.errorMessage}`
+            : 'Image Store unavailable';
         const item = new vscode.TreeItem(
-            'Image Store unavailable (Azure or external store)',
+            label,
             vscode.TreeItemCollapsibleState.None,
         );
         item.id = this.id;
-        item.iconPath = new vscode.ThemeIcon('info');
-        item.tooltip = 'Native Image Store is not configured for this cluster. The cluster uses Azure or an external store.';
+        item.iconPath = new vscode.ThemeIcon('warning');
+        item.tooltip = this.errorMessage
+            ? `Failed to load Image Store contents:\n${this.errorMessage}`
+            : 'Could not access the Image Store for this cluster.';
         return item;
     }
 
