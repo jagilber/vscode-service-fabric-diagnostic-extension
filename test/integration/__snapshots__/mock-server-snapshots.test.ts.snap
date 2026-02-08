@@ -1,0 +1,3114 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`Snapshot: 1-node-dev ApplicationTypes 1`] = `
+[
+  {
+    "DefaultParameterList": [],
+    "Name": "SampleAppType",
+    "Status": "Available",
+    "Version": "1.0.0",
+  },
+]
+`;
+
+exports[`Snapshot: 1-node-dev Applications 1`] = `
+[
+  {
+    "HealthState": "Ok",
+    "Id": "SampleApp",
+    "Name": "fabric:/SampleApp",
+    "Parameters": [],
+    "Status": "Ready",
+    "TypeName": "SampleAppType",
+    "TypeVersion": "1.0.0",
+  },
+]
+`;
+
+exports[`Snapshot: 1-node-dev ClusterHealth 1`] = `
+{
+  "AggregatedHealthState": "Ok",
+  "ApplicationHealthStates": [
+    {
+      "AggregatedHealthState": "Ok",
+      "Name": "fabric:/System",
+    },
+    {
+      "AggregatedHealthState": "Ok",
+      "Name": "fabric:/SampleApp",
+    },
+  ],
+  "HealthEvents": [],
+  "NodeHealthStates": [
+    {
+      "AggregatedHealthState": "Ok",
+      "Name": "_NodeType0_0",
+    },
+  ],
+  "UnhealthyEvaluations": [],
+}
+`;
+
+exports[`Snapshot: 1-node-dev ClusterLoad 1`] = `
+{
+  "LastBalancingEndTimeUtc": "2026-02-08T17:33:04.552Z",
+  "LastBalancingStartTimeUtc": "2026-02-08T17:32:59.552Z",
+  "LoadMetricInformation": [
+    {
+      "ClusterBufferedCapacity": 0,
+      "ClusterCapacity": 0,
+      "ClusterLoad": 3,
+      "ClusterRemainingBufferedCapacity": 0,
+      "ClusterRemainingCapacity": -3,
+      "DeviationAfter": 0.01,
+      "DeviationBefore": 0.05,
+      "IsClusterCapacityViolation": false,
+      "MaximumNodeLoad": 4,
+      "MinimumNodeLoad": 3,
+      "Name": "Count",
+      "NodeBufferPercentage": 0,
+    },
+    {
+      "ClusterBufferedCapacity": 0,
+      "ClusterCapacity": 8192,
+      "ClusterLoad": 2048,
+      "ClusterRemainingBufferedCapacity": 0,
+      "ClusterRemainingCapacity": 6144,
+      "DeviationAfter": 0.01,
+      "DeviationBefore": 0.05,
+      "IsClusterCapacityViolation": false,
+      "MaximumNodeLoad": 2049,
+      "MinimumNodeLoad": 2048,
+      "Name": "MemoryInMB",
+      "NodeBufferPercentage": 0,
+    },
+    {
+      "ClusterBufferedCapacity": 0,
+      "ClusterCapacity": 51200,
+      "ClusterLoad": 10240,
+      "ClusterRemainingBufferedCapacity": 0,
+      "ClusterRemainingCapacity": 40960,
+      "DeviationAfter": 0.01,
+      "DeviationBefore": 0.05,
+      "IsClusterCapacityViolation": false,
+      "MaximumNodeLoad": 10241,
+      "MinimumNodeLoad": 10240,
+      "Name": "DiskSpaceInMB",
+      "NodeBufferPercentage": 0,
+    },
+  ],
+}
+`;
+
+exports[`Snapshot: 1-node-dev ClusterManifest 1`] = `
+{
+  "Manifest": "<?xml version="1.0" encoding="utf-8"?>
+<ClusterManifest xmlns="http://schemas.microsoft.com/2011/01/fabric" Name="TestCluster" Version="1.0">
+  <NodeTypes>
+    <NodeType Name="NodeType0">
+      <Endpoints>
+        <ClientConnectionEndpoint Port="19000" />
+        <HttpGatewayEndpoint Port="19080" Protocol="http" />
+      </Endpoints>
+    </NodeType>
+  </NodeTypes>
+</ClusterManifest>",
+}
+`;
+
+exports[`Snapshot: 1-node-dev ClusterVersion 1`] = `
+{
+  "Version": "9.1.1583.9590",
+}
+`;
+
+exports[`Snapshot: 1-node-dev ImageStore 1`] = `
+{
+  "StoreFiles": [],
+  "StoreFolders": [
+    {
+      "StoreRelativePath": "Store",
+    },
+    {
+      "StoreRelativePath": "WindowsFabricStore",
+    },
+  ],
+}
+`;
+
+exports[`Snapshot: 1-node-dev Nodes 1`] = `
+[
+  {
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "FaultDomain": "fd:/0",
+    "HealthState": "Ok",
+    "Id": {
+      "Id": "3b6464430e296b05",
+    },
+    "InstanceId": "132750000000000000",
+    "IpAddressOrFQDN": "10.0.0.4",
+    "IsSeedNode": true,
+    "IsStopped": false,
+    "Name": "_NodeType0_0",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "86400",
+    "Type": "NodeType0",
+    "UpgradeDomain": "UD0",
+  },
+]
+`;
+
+exports[`Snapshot: 1-node-dev RepairTasks 1`] = `[]`;
+
+exports[`Snapshot: 1-node-dev SystemServices 1`] = `[]`;
+
+exports[`Snapshot: 1-node-dev full drill-down 1`] = `
+{
+  "partitions/SampleApp/SampleService": [
+    {
+      "HealthState": "Ok",
+      "PartitionInformation": {
+        "Id": "e1cc396a-93c3-4735-8a71-ae3e2ec4004f",
+        "ServicePartitionKind": "Singleton",
+      },
+      "PartitionStatus": "Ready",
+      "ServicePartitionKind": "Singleton",
+    },
+  ],
+  "replicas/e1cc396a-93c3-4735-8a71-ae3e2ec4004f": [
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.4:20000"}}",
+      "HealthState": "Ok",
+      "NodeName": "_NodeType0_0",
+      "ReplicaId": "132750000000000000",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateless",
+    },
+  ],
+  "services/SampleApp": [
+    {
+      "HealthState": "Ok",
+      "Id": "SampleApp/SampleService",
+      "IsServiceGroup": false,
+      "ManifestVersion": "1.0.0",
+      "Name": "fabric:/SampleApp/SampleService",
+      "ServiceKind": "Stateless",
+      "ServiceStatus": "Active",
+      "TypeName": "SampleServiceType",
+    },
+  ],
+}
+`;
+
+exports[`Snapshot: 3-node-mixed ApplicationTypes 1`] = `
+[
+  {
+    "DefaultParameterList": [],
+    "Name": "HealthyAppType",
+    "Status": "Available",
+    "Version": "1.0.0",
+  },
+  {
+    "DefaultParameterList": [],
+    "Name": "UnhealthyAppType",
+    "Status": "Available",
+    "Version": "1.0.0",
+  },
+]
+`;
+
+exports[`Snapshot: 3-node-mixed Applications 1`] = `
+[
+  {
+    "HealthState": "Ok",
+    "Id": "HealthyApp",
+    "Name": "fabric:/HealthyApp",
+    "Parameters": [],
+    "Status": "Ready",
+    "TypeName": "HealthyAppType",
+    "TypeVersion": "1.0.0",
+  },
+  {
+    "HealthState": "Ok",
+    "Id": "UnhealthyApp",
+    "Name": "fabric:/UnhealthyApp",
+    "Parameters": [],
+    "Status": "Ready",
+    "TypeName": "UnhealthyAppType",
+    "TypeVersion": "1.0.0",
+  },
+]
+`;
+
+exports[`Snapshot: 3-node-mixed ClusterHealth 1`] = `
+{
+  "AggregatedHealthState": "Error",
+  "ApplicationHealthStates": [
+    {
+      "AggregatedHealthState": "Error",
+      "Name": "fabric:/System",
+    },
+    {
+      "AggregatedHealthState": "Ok",
+      "Name": "fabric:/HealthyApp",
+    },
+    {
+      "AggregatedHealthState": "Ok",
+      "Name": "fabric:/UnhealthyApp",
+    },
+  ],
+  "HealthEvents": [],
+  "NodeHealthStates": [
+    {
+      "AggregatedHealthState": "Ok",
+      "Name": "_NodeType0_0",
+    },
+    {
+      "AggregatedHealthState": "Ok",
+      "Name": "_NodeType0_1",
+    },
+    {
+      "AggregatedHealthState": "Warning",
+      "Name": "_NodeType0_2",
+    },
+  ],
+  "UnhealthyEvaluations": [],
+}
+`;
+
+exports[`Snapshot: 3-node-mixed ClusterLoad 1`] = `
+{
+  "LastBalancingEndTimeUtc": "2026-02-08T17:33:04.568Z",
+  "LastBalancingStartTimeUtc": "2026-02-08T17:32:59.568Z",
+  "LoadMetricInformation": [
+    {
+      "ClusterBufferedCapacity": 0,
+      "ClusterCapacity": 0,
+      "ClusterLoad": 9,
+      "ClusterRemainingBufferedCapacity": 0,
+      "ClusterRemainingCapacity": -9,
+      "DeviationAfter": 0.01,
+      "DeviationBefore": 0.05,
+      "IsClusterCapacityViolation": false,
+      "MaximumNodeLoad": 4,
+      "MinimumNodeLoad": 3,
+      "Name": "Count",
+      "NodeBufferPercentage": 0,
+    },
+    {
+      "ClusterBufferedCapacity": 0,
+      "ClusterCapacity": 24576,
+      "ClusterLoad": 6144,
+      "ClusterRemainingBufferedCapacity": 0,
+      "ClusterRemainingCapacity": 18432,
+      "DeviationAfter": 0.01,
+      "DeviationBefore": 0.05,
+      "IsClusterCapacityViolation": false,
+      "MaximumNodeLoad": 2049,
+      "MinimumNodeLoad": 2048,
+      "Name": "MemoryInMB",
+      "NodeBufferPercentage": 0,
+    },
+    {
+      "ClusterBufferedCapacity": 0,
+      "ClusterCapacity": 153600,
+      "ClusterLoad": 30720,
+      "ClusterRemainingBufferedCapacity": 0,
+      "ClusterRemainingCapacity": 122880,
+      "DeviationAfter": 0.01,
+      "DeviationBefore": 0.05,
+      "IsClusterCapacityViolation": false,
+      "MaximumNodeLoad": 10241,
+      "MinimumNodeLoad": 10240,
+      "Name": "DiskSpaceInMB",
+      "NodeBufferPercentage": 0,
+    },
+  ],
+}
+`;
+
+exports[`Snapshot: 3-node-mixed ClusterManifest 1`] = `
+{
+  "Manifest": "<?xml version="1.0" encoding="utf-8"?>
+<ClusterManifest xmlns="http://schemas.microsoft.com/2011/01/fabric" Name="TestCluster" Version="1.0">
+  <NodeTypes>
+    <NodeType Name="NodeType0">
+      <Endpoints>
+        <ClientConnectionEndpoint Port="19000" />
+        <HttpGatewayEndpoint Port="19080" Protocol="http" />
+      </Endpoints>
+    </NodeType>
+  </NodeTypes>
+</ClusterManifest>",
+}
+`;
+
+exports[`Snapshot: 3-node-mixed ClusterVersion 1`] = `
+{
+  "Version": "9.1.1583.9590",
+}
+`;
+
+exports[`Snapshot: 3-node-mixed ImageStore 1`] = `
+{
+  "StoreFiles": [],
+  "StoreFolders": [
+    {
+      "StoreRelativePath": "Store",
+    },
+    {
+      "StoreRelativePath": "WindowsFabricStore",
+    },
+  ],
+}
+`;
+
+exports[`Snapshot: 3-node-mixed Nodes 1`] = `
+[
+  {
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "FaultDomain": "fd:/0",
+    "HealthState": "Ok",
+    "Id": {
+      "Id": "3b6464430e296b05",
+    },
+    "InstanceId": "132750000000000000",
+    "IpAddressOrFQDN": "10.0.0.4",
+    "IsSeedNode": true,
+    "IsStopped": false,
+    "Name": "_NodeType0_0",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "86400",
+    "Type": "NodeType0",
+    "UpgradeDomain": "UD0",
+  },
+  {
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "FaultDomain": "fd:/1",
+    "HealthState": "Ok",
+    "Id": {
+      "Id": "d50164b9587cab73",
+    },
+    "InstanceId": "132750000000000001",
+    "IpAddressOrFQDN": "10.0.0.5",
+    "IsSeedNode": true,
+    "IsStopped": false,
+    "Name": "_NodeType0_1",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "90000",
+    "Type": "NodeType0",
+    "UpgradeDomain": "UD1",
+  },
+  {
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "FaultDomain": "fd:/2",
+    "HealthState": "Warning",
+    "Id": {
+      "Id": "ba09ccadd17e7bc4",
+    },
+    "InstanceId": "132750000000000002",
+    "IpAddressOrFQDN": "10.0.0.6",
+    "IsSeedNode": true,
+    "IsStopped": false,
+    "Name": "_NodeType0_2",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "93600",
+    "Type": "NodeType0",
+    "UpgradeDomain": "UD2",
+  },
+]
+`;
+
+exports[`Snapshot: 3-node-mixed RepairTasks 1`] = `[]`;
+
+exports[`Snapshot: 3-node-mixed SystemServices 1`] = `[]`;
+
+exports[`Snapshot: 3-node-mixed full drill-down 1`] = `
+{
+  "partitions/HealthyApp/HealthyService": [
+    {
+      "HealthState": "Ok",
+      "PartitionInformation": {
+        "Id": "028deaac-3f4d-4d96-8a8f-b87ff6c0a630",
+        "ServicePartitionKind": "Singleton",
+      },
+      "PartitionStatus": "Ready",
+      "ServicePartitionKind": "Singleton",
+    },
+  ],
+  "partitions/UnhealthyApp/FailingService": [
+    {
+      "HealthState": "Ok",
+      "PartitionInformation": {
+        "Id": "62132b03-141c-409e-888f-9c062dfcd2c6",
+        "ServicePartitionKind": "Singleton",
+      },
+      "PartitionStatus": "Ready",
+      "ServicePartitionKind": "Singleton",
+    },
+  ],
+  "replicas/028deaac-3f4d-4d96-8a8f-b87ff6c0a630": [
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.4:20000"}}",
+      "HealthState": "Ok",
+      "NodeName": "_NodeType0_0",
+      "ReplicaId": "132750000000000000",
+      "ReplicaRole": "Primary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.5:20001"}}",
+      "HealthState": "Ok",
+      "NodeName": "_NodeType0_1",
+      "ReplicaId": "132750000000000001",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.6:20002"}}",
+      "HealthState": "Warning",
+      "NodeName": "_NodeType0_2",
+      "ReplicaId": "132750000000000002",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+  ],
+  "replicas/62132b03-141c-409e-888f-9c062dfcd2c6": [
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.4:20100"}}",
+      "HealthState": "Ok",
+      "NodeName": "_NodeType0_0",
+      "ReplicaId": "132750000000000100",
+      "ReplicaRole": "Primary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.5:20101"}}",
+      "HealthState": "Warning",
+      "NodeName": "_NodeType0_1",
+      "ReplicaId": "132750000000000101",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.6:20102"}}",
+      "HealthState": "Error",
+      "NodeName": "_NodeType0_2",
+      "ReplicaId": "132750000000000102",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+  ],
+  "services/HealthyApp": [
+    {
+      "HealthState": "Ok",
+      "Id": "HealthyApp/HealthyService",
+      "IsServiceGroup": false,
+      "ManifestVersion": "1.0.0",
+      "Name": "fabric:/HealthyApp/HealthyService",
+      "ServiceKind": "Stateful",
+      "ServiceStatus": "Active",
+      "TypeName": "HealthyServiceType",
+    },
+  ],
+  "services/UnhealthyApp": [
+    {
+      "HealthState": "Error",
+      "Id": "UnhealthyApp/FailingService",
+      "IsServiceGroup": false,
+      "ManifestVersion": "1.0.0",
+      "Name": "fabric:/UnhealthyApp/FailingService",
+      "ServiceKind": "Stateful",
+      "ServiceStatus": "Active",
+      "TypeName": "FailingServiceType",
+    },
+  ],
+}
+`;
+
+exports[`Snapshot: 5-node-azure ApplicationTypes 1`] = `
+[
+  {
+    "DefaultParameterList": [],
+    "Name": "WebFrontEndType",
+    "Status": "Available",
+    "Version": "1.0.0",
+  },
+  {
+    "DefaultParameterList": [],
+    "Name": "BackendApiType",
+    "Status": "Available",
+    "Version": "1.0.0",
+  },
+]
+`;
+
+exports[`Snapshot: 5-node-azure Applications 1`] = `
+[
+  {
+    "HealthState": "Ok",
+    "Id": "WebFrontEnd",
+    "Name": "fabric:/WebFrontEnd",
+    "Parameters": [],
+    "Status": "Ready",
+    "TypeName": "WebFrontEndType",
+    "TypeVersion": "1.0.0",
+  },
+  {
+    "HealthState": "Ok",
+    "Id": "BackendApi",
+    "Name": "fabric:/BackendApi",
+    "Parameters": [],
+    "Status": "Ready",
+    "TypeName": "BackendApiType",
+    "TypeVersion": "1.0.0",
+  },
+]
+`;
+
+exports[`Snapshot: 5-node-azure ClusterHealth 1`] = `
+{
+  "AggregatedHealthState": "Ok",
+  "ApplicationHealthStates": [
+    {
+      "AggregatedHealthState": "Ok",
+      "Name": "fabric:/System",
+    },
+    {
+      "AggregatedHealthState": "Ok",
+      "Name": "fabric:/WebFrontEnd",
+    },
+    {
+      "AggregatedHealthState": "Ok",
+      "Name": "fabric:/BackendApi",
+    },
+  ],
+  "HealthEvents": [],
+  "NodeHealthStates": [
+    {
+      "AggregatedHealthState": "Ok",
+      "Name": "_nt1vm_0",
+    },
+    {
+      "AggregatedHealthState": "Ok",
+      "Name": "_nt1vm_1",
+    },
+    {
+      "AggregatedHealthState": "Ok",
+      "Name": "_nt1vm_2",
+    },
+    {
+      "AggregatedHealthState": "Ok",
+      "Name": "_nt1vm_3",
+    },
+    {
+      "AggregatedHealthState": "Ok",
+      "Name": "_nt1vm_4",
+    },
+  ],
+  "UnhealthyEvaluations": [],
+}
+`;
+
+exports[`Snapshot: 5-node-azure ClusterLoad 1`] = `
+{
+  "LastBalancingEndTimeUtc": "2026-02-08T17:33:04.582Z",
+  "LastBalancingStartTimeUtc": "2026-02-08T17:32:59.582Z",
+  "LoadMetricInformation": [
+    {
+      "ClusterBufferedCapacity": 0,
+      "ClusterCapacity": 0,
+      "ClusterLoad": 15,
+      "ClusterRemainingBufferedCapacity": 0,
+      "ClusterRemainingCapacity": -15,
+      "DeviationAfter": 0.01,
+      "DeviationBefore": 0.05,
+      "IsClusterCapacityViolation": false,
+      "MaximumNodeLoad": 4,
+      "MinimumNodeLoad": 3,
+      "Name": "Count",
+      "NodeBufferPercentage": 0,
+    },
+    {
+      "ClusterBufferedCapacity": 0,
+      "ClusterCapacity": 40960,
+      "ClusterLoad": 10240,
+      "ClusterRemainingBufferedCapacity": 0,
+      "ClusterRemainingCapacity": 30720,
+      "DeviationAfter": 0.01,
+      "DeviationBefore": 0.05,
+      "IsClusterCapacityViolation": false,
+      "MaximumNodeLoad": 2049,
+      "MinimumNodeLoad": 2048,
+      "Name": "MemoryInMB",
+      "NodeBufferPercentage": 0,
+    },
+    {
+      "ClusterBufferedCapacity": 0,
+      "ClusterCapacity": 256000,
+      "ClusterLoad": 51200,
+      "ClusterRemainingBufferedCapacity": 0,
+      "ClusterRemainingCapacity": 204800,
+      "DeviationAfter": 0.01,
+      "DeviationBefore": 0.05,
+      "IsClusterCapacityViolation": false,
+      "MaximumNodeLoad": 10241,
+      "MinimumNodeLoad": 10240,
+      "Name": "DiskSpaceInMB",
+      "NodeBufferPercentage": 0,
+    },
+    {
+      "ClusterBufferedCapacity": 0,
+      "ClusterCapacity": 20,
+      "ClusterLoad": 12,
+      "ClusterRemainingBufferedCapacity": 0,
+      "ClusterRemainingCapacity": 8,
+      "DeviationAfter": 0.01,
+      "DeviationBefore": 0.05,
+      "IsClusterCapacityViolation": false,
+      "MaximumNodeLoad": 4,
+      "MinimumNodeLoad": 2,
+      "Name": "CpuCores",
+      "NodeBufferPercentage": 0,
+    },
+  ],
+}
+`;
+
+exports[`Snapshot: 5-node-azure ClusterManifest 1`] = `
+{
+  "Manifest": "<?xml version="1.0" encoding="utf-8"?>
+<ClusterManifest xmlns="http://schemas.microsoft.com/2011/01/fabric" Name="TestCluster" Version="1.0">
+  <NodeTypes>
+    <NodeType Name="nt1vm">
+      <Endpoints>
+        <ClientConnectionEndpoint Port="19000" />
+        <HttpGatewayEndpoint Port="19080" Protocol="http" />
+      </Endpoints>
+    </NodeType>
+  </NodeTypes>
+</ClusterManifest>",
+}
+`;
+
+exports[`Snapshot: 5-node-azure ClusterVersion 1`] = `
+{
+  "Version": "9.1.1583.9590",
+}
+`;
+
+exports[`Snapshot: 5-node-azure ImageStore 1`] = `
+{
+  "StoreFiles": [],
+  "StoreFolders": [
+    {
+      "StoreRelativePath": "Store",
+    },
+    {
+      "StoreRelativePath": "WindowsFabricStore",
+    },
+  ],
+}
+`;
+
+exports[`Snapshot: 5-node-azure Nodes 1`] = `
+[
+  {
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "FaultDomain": "fd:/0",
+    "HealthState": "Ok",
+    "Id": {
+      "Id": "3b6464430e296b05",
+    },
+    "InstanceId": "132750000000000000",
+    "IpAddressOrFQDN": "10.0.0.4",
+    "IsSeedNode": true,
+    "IsStopped": false,
+    "Name": "_nt1vm_0",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "86400",
+    "Type": "nt1vm",
+    "UpgradeDomain": "UD0",
+  },
+  {
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "FaultDomain": "fd:/1",
+    "HealthState": "Ok",
+    "Id": {
+      "Id": "d50164b9587cab73",
+    },
+    "InstanceId": "132750000000000001",
+    "IpAddressOrFQDN": "10.0.0.5",
+    "IsSeedNode": true,
+    "IsStopped": false,
+    "Name": "_nt1vm_1",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "90000",
+    "Type": "nt1vm",
+    "UpgradeDomain": "UD1",
+  },
+  {
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "FaultDomain": "fd:/2",
+    "HealthState": "Ok",
+    "Id": {
+      "Id": "ba09ccadd17e7bc4",
+    },
+    "InstanceId": "132750000000000002",
+    "IpAddressOrFQDN": "10.0.0.6",
+    "IsSeedNode": true,
+    "IsStopped": false,
+    "Name": "_nt1vm_2",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "93600",
+    "Type": "nt1vm",
+    "UpgradeDomain": "UD2",
+  },
+  {
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "FaultDomain": "fd:/0",
+    "HealthState": "Ok",
+    "Id": {
+      "Id": "7f911e5c00800c9e",
+    },
+    "InstanceId": "132750000000000003",
+    "IpAddressOrFQDN": "10.0.0.7",
+    "IsSeedNode": false,
+    "IsStopped": false,
+    "Name": "_nt1vm_3",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "97200",
+    "Type": "nt1vm",
+    "UpgradeDomain": "UD3",
+  },
+  {
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "FaultDomain": "fd:/1",
+    "HealthState": "Ok",
+    "Id": {
+      "Id": "fb6c0dd4eb71ef54",
+    },
+    "InstanceId": "132750000000000004",
+    "IpAddressOrFQDN": "10.0.0.8",
+    "IsSeedNode": false,
+    "IsStopped": false,
+    "Name": "_nt1vm_4",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "100800",
+    "Type": "nt1vm",
+    "UpgradeDomain": "UD4",
+  },
+]
+`;
+
+exports[`Snapshot: 5-node-azure RepairTasks 1`] = `
+[
+  {
+    "Action": "System.Azure.Job.PlatformUpdate",
+    "CompletedTimestamp": "2026-02-08T17:33:04.582Z",
+    "CreatedTimestamp": "2026-02-07T17:33:04.582Z",
+    "ResultStatus": "Succeeded",
+    "State": "Completed",
+    "Target": {
+      "NodeNames": [
+        "_nt1vm_0",
+      ],
+    },
+    "TaskId": "Azure/PlatformUpdate/7bf37582",
+  },
+]
+`;
+
+exports[`Snapshot: 5-node-azure SystemServices 1`] = `[]`;
+
+exports[`Snapshot: 5-node-azure full drill-down 1`] = `
+{
+  "partitions/BackendApi/ApiService": [
+    {
+      "HealthState": "Ok",
+      "PartitionInformation": {
+        "HighKey": "-9223372036854774809",
+        "Id": "b504a558-3380-4796-ad22-07d896ef51a6",
+        "LowKey": "-9223372036854775808",
+        "ServicePartitionKind": "Int64Range",
+      },
+      "PartitionStatus": "Ready",
+      "ServicePartitionKind": "Int64Range",
+    },
+    {
+      "HealthState": "Ok",
+      "PartitionInformation": {
+        "HighKey": "-9223372036854773809",
+        "Id": "5c7901da-e8b8-4c3f-8997-812966a828d7",
+        "LowKey": "-9223372036854774808",
+        "ServicePartitionKind": "Int64Range",
+      },
+      "PartitionStatus": "Ready",
+      "ServicePartitionKind": "Int64Range",
+    },
+    {
+      "HealthState": "Ok",
+      "PartitionInformation": {
+        "HighKey": "-9223372036854772809",
+        "Id": "6c83c1b6-700a-482c-ba63-2d5fcec982ec",
+        "LowKey": "-9223372036854773808",
+        "ServicePartitionKind": "Int64Range",
+      },
+      "PartitionStatus": "Ready",
+      "ServicePartitionKind": "Int64Range",
+    },
+  ],
+  "partitions/BackendApi/CacheService": [
+    {
+      "HealthState": "Ok",
+      "PartitionInformation": {
+        "Id": "68a6716b-323f-4549-a99e-853da8352316",
+        "ServicePartitionKind": "Singleton",
+      },
+      "PartitionStatus": "Ready",
+      "ServicePartitionKind": "Singleton",
+    },
+  ],
+  "partitions/WebFrontEnd/WebFrontEndService": [
+    {
+      "HealthState": "Ok",
+      "PartitionInformation": {
+        "Id": "847601e9-3f33-4efa-baa4-5fdb955f3252",
+        "ServicePartitionKind": "Singleton",
+      },
+      "PartitionStatus": "Ready",
+      "ServicePartitionKind": "Singleton",
+    },
+  ],
+  "replicas/5c7901da-e8b8-4c3f-8997-812966a828d7": [
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.4:20110"}}",
+      "HealthState": "Ok",
+      "NodeName": "_nt1vm_0",
+      "ReplicaId": "132750000000000110",
+      "ReplicaRole": "Primary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.5:20111"}}",
+      "HealthState": "Ok",
+      "NodeName": "_nt1vm_1",
+      "ReplicaId": "132750000000000111",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.6:20112"}}",
+      "HealthState": "Ok",
+      "NodeName": "_nt1vm_2",
+      "ReplicaId": "132750000000000112",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+  ],
+  "replicas/68a6716b-323f-4549-a99e-853da8352316": [
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.4:20100"}}",
+      "HealthState": "Ok",
+      "NodeName": "_nt1vm_0",
+      "ReplicaId": "132750000000000100",
+      "ReplicaRole": "Primary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.5:20101"}}",
+      "HealthState": "Ok",
+      "NodeName": "_nt1vm_1",
+      "ReplicaId": "132750000000000101",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.6:20102"}}",
+      "HealthState": "Ok",
+      "NodeName": "_nt1vm_2",
+      "ReplicaId": "132750000000000102",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+  ],
+  "replicas/6c83c1b6-700a-482c-ba63-2d5fcec982ec": [
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.4:20120"}}",
+      "HealthState": "Ok",
+      "NodeName": "_nt1vm_0",
+      "ReplicaId": "132750000000000120",
+      "ReplicaRole": "Primary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.5:20121"}}",
+      "HealthState": "Ok",
+      "NodeName": "_nt1vm_1",
+      "ReplicaId": "132750000000000121",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.6:20122"}}",
+      "HealthState": "Ok",
+      "NodeName": "_nt1vm_2",
+      "ReplicaId": "132750000000000122",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+  ],
+  "replicas/847601e9-3f33-4efa-baa4-5fdb955f3252": [
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.4:20000"}}",
+      "HealthState": "Ok",
+      "NodeName": "_nt1vm_0",
+      "ReplicaId": "132750000000000000",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateless",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.5:20001"}}",
+      "HealthState": "Ok",
+      "NodeName": "_nt1vm_1",
+      "ReplicaId": "132750000000000001",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateless",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.6:20002"}}",
+      "HealthState": "Ok",
+      "NodeName": "_nt1vm_2",
+      "ReplicaId": "132750000000000002",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateless",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.7:20003"}}",
+      "HealthState": "Ok",
+      "NodeName": "_nt1vm_3",
+      "ReplicaId": "132750000000000003",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateless",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.8:20004"}}",
+      "HealthState": "Ok",
+      "NodeName": "_nt1vm_4",
+      "ReplicaId": "132750000000000004",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateless",
+    },
+  ],
+  "replicas/b504a558-3380-4796-ad22-07d896ef51a6": [
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.4:20100"}}",
+      "HealthState": "Ok",
+      "NodeName": "_nt1vm_0",
+      "ReplicaId": "132750000000000100",
+      "ReplicaRole": "Primary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.5:20101"}}",
+      "HealthState": "Ok",
+      "NodeName": "_nt1vm_1",
+      "ReplicaId": "132750000000000101",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.6:20102"}}",
+      "HealthState": "Ok",
+      "NodeName": "_nt1vm_2",
+      "ReplicaId": "132750000000000102",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+  ],
+  "services/BackendApi": [
+    {
+      "HealthState": "Ok",
+      "Id": "BackendApi/ApiService",
+      "IsServiceGroup": false,
+      "ManifestVersion": "1.0.0",
+      "Name": "fabric:/BackendApi/ApiService",
+      "ServiceKind": "Stateful",
+      "ServiceStatus": "Active",
+      "TypeName": "ApiServiceType",
+    },
+    {
+      "HealthState": "Ok",
+      "Id": "BackendApi/CacheService",
+      "IsServiceGroup": false,
+      "ManifestVersion": "1.0.0",
+      "Name": "fabric:/BackendApi/CacheService",
+      "ServiceKind": "Stateful",
+      "ServiceStatus": "Active",
+      "TypeName": "CacheServiceType",
+    },
+  ],
+  "services/WebFrontEnd": [
+    {
+      "HealthState": "Ok",
+      "Id": "WebFrontEnd/WebFrontEndService",
+      "IsServiceGroup": false,
+      "ManifestVersion": "1.0.0",
+      "Name": "fabric:/WebFrontEnd/WebFrontEndService",
+      "ServiceKind": "Stateless",
+      "ServiceStatus": "Active",
+      "TypeName": "WebFrontEndServiceType",
+    },
+  ],
+}
+`;
+
+exports[`Snapshot: empty-cluster ApplicationTypes 1`] = `[]`;
+
+exports[`Snapshot: empty-cluster Applications 1`] = `[]`;
+
+exports[`Snapshot: empty-cluster ClusterHealth 1`] = `
+{
+  "AggregatedHealthState": "Ok",
+  "ApplicationHealthStates": [
+    {
+      "AggregatedHealthState": "Ok",
+      "Name": "fabric:/System",
+    },
+  ],
+  "HealthEvents": [],
+  "NodeHealthStates": [
+    {
+      "AggregatedHealthState": "Ok",
+      "Name": "_NodeType0_0",
+    },
+    {
+      "AggregatedHealthState": "Ok",
+      "Name": "_NodeType0_1",
+    },
+    {
+      "AggregatedHealthState": "Ok",
+      "Name": "_NodeType0_2",
+    },
+  ],
+  "UnhealthyEvaluations": [],
+}
+`;
+
+exports[`Snapshot: empty-cluster ClusterLoad 1`] = `
+{
+  "LastBalancingEndTimeUtc": "2026-02-08T17:33:04.629Z",
+  "LastBalancingStartTimeUtc": "2026-02-08T17:32:59.629Z",
+  "LoadMetricInformation": [
+    {
+      "ClusterBufferedCapacity": 0,
+      "ClusterCapacity": 0,
+      "ClusterLoad": 9,
+      "ClusterRemainingBufferedCapacity": 0,
+      "ClusterRemainingCapacity": -9,
+      "DeviationAfter": 0.01,
+      "DeviationBefore": 0.05,
+      "IsClusterCapacityViolation": false,
+      "MaximumNodeLoad": 4,
+      "MinimumNodeLoad": 3,
+      "Name": "Count",
+      "NodeBufferPercentage": 0,
+    },
+    {
+      "ClusterBufferedCapacity": 0,
+      "ClusterCapacity": 24576,
+      "ClusterLoad": 6144,
+      "ClusterRemainingBufferedCapacity": 0,
+      "ClusterRemainingCapacity": 18432,
+      "DeviationAfter": 0.01,
+      "DeviationBefore": 0.05,
+      "IsClusterCapacityViolation": false,
+      "MaximumNodeLoad": 2049,
+      "MinimumNodeLoad": 2048,
+      "Name": "MemoryInMB",
+      "NodeBufferPercentage": 0,
+    },
+    {
+      "ClusterBufferedCapacity": 0,
+      "ClusterCapacity": 153600,
+      "ClusterLoad": 30720,
+      "ClusterRemainingBufferedCapacity": 0,
+      "ClusterRemainingCapacity": 122880,
+      "DeviationAfter": 0.01,
+      "DeviationBefore": 0.05,
+      "IsClusterCapacityViolation": false,
+      "MaximumNodeLoad": 10241,
+      "MinimumNodeLoad": 10240,
+      "Name": "DiskSpaceInMB",
+      "NodeBufferPercentage": 0,
+    },
+  ],
+}
+`;
+
+exports[`Snapshot: empty-cluster ClusterManifest 1`] = `
+{
+  "Manifest": "<?xml version="1.0" encoding="utf-8"?>
+<ClusterManifest xmlns="http://schemas.microsoft.com/2011/01/fabric" Name="TestCluster" Version="1.0">
+  <NodeTypes>
+    <NodeType Name="NodeType0">
+      <Endpoints>
+        <ClientConnectionEndpoint Port="19000" />
+        <HttpGatewayEndpoint Port="19080" Protocol="http" />
+      </Endpoints>
+    </NodeType>
+  </NodeTypes>
+</ClusterManifest>",
+}
+`;
+
+exports[`Snapshot: empty-cluster ClusterVersion 1`] = `
+{
+  "Version": "9.1.1583.9590",
+}
+`;
+
+exports[`Snapshot: empty-cluster ImageStore 1`] = `
+{
+  "StoreFiles": [],
+  "StoreFolders": [
+    {
+      "StoreRelativePath": "Store",
+    },
+    {
+      "StoreRelativePath": "WindowsFabricStore",
+    },
+  ],
+}
+`;
+
+exports[`Snapshot: empty-cluster Nodes 1`] = `
+[
+  {
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "FaultDomain": "fd:/0",
+    "HealthState": "Ok",
+    "Id": {
+      "Id": "3b6464430e296b05",
+    },
+    "InstanceId": "132750000000000000",
+    "IpAddressOrFQDN": "10.0.0.4",
+    "IsSeedNode": true,
+    "IsStopped": false,
+    "Name": "_NodeType0_0",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "86400",
+    "Type": "NodeType0",
+    "UpgradeDomain": "UD0",
+  },
+  {
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "FaultDomain": "fd:/1",
+    "HealthState": "Ok",
+    "Id": {
+      "Id": "d50164b9587cab73",
+    },
+    "InstanceId": "132750000000000001",
+    "IpAddressOrFQDN": "10.0.0.5",
+    "IsSeedNode": true,
+    "IsStopped": false,
+    "Name": "_NodeType0_1",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "90000",
+    "Type": "NodeType0",
+    "UpgradeDomain": "UD1",
+  },
+  {
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "FaultDomain": "fd:/2",
+    "HealthState": "Ok",
+    "Id": {
+      "Id": "ba09ccadd17e7bc4",
+    },
+    "InstanceId": "132750000000000002",
+    "IpAddressOrFQDN": "10.0.0.6",
+    "IsSeedNode": true,
+    "IsStopped": false,
+    "Name": "_NodeType0_2",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "93600",
+    "Type": "NodeType0",
+    "UpgradeDomain": "UD2",
+  },
+]
+`;
+
+exports[`Snapshot: empty-cluster RepairTasks 1`] = `[]`;
+
+exports[`Snapshot: empty-cluster SystemServices 1`] = `[]`;
+
+exports[`Snapshot: empty-cluster full drill-down 1`] = `{}`;
+
+exports[`Snapshot: large-cluster ApplicationTypes 1`] = `
+[
+  {
+    "DefaultParameterList": [],
+    "Name": "WebAppType",
+    "Status": "Available",
+    "Version": "1.0.0",
+  },
+  {
+    "DefaultParameterList": [],
+    "Name": "DataServiceType",
+    "Status": "Available",
+    "Version": "1.0.0",
+  },
+  {
+    "DefaultParameterList": [],
+    "Name": "MonitoringType",
+    "Status": "Available",
+    "Version": "1.0.0",
+  },
+]
+`;
+
+exports[`Snapshot: large-cluster Applications 1`] = `
+[
+  {
+    "HealthState": "Ok",
+    "Id": "WebAppTypeInstance0",
+    "Name": "fabric:/WebAppTypeInstance0",
+    "Parameters": [],
+    "Status": "Ready",
+    "TypeName": "WebAppType",
+    "TypeVersion": "1.0.0",
+  },
+  {
+    "HealthState": "Ok",
+    "Id": "WebAppTypeInstance1",
+    "Name": "fabric:/WebAppTypeInstance1",
+    "Parameters": [],
+    "Status": "Ready",
+    "TypeName": "WebAppType",
+    "TypeVersion": "1.0.0",
+  },
+  {
+    "HealthState": "Ok",
+    "Id": "WebAppTypeInstance2",
+    "Name": "fabric:/WebAppTypeInstance2",
+    "Parameters": [],
+    "Status": "Ready",
+    "TypeName": "WebAppType",
+    "TypeVersion": "1.0.0",
+  },
+  {
+    "HealthState": "Ok",
+    "Id": "DataServiceTypeInstance0",
+    "Name": "fabric:/DataServiceTypeInstance0",
+    "Parameters": [],
+    "Status": "Ready",
+    "TypeName": "DataServiceType",
+    "TypeVersion": "1.0.0",
+  },
+  {
+    "HealthState": "Ok",
+    "Id": "DataServiceTypeInstance1",
+    "Name": "fabric:/DataServiceTypeInstance1",
+    "Parameters": [],
+    "Status": "Ready",
+    "TypeName": "DataServiceType",
+    "TypeVersion": "1.0.0",
+  },
+  {
+    "HealthState": "Ok",
+    "Id": "Monitoring",
+    "Name": "fabric:/Monitoring",
+    "Parameters": [],
+    "Status": "Ready",
+    "TypeName": "MonitoringType",
+    "TypeVersion": "1.0.0",
+  },
+]
+`;
+
+exports[`Snapshot: large-cluster ClusterHealth 1`] = `
+{
+  "AggregatedHealthState": "Error",
+  "ApplicationHealthStates": [
+    {
+      "AggregatedHealthState": "Ok",
+      "Name": "fabric:/System",
+    },
+    {
+      "AggregatedHealthState": "Ok",
+      "Name": "fabric:/WebAppTypeInstance0",
+    },
+    {
+      "AggregatedHealthState": "Ok",
+      "Name": "fabric:/WebAppTypeInstance1",
+    },
+    {
+      "AggregatedHealthState": "Ok",
+      "Name": "fabric:/WebAppTypeInstance2",
+    },
+    {
+      "AggregatedHealthState": "Ok",
+      "Name": "fabric:/DataServiceTypeInstance0",
+    },
+    {
+      "AggregatedHealthState": "Ok",
+      "Name": "fabric:/DataServiceTypeInstance1",
+    },
+    {
+      "AggregatedHealthState": "Ok",
+      "Name": "fabric:/Monitoring",
+    },
+  ],
+  "HealthEvents": [],
+  "NodeHealthStates": [
+    {
+      "AggregatedHealthState": "Ok",
+      "Name": "_FrontEnd_0",
+    },
+    {
+      "AggregatedHealthState": "Ok",
+      "Name": "_FrontEnd_1",
+    },
+    {
+      "AggregatedHealthState": "Ok",
+      "Name": "_FrontEnd_2",
+    },
+    {
+      "AggregatedHealthState": "Ok",
+      "Name": "_FrontEnd_3",
+    },
+    {
+      "AggregatedHealthState": "Ok",
+      "Name": "_FrontEnd_4",
+    },
+    {
+      "AggregatedHealthState": "Ok",
+      "Name": "_Backend_0",
+    },
+    {
+      "AggregatedHealthState": "Ok",
+      "Name": "_Backend_1",
+    },
+    {
+      "AggregatedHealthState": "Ok",
+      "Name": "_Backend_2",
+    },
+    {
+      "AggregatedHealthState": "Ok",
+      "Name": "_Backend_3",
+    },
+    {
+      "AggregatedHealthState": "Ok",
+      "Name": "_Backend_4",
+    },
+    {
+      "AggregatedHealthState": "Ok",
+      "Name": "_Backend_5",
+    },
+    {
+      "AggregatedHealthState": "Ok",
+      "Name": "_Backend_6",
+    },
+    {
+      "AggregatedHealthState": "Ok",
+      "Name": "_Backend_7",
+    },
+    {
+      "AggregatedHealthState": "Ok",
+      "Name": "_Backend_8",
+    },
+    {
+      "AggregatedHealthState": "Ok",
+      "Name": "_Backend_9",
+    },
+    {
+      "AggregatedHealthState": "Warning",
+      "Name": "_Management_0",
+    },
+    {
+      "AggregatedHealthState": "Warning",
+      "Name": "_Management_1",
+    },
+    {
+      "AggregatedHealthState": "Warning",
+      "Name": "_Management_2",
+    },
+    {
+      "AggregatedHealthState": "Error",
+      "Name": "_Management_3",
+    },
+    {
+      "AggregatedHealthState": "Error",
+      "Name": "_Management_4",
+    },
+  ],
+  "UnhealthyEvaluations": [],
+}
+`;
+
+exports[`Snapshot: large-cluster ClusterLoad 1`] = `
+{
+  "LastBalancingEndTimeUtc": "2026-02-08T17:33:04.598Z",
+  "LastBalancingStartTimeUtc": "2026-02-08T17:32:59.598Z",
+  "LoadMetricInformation": [
+    {
+      "ClusterBufferedCapacity": 0,
+      "ClusterCapacity": 0,
+      "ClusterLoad": 60,
+      "ClusterRemainingBufferedCapacity": 0,
+      "ClusterRemainingCapacity": -60,
+      "DeviationAfter": 0.01,
+      "DeviationBefore": 0.05,
+      "IsClusterCapacityViolation": false,
+      "MaximumNodeLoad": 4,
+      "MinimumNodeLoad": 3,
+      "Name": "Count",
+      "NodeBufferPercentage": 0,
+    },
+    {
+      "ClusterBufferedCapacity": 0,
+      "ClusterCapacity": 163840,
+      "ClusterLoad": 40960,
+      "ClusterRemainingBufferedCapacity": 0,
+      "ClusterRemainingCapacity": 122880,
+      "DeviationAfter": 0.01,
+      "DeviationBefore": 0.05,
+      "IsClusterCapacityViolation": false,
+      "MaximumNodeLoad": 2049,
+      "MinimumNodeLoad": 2048,
+      "Name": "MemoryInMB",
+      "NodeBufferPercentage": 0,
+    },
+    {
+      "ClusterBufferedCapacity": 0,
+      "ClusterCapacity": 1024000,
+      "ClusterLoad": 204800,
+      "ClusterRemainingBufferedCapacity": 0,
+      "ClusterRemainingCapacity": 819200,
+      "DeviationAfter": 0.01,
+      "DeviationBefore": 0.05,
+      "IsClusterCapacityViolation": false,
+      "MaximumNodeLoad": 10241,
+      "MinimumNodeLoad": 10240,
+      "Name": "DiskSpaceInMB",
+      "NodeBufferPercentage": 0,
+    },
+    {
+      "ClusterBufferedCapacity": 0,
+      "ClusterCapacity": 80,
+      "ClusterLoad": 45,
+      "ClusterRemainingBufferedCapacity": 0,
+      "ClusterRemainingCapacity": 35,
+      "DeviationAfter": 0.01,
+      "DeviationBefore": 0.05,
+      "IsClusterCapacityViolation": false,
+      "MaximumNodeLoad": 4,
+      "MinimumNodeLoad": 2,
+      "Name": "CpuCores",
+      "NodeBufferPercentage": 0,
+    },
+    {
+      "ClusterBufferedCapacity": 0,
+      "ClusterCapacity": 800,
+      "ClusterLoad": 900,
+      "ClusterRemainingBufferedCapacity": 0,
+      "ClusterRemainingCapacity": -100,
+      "DeviationAfter": 0.01,
+      "DeviationBefore": 0.05,
+      "IsClusterCapacityViolation": true,
+      "MaximumNodeLoad": 46,
+      "MinimumNodeLoad": 45,
+      "Name": "CustomMetric1",
+      "NodeBufferPercentage": 0,
+    },
+  ],
+}
+`;
+
+exports[`Snapshot: large-cluster ClusterManifest 1`] = `
+{
+  "Manifest": "<?xml version="1.0" encoding="utf-8"?>
+<ClusterManifest xmlns="http://schemas.microsoft.com/2011/01/fabric" Name="TestCluster" Version="1.0">
+  <NodeTypes>
+    <NodeType Name="FrontEnd">
+      <Endpoints>
+        <ClientConnectionEndpoint Port="19000" />
+        <HttpGatewayEndpoint Port="19080" Protocol="http" />
+      </Endpoints>
+    </NodeType>
+    <NodeType Name="Backend">
+      <Endpoints>
+        <ClientConnectionEndpoint Port="19000" />
+        <HttpGatewayEndpoint Port="19080" Protocol="http" />
+      </Endpoints>
+    </NodeType>
+    <NodeType Name="Management">
+      <Endpoints>
+        <ClientConnectionEndpoint Port="19000" />
+        <HttpGatewayEndpoint Port="19080" Protocol="http" />
+      </Endpoints>
+    </NodeType>
+  </NodeTypes>
+</ClusterManifest>",
+}
+`;
+
+exports[`Snapshot: large-cluster ClusterVersion 1`] = `
+{
+  "Version": "9.1.1583.9590",
+}
+`;
+
+exports[`Snapshot: large-cluster ImageStore 1`] = `
+{
+  "StoreFiles": [
+    {
+      "FileSize": "2048",
+      "FileVersion": {
+        "VersionNumber": "1.0",
+      },
+      "ModifiedDate": "2026-02-08T17:33:04.598Z",
+      "StoreRelativePath": "Store/WebAppType/1.0.0/ServiceManifest.xml",
+    },
+    {
+      "FileSize": "1048576",
+      "FileVersion": {
+        "VersionNumber": "1.0",
+      },
+      "ModifiedDate": "2026-02-08T17:33:04.598Z",
+      "StoreRelativePath": "Store/DataServiceType/1.0.0/Code/DataProcessor.dll",
+    },
+  ],
+  "StoreFolders": [
+    {
+      "StoreRelativePath": "Store",
+    },
+    {
+      "StoreRelativePath": "WindowsFabricStore",
+    },
+    {
+      "StoreRelativePath": "WebAppType",
+    },
+    {
+      "StoreRelativePath": "DataServiceType",
+    },
+    {
+      "StoreRelativePath": "MonitoringType",
+    },
+  ],
+}
+`;
+
+exports[`Snapshot: large-cluster Nodes 1`] = `
+[
+  {
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "FaultDomain": "fd:/0",
+    "HealthState": "Ok",
+    "Id": {
+      "Id": "3b6464430e296b05",
+    },
+    "InstanceId": "132750000000000000",
+    "IpAddressOrFQDN": "10.0.0.4",
+    "IsSeedNode": true,
+    "IsStopped": false,
+    "Name": "_FrontEnd_0",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "86400",
+    "Type": "FrontEnd",
+    "UpgradeDomain": "UD0",
+  },
+  {
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "FaultDomain": "fd:/1",
+    "HealthState": "Ok",
+    "Id": {
+      "Id": "d50164b9587cab73",
+    },
+    "InstanceId": "132750000000000001",
+    "IpAddressOrFQDN": "10.0.0.5",
+    "IsSeedNode": true,
+    "IsStopped": false,
+    "Name": "_FrontEnd_1",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "90000",
+    "Type": "FrontEnd",
+    "UpgradeDomain": "UD1",
+  },
+  {
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "FaultDomain": "fd:/2",
+    "HealthState": "Ok",
+    "Id": {
+      "Id": "ba09ccadd17e7bc4",
+    },
+    "InstanceId": "132750000000000002",
+    "IpAddressOrFQDN": "10.0.0.6",
+    "IsSeedNode": true,
+    "IsStopped": false,
+    "Name": "_FrontEnd_2",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "93600",
+    "Type": "FrontEnd",
+    "UpgradeDomain": "UD2",
+  },
+  {
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "FaultDomain": "fd:/0",
+    "HealthState": "Ok",
+    "Id": {
+      "Id": "7f911e5c00800c9e",
+    },
+    "InstanceId": "132750000000000003",
+    "IpAddressOrFQDN": "10.0.0.7",
+    "IsSeedNode": false,
+    "IsStopped": false,
+    "Name": "_FrontEnd_3",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "97200",
+    "Type": "FrontEnd",
+    "UpgradeDomain": "UD3",
+  },
+  {
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "FaultDomain": "fd:/1",
+    "HealthState": "Ok",
+    "Id": {
+      "Id": "fb6c0dd4eb71ef54",
+    },
+    "InstanceId": "132750000000000004",
+    "IpAddressOrFQDN": "10.0.0.8",
+    "IsSeedNode": false,
+    "IsStopped": false,
+    "Name": "_FrontEnd_4",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "100800",
+    "Type": "FrontEnd",
+    "UpgradeDomain": "UD4",
+  },
+  {
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "FaultDomain": "fd:/0",
+    "HealthState": "Ok",
+    "Id": {
+      "Id": "3363145215dc2f53",
+    },
+    "InstanceId": "132750000000000005",
+    "IpAddressOrFQDN": "10.0.0.9",
+    "IsSeedNode": true,
+    "IsStopped": false,
+    "Name": "_Backend_0",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "104400",
+    "Type": "Backend",
+    "UpgradeDomain": "UD0",
+  },
+  {
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "FaultDomain": "fd:/1",
+    "HealthState": "Ok",
+    "Id": {
+      "Id": "bdc7b10b1c1eba5a",
+    },
+    "InstanceId": "132750000000000006",
+    "IpAddressOrFQDN": "10.0.0.10",
+    "IsSeedNode": true,
+    "IsStopped": false,
+    "Name": "_Backend_1",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "108000",
+    "Type": "Backend",
+    "UpgradeDomain": "UD1",
+  },
+  {
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "FaultDomain": "fd:/2",
+    "HealthState": "Ok",
+    "Id": {
+      "Id": "55271b1846fe7832",
+    },
+    "InstanceId": "132750000000000007",
+    "IpAddressOrFQDN": "10.0.0.11",
+    "IsSeedNode": true,
+    "IsStopped": false,
+    "Name": "_Backend_2",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "111600",
+    "Type": "Backend",
+    "UpgradeDomain": "UD2",
+  },
+  {
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "FaultDomain": "fd:/0",
+    "HealthState": "Ok",
+    "Id": {
+      "Id": "73cb2f5a11381b67",
+    },
+    "InstanceId": "132750000000000008",
+    "IpAddressOrFQDN": "10.0.0.12",
+    "IsSeedNode": false,
+    "IsStopped": false,
+    "Name": "_Backend_3",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "115200",
+    "Type": "Backend",
+    "UpgradeDomain": "UD3",
+  },
+  {
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "FaultDomain": "fd:/1",
+    "HealthState": "Ok",
+    "Id": {
+      "Id": "6505a629e1094006",
+    },
+    "InstanceId": "132750000000000009",
+    "IpAddressOrFQDN": "10.0.0.13",
+    "IsSeedNode": false,
+    "IsStopped": false,
+    "Name": "_Backend_4",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "118800",
+    "Type": "Backend",
+    "UpgradeDomain": "UD4",
+  },
+  {
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "FaultDomain": "fd:/2",
+    "HealthState": "Ok",
+    "Id": {
+      "Id": "60bd28cc30da8add",
+    },
+    "InstanceId": "132750000000000010",
+    "IpAddressOrFQDN": "10.0.0.14",
+    "IsSeedNode": false,
+    "IsStopped": false,
+    "Name": "_Backend_5",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "122400",
+    "Type": "Backend",
+    "UpgradeDomain": "UD0",
+  },
+  {
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "FaultDomain": "fd:/0",
+    "HealthState": "Ok",
+    "Id": {
+      "Id": "87f982a26667297d",
+    },
+    "InstanceId": "132750000000000011",
+    "IpAddressOrFQDN": "10.0.0.15",
+    "IsSeedNode": false,
+    "IsStopped": false,
+    "Name": "_Backend_6",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "126000",
+    "Type": "Backend",
+    "UpgradeDomain": "UD1",
+  },
+  {
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "FaultDomain": "fd:/1",
+    "HealthState": "Ok",
+    "Id": {
+      "Id": "2b75eab3ce7bad72",
+    },
+    "InstanceId": "132750000000000012",
+    "IpAddressOrFQDN": "10.0.0.16",
+    "IsSeedNode": false,
+    "IsStopped": false,
+    "Name": "_Backend_7",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "129600",
+    "Type": "Backend",
+    "UpgradeDomain": "UD2",
+  },
+  {
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "FaultDomain": "fd:/2",
+    "HealthState": "Ok",
+    "Id": {
+      "Id": "806e23deb7644d4d",
+    },
+    "InstanceId": "132750000000000013",
+    "IpAddressOrFQDN": "10.0.0.17",
+    "IsSeedNode": false,
+    "IsStopped": false,
+    "Name": "_Backend_8",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "133200",
+    "Type": "Backend",
+    "UpgradeDomain": "UD3",
+  },
+  {
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "FaultDomain": "fd:/0",
+    "HealthState": "Ok",
+    "Id": {
+      "Id": "a10ce87c4c2d4632",
+    },
+    "InstanceId": "132750000000000014",
+    "IpAddressOrFQDN": "10.0.0.18",
+    "IsSeedNode": false,
+    "IsStopped": false,
+    "Name": "_Backend_9",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "136800",
+    "Type": "Backend",
+    "UpgradeDomain": "UD4",
+  },
+  {
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "FaultDomain": "fd:/0",
+    "HealthState": "Warning",
+    "Id": {
+      "Id": "052915ac7a39ee4b",
+    },
+    "InstanceId": "132750000000000015",
+    "IpAddressOrFQDN": "10.0.0.19",
+    "IsSeedNode": true,
+    "IsStopped": false,
+    "Name": "_Management_0",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "140400",
+    "Type": "Management",
+    "UpgradeDomain": "UD0",
+  },
+  {
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "FaultDomain": "fd:/1",
+    "HealthState": "Warning",
+    "Id": {
+      "Id": "50d726501b25713b",
+    },
+    "InstanceId": "132750000000000016",
+    "IpAddressOrFQDN": "10.0.0.20",
+    "IsSeedNode": true,
+    "IsStopped": false,
+    "Name": "_Management_1",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "144000",
+    "Type": "Management",
+    "UpgradeDomain": "UD1",
+  },
+  {
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "FaultDomain": "fd:/2",
+    "HealthState": "Warning",
+    "Id": {
+      "Id": "27edffac0331ae8e",
+    },
+    "InstanceId": "132750000000000017",
+    "IpAddressOrFQDN": "10.0.0.21",
+    "IsSeedNode": true,
+    "IsStopped": false,
+    "Name": "_Management_2",
+    "NodeStatus": "Up",
+    "NodeUpTimeInSeconds": "147600",
+    "Type": "Management",
+    "UpgradeDomain": "UD2",
+  },
+  {
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "FaultDomain": "fd:/0",
+    "HealthState": "Error",
+    "Id": {
+      "Id": "6c35edab66ad0f3f",
+    },
+    "InstanceId": "132750000000000018",
+    "IpAddressOrFQDN": "10.0.0.22",
+    "IsSeedNode": false,
+    "IsStopped": true,
+    "Name": "_Management_3",
+    "NodeStatus": "Down",
+    "NodeUpTimeInSeconds": "0",
+    "Type": "Management",
+    "UpgradeDomain": "UD3",
+  },
+  {
+    "CodeVersion": "9.1.1583.9590",
+    "ConfigVersion": "1.0",
+    "FaultDomain": "fd:/1",
+    "HealthState": "Error",
+    "Id": {
+      "Id": "50b4edc5e6fc99c8",
+    },
+    "InstanceId": "132750000000000019",
+    "IpAddressOrFQDN": "10.0.0.23",
+    "IsSeedNode": false,
+    "IsStopped": true,
+    "Name": "_Management_4",
+    "NodeStatus": "Down",
+    "NodeUpTimeInSeconds": "0",
+    "Type": "Management",
+    "UpgradeDomain": "UD4",
+  },
+]
+`;
+
+exports[`Snapshot: large-cluster RepairTasks 1`] = `
+[
+  {
+    "Action": "System.Azure.Job.PlatformUpdate",
+    "CompletedTimestamp": "2026-02-08T17:33:04.598Z",
+    "CreatedTimestamp": "2026-02-07T17:33:04.598Z",
+    "ResultStatus": "Succeeded",
+    "State": "Completed",
+    "Target": {
+      "NodeNames": [
+        "_FrontEnd_0",
+      ],
+    },
+    "TaskId": "Azure/PlatformUpdate/6f3b781a",
+  },
+]
+`;
+
+exports[`Snapshot: large-cluster SystemServices 1`] = `[]`;
+
+exports[`Snapshot: large-cluster full drill-down 1`] = `
+{
+  "partitions/DataServiceTypeInstance0/DataProcessor": [
+    {
+      "HealthState": "Ok",
+      "PartitionInformation": {
+        "HighKey": "-9223372036854774809",
+        "Id": "451d1cfd-8d6d-4d40-86a9-12415662983a",
+        "LowKey": "-9223372036854775808",
+        "ServicePartitionKind": "Int64Range",
+      },
+      "PartitionStatus": "Ready",
+      "ServicePartitionKind": "Int64Range",
+    },
+    {
+      "HealthState": "Ok",
+      "PartitionInformation": {
+        "HighKey": "-9223372036854773809",
+        "Id": "7af2af5f-7ea1-4c6c-b05f-af62056a629d",
+        "LowKey": "-9223372036854774808",
+        "ServicePartitionKind": "Int64Range",
+      },
+      "PartitionStatus": "Ready",
+      "ServicePartitionKind": "Int64Range",
+    },
+    {
+      "HealthState": "Ok",
+      "PartitionInformation": {
+        "HighKey": "-9223372036854772809",
+        "Id": "759da6d1-7f4a-484b-8744-743fd78c45d2",
+        "LowKey": "-9223372036854773808",
+        "ServicePartitionKind": "Int64Range",
+      },
+      "PartitionStatus": "Ready",
+      "ServicePartitionKind": "Int64Range",
+    },
+    {
+      "HealthState": "Ok",
+      "PartitionInformation": {
+        "HighKey": "-9223372036854771809",
+        "Id": "ea872708-24c5-4630-81b3-4c21bd2223bc",
+        "LowKey": "-9223372036854772808",
+        "ServicePartitionKind": "Int64Range",
+      },
+      "PartitionStatus": "Ready",
+      "ServicePartitionKind": "Int64Range",
+    },
+    {
+      "HealthState": "Ok",
+      "PartitionInformation": {
+        "HighKey": "-9223372036854770809",
+        "Id": "9c0e554c-0161-46a5-9dd8-5edcc5a1ad75",
+        "LowKey": "-9223372036854771808",
+        "ServicePartitionKind": "Int64Range",
+      },
+      "PartitionStatus": "Ready",
+      "ServicePartitionKind": "Int64Range",
+    },
+  ],
+  "partitions/DataServiceTypeInstance0/DataStore": [
+    {
+      "HealthState": "Ok",
+      "PartitionInformation": {
+        "HighKey": "-9223372036854774809",
+        "Id": "06aede19-307b-4e37-9817-644398385ffc",
+        "LowKey": "-9223372036854775808",
+        "ServicePartitionKind": "Int64Range",
+      },
+      "PartitionStatus": "Ready",
+      "ServicePartitionKind": "Int64Range",
+    },
+    {
+      "HealthState": "Ok",
+      "PartitionInformation": {
+        "HighKey": "-9223372036854773809",
+        "Id": "02e4f58a-b7a7-451a-9458-1d483a70ce90",
+        "LowKey": "-9223372036854774808",
+        "ServicePartitionKind": "Int64Range",
+      },
+      "PartitionStatus": "Ready",
+      "ServicePartitionKind": "Int64Range",
+    },
+    {
+      "HealthState": "Ok",
+      "PartitionInformation": {
+        "HighKey": "-9223372036854772809",
+        "Id": "cc070a4f-8d65-439e-bbdc-9825f6cffe01",
+        "LowKey": "-9223372036854773808",
+        "ServicePartitionKind": "Int64Range",
+      },
+      "PartitionStatus": "Ready",
+      "ServicePartitionKind": "Int64Range",
+    },
+  ],
+  "partitions/DataServiceTypeInstance1/DataProcessor": [
+    {
+      "HealthState": "Ok",
+      "PartitionInformation": {
+        "HighKey": "-9223372036854774809",
+        "Id": "63577411-fd5f-4d60-b5f3-cbadba9d00c5",
+        "LowKey": "-9223372036854775808",
+        "ServicePartitionKind": "Int64Range",
+      },
+      "PartitionStatus": "Ready",
+      "ServicePartitionKind": "Int64Range",
+    },
+    {
+      "HealthState": "Ok",
+      "PartitionInformation": {
+        "HighKey": "-9223372036854773809",
+        "Id": "d67e63e3-c990-45a4-96c6-931cb8c79485",
+        "LowKey": "-9223372036854774808",
+        "ServicePartitionKind": "Int64Range",
+      },
+      "PartitionStatus": "Ready",
+      "ServicePartitionKind": "Int64Range",
+    },
+    {
+      "HealthState": "Ok",
+      "PartitionInformation": {
+        "HighKey": "-9223372036854772809",
+        "Id": "8e6d3702-4a0a-4d92-85b5-3d4c4e96c988",
+        "LowKey": "-9223372036854773808",
+        "ServicePartitionKind": "Int64Range",
+      },
+      "PartitionStatus": "Ready",
+      "ServicePartitionKind": "Int64Range",
+    },
+    {
+      "HealthState": "Ok",
+      "PartitionInformation": {
+        "HighKey": "-9223372036854771809",
+        "Id": "49bfb691-eade-4463-98fc-dc8fbfa9a2e7",
+        "LowKey": "-9223372036854772808",
+        "ServicePartitionKind": "Int64Range",
+      },
+      "PartitionStatus": "Ready",
+      "ServicePartitionKind": "Int64Range",
+    },
+    {
+      "HealthState": "Ok",
+      "PartitionInformation": {
+        "HighKey": "-9223372036854770809",
+        "Id": "c59e7d19-bc06-41f8-87de-24706ca42e3d",
+        "LowKey": "-9223372036854771808",
+        "ServicePartitionKind": "Int64Range",
+      },
+      "PartitionStatus": "Ready",
+      "ServicePartitionKind": "Int64Range",
+    },
+  ],
+  "partitions/DataServiceTypeInstance1/DataStore": [
+    {
+      "HealthState": "Ok",
+      "PartitionInformation": {
+        "HighKey": "-9223372036854774809",
+        "Id": "fed514f4-d5d7-42b9-a1de-7425ae78462b",
+        "LowKey": "-9223372036854775808",
+        "ServicePartitionKind": "Int64Range",
+      },
+      "PartitionStatus": "Ready",
+      "ServicePartitionKind": "Int64Range",
+    },
+    {
+      "HealthState": "Ok",
+      "PartitionInformation": {
+        "HighKey": "-9223372036854773809",
+        "Id": "aeceacf0-1423-4273-8806-4761eea86147",
+        "LowKey": "-9223372036854774808",
+        "ServicePartitionKind": "Int64Range",
+      },
+      "PartitionStatus": "Ready",
+      "ServicePartitionKind": "Int64Range",
+    },
+    {
+      "HealthState": "Ok",
+      "PartitionInformation": {
+        "HighKey": "-9223372036854772809",
+        "Id": "bde71d46-a8af-4854-9e20-efa639b09570",
+        "LowKey": "-9223372036854773808",
+        "ServicePartitionKind": "Int64Range",
+      },
+      "PartitionStatus": "Ready",
+      "ServicePartitionKind": "Int64Range",
+    },
+  ],
+  "partitions/Monitoring/AlertService": [
+    {
+      "HealthState": "Ok",
+      "PartitionInformation": {
+        "Id": "3d2365ec-1276-4b20-8e9b-1ff752b5a9ce",
+        "ServicePartitionKind": "Singleton",
+      },
+      "PartitionStatus": "Ready",
+      "ServicePartitionKind": "Singleton",
+    },
+  ],
+  "partitions/Monitoring/MetricsCollector": [
+    {
+      "HealthState": "Ok",
+      "PartitionInformation": {
+        "Id": "fcd0e963-283c-492f-b8cd-dae50d8f66c9",
+        "ServicePartitionKind": "Singleton",
+      },
+      "PartitionStatus": "Ready",
+      "ServicePartitionKind": "Singleton",
+    },
+  ],
+  "partitions/WebAppTypeInstance0/WebService": [
+    {
+      "HealthState": "Ok",
+      "PartitionInformation": {
+        "Id": "84191792-47a5-4026-bc2a-aefd7d72cda9",
+        "ServicePartitionKind": "Singleton",
+      },
+      "PartitionStatus": "Ready",
+      "ServicePartitionKind": "Singleton",
+    },
+  ],
+  "partitions/WebAppTypeInstance1/WebService": [
+    {
+      "HealthState": "Ok",
+      "PartitionInformation": {
+        "Id": "ef7339f4-2f86-4331-bd84-702f6527ee40",
+        "ServicePartitionKind": "Singleton",
+      },
+      "PartitionStatus": "Ready",
+      "ServicePartitionKind": "Singleton",
+    },
+  ],
+  "partitions/WebAppTypeInstance2/WebService": [
+    {
+      "HealthState": "Ok",
+      "PartitionInformation": {
+        "Id": "3def3094-cee6-4ec4-9b2c-a61183ddcff5",
+        "ServicePartitionKind": "Singleton",
+      },
+      "PartitionStatus": "Ready",
+      "ServicePartitionKind": "Singleton",
+    },
+  ],
+  "replicas/02e4f58a-b7a7-451a-9458-1d483a70ce90": [
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.4:20310"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_0",
+      "ReplicaId": "132750000000000310",
+      "ReplicaRole": "Primary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.5:20311"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_1",
+      "ReplicaId": "132750000000000311",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.6:20312"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_2",
+      "ReplicaId": "132750000000000312",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.7:20313"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_3",
+      "ReplicaId": "132750000000000313",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.8:20314"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_4",
+      "ReplicaId": "132750000000000314",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+  ],
+  "replicas/06aede19-307b-4e37-9817-644398385ffc": [
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.4:20300"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_0",
+      "ReplicaId": "132750000000000300",
+      "ReplicaRole": "Primary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.5:20301"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_1",
+      "ReplicaId": "132750000000000301",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.6:20302"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_2",
+      "ReplicaId": "132750000000000302",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.7:20303"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_3",
+      "ReplicaId": "132750000000000303",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.8:20304"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_4",
+      "ReplicaId": "132750000000000304",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+  ],
+  "replicas/3d2365ec-1276-4b20-8e9b-1ff752b5a9ce": [
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.4:20500"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_0",
+      "ReplicaId": "132750000000000500",
+      "ReplicaRole": "Primary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.5:20501"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_1",
+      "ReplicaId": "132750000000000501",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.6:20502"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_2",
+      "ReplicaId": "132750000000000502",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+  ],
+  "replicas/3def3094-cee6-4ec4-9b2c-a61183ddcff5": [
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.4:20200"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_0",
+      "ReplicaId": "132750000000000200",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateless",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.5:20201"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_1",
+      "ReplicaId": "132750000000000201",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateless",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.6:20202"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_2",
+      "ReplicaId": "132750000000000202",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateless",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.7:20203"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_3",
+      "ReplicaId": "132750000000000203",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateless",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.8:20204"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_4",
+      "ReplicaId": "132750000000000204",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateless",
+    },
+  ],
+  "replicas/451d1cfd-8d6d-4d40-86a9-12415662983a": [
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.4:20300"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_0",
+      "ReplicaId": "132750000000000300",
+      "ReplicaRole": "Primary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.5:20301"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_1",
+      "ReplicaId": "132750000000000301",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.6:20302"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_2",
+      "ReplicaId": "132750000000000302",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+  ],
+  "replicas/49bfb691-eade-4463-98fc-dc8fbfa9a2e7": [
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.4:20430"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_0",
+      "ReplicaId": "132750000000000430",
+      "ReplicaRole": "Primary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.5:20431"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_1",
+      "ReplicaId": "132750000000000431",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.6:20432"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_2",
+      "ReplicaId": "132750000000000432",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+  ],
+  "replicas/63577411-fd5f-4d60-b5f3-cbadba9d00c5": [
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.4:20400"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_0",
+      "ReplicaId": "132750000000000400",
+      "ReplicaRole": "Primary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.5:20401"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_1",
+      "ReplicaId": "132750000000000401",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.6:20402"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_2",
+      "ReplicaId": "132750000000000402",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+  ],
+  "replicas/759da6d1-7f4a-484b-8744-743fd78c45d2": [
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.4:20320"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_0",
+      "ReplicaId": "132750000000000320",
+      "ReplicaRole": "Primary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.5:20321"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_1",
+      "ReplicaId": "132750000000000321",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.6:20322"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_2",
+      "ReplicaId": "132750000000000322",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+  ],
+  "replicas/7af2af5f-7ea1-4c6c-b05f-af62056a629d": [
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.4:20310"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_0",
+      "ReplicaId": "132750000000000310",
+      "ReplicaRole": "Primary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.5:20311"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_1",
+      "ReplicaId": "132750000000000311",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.6:20312"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_2",
+      "ReplicaId": "132750000000000312",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+  ],
+  "replicas/84191792-47a5-4026-bc2a-aefd7d72cda9": [
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.4:20000"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_0",
+      "ReplicaId": "132750000000000000",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateless",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.5:20001"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_1",
+      "ReplicaId": "132750000000000001",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateless",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.6:20002"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_2",
+      "ReplicaId": "132750000000000002",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateless",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.7:20003"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_3",
+      "ReplicaId": "132750000000000003",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateless",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.8:20004"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_4",
+      "ReplicaId": "132750000000000004",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateless",
+    },
+  ],
+  "replicas/8e6d3702-4a0a-4d92-85b5-3d4c4e96c988": [
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.4:20420"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_0",
+      "ReplicaId": "132750000000000420",
+      "ReplicaRole": "Primary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.5:20421"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_1",
+      "ReplicaId": "132750000000000421",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.6:20422"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_2",
+      "ReplicaId": "132750000000000422",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+  ],
+  "replicas/9c0e554c-0161-46a5-9dd8-5edcc5a1ad75": [
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.4:20340"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_0",
+      "ReplicaId": "132750000000000340",
+      "ReplicaRole": "Primary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.5:20341"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_1",
+      "ReplicaId": "132750000000000341",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.6:20342"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_2",
+      "ReplicaId": "132750000000000342",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+  ],
+  "replicas/aeceacf0-1423-4273-8806-4761eea86147": [
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.4:20410"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_0",
+      "ReplicaId": "132750000000000410",
+      "ReplicaRole": "Primary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.5:20411"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_1",
+      "ReplicaId": "132750000000000411",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.6:20412"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_2",
+      "ReplicaId": "132750000000000412",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.7:20413"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_3",
+      "ReplicaId": "132750000000000413",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.8:20414"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_4",
+      "ReplicaId": "132750000000000414",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+  ],
+  "replicas/bde71d46-a8af-4854-9e20-efa639b09570": [
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.4:20420"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_0",
+      "ReplicaId": "132750000000000420",
+      "ReplicaRole": "Primary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.5:20421"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_1",
+      "ReplicaId": "132750000000000421",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.6:20422"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_2",
+      "ReplicaId": "132750000000000422",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.7:20423"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_3",
+      "ReplicaId": "132750000000000423",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.8:20424"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_4",
+      "ReplicaId": "132750000000000424",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+  ],
+  "replicas/c59e7d19-bc06-41f8-87de-24706ca42e3d": [
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.4:20440"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_0",
+      "ReplicaId": "132750000000000440",
+      "ReplicaRole": "Primary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.5:20441"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_1",
+      "ReplicaId": "132750000000000441",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.6:20442"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_2",
+      "ReplicaId": "132750000000000442",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+  ],
+  "replicas/cc070a4f-8d65-439e-bbdc-9825f6cffe01": [
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.4:20320"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_0",
+      "ReplicaId": "132750000000000320",
+      "ReplicaRole": "Primary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.5:20321"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_1",
+      "ReplicaId": "132750000000000321",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.6:20322"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_2",
+      "ReplicaId": "132750000000000322",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.7:20323"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_3",
+      "ReplicaId": "132750000000000323",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.8:20324"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_4",
+      "ReplicaId": "132750000000000324",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+  ],
+  "replicas/d67e63e3-c990-45a4-96c6-931cb8c79485": [
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.4:20410"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_0",
+      "ReplicaId": "132750000000000410",
+      "ReplicaRole": "Primary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.5:20411"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_1",
+      "ReplicaId": "132750000000000411",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.6:20412"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_2",
+      "ReplicaId": "132750000000000412",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+  ],
+  "replicas/ea872708-24c5-4630-81b3-4c21bd2223bc": [
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.4:20330"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_0",
+      "ReplicaId": "132750000000000330",
+      "ReplicaRole": "Primary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.5:20331"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_1",
+      "ReplicaId": "132750000000000331",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.6:20332"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_2",
+      "ReplicaId": "132750000000000332",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+  ],
+  "replicas/ef7339f4-2f86-4331-bd84-702f6527ee40": [
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.4:20100"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_0",
+      "ReplicaId": "132750000000000100",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateless",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.5:20101"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_1",
+      "ReplicaId": "132750000000000101",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateless",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.6:20102"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_2",
+      "ReplicaId": "132750000000000102",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateless",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.7:20103"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_3",
+      "ReplicaId": "132750000000000103",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateless",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.8:20104"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_4",
+      "ReplicaId": "132750000000000104",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateless",
+    },
+  ],
+  "replicas/fcd0e963-283c-492f-b8cd-dae50d8f66c9": [
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.4:20500"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_0",
+      "ReplicaId": "132750000000000500",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateless",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.5:20501"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_1",
+      "ReplicaId": "132750000000000501",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateless",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.6:20502"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_2",
+      "ReplicaId": "132750000000000502",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateless",
+    },
+  ],
+  "replicas/fed514f4-d5d7-42b9-a1de-7425ae78462b": [
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.4:20400"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_0",
+      "ReplicaId": "132750000000000400",
+      "ReplicaRole": "Primary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.5:20401"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_1",
+      "ReplicaId": "132750000000000401",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.6:20402"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_2",
+      "ReplicaId": "132750000000000402",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.7:20403"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_3",
+      "ReplicaId": "132750000000000403",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+    {
+      "Address": "{"Endpoints":{"":"http://10.0.0.8:20404"}}",
+      "HealthState": "Ok",
+      "NodeName": "_FrontEnd_4",
+      "ReplicaId": "132750000000000404",
+      "ReplicaRole": "ActiveSecondary",
+      "ReplicaStatus": "Ready",
+      "ServiceKind": "Stateful",
+    },
+  ],
+  "services/DataServiceTypeInstance0": [
+    {
+      "HealthState": "Ok",
+      "Id": "DataServiceTypeInstance0/DataProcessor",
+      "IsServiceGroup": false,
+      "ManifestVersion": "1.0.0",
+      "Name": "fabric:/DataServiceTypeInstance0/DataProcessor",
+      "ServiceKind": "Stateful",
+      "ServiceStatus": "Active",
+      "TypeName": "DataProcessorType",
+    },
+    {
+      "HealthState": "Ok",
+      "Id": "DataServiceTypeInstance0/DataStore",
+      "IsServiceGroup": false,
+      "ManifestVersion": "1.0.0",
+      "Name": "fabric:/DataServiceTypeInstance0/DataStore",
+      "ServiceKind": "Stateful",
+      "ServiceStatus": "Active",
+      "TypeName": "DataStoreType",
+    },
+  ],
+  "services/DataServiceTypeInstance1": [
+    {
+      "HealthState": "Ok",
+      "Id": "DataServiceTypeInstance1/DataProcessor",
+      "IsServiceGroup": false,
+      "ManifestVersion": "1.0.0",
+      "Name": "fabric:/DataServiceTypeInstance1/DataProcessor",
+      "ServiceKind": "Stateful",
+      "ServiceStatus": "Active",
+      "TypeName": "DataProcessorType",
+    },
+    {
+      "HealthState": "Ok",
+      "Id": "DataServiceTypeInstance1/DataStore",
+      "IsServiceGroup": false,
+      "ManifestVersion": "1.0.0",
+      "Name": "fabric:/DataServiceTypeInstance1/DataStore",
+      "ServiceKind": "Stateful",
+      "ServiceStatus": "Active",
+      "TypeName": "DataStoreType",
+    },
+  ],
+  "services/Monitoring": [
+    {
+      "HealthState": "Ok",
+      "Id": "Monitoring/MetricsCollector",
+      "IsServiceGroup": false,
+      "ManifestVersion": "1.0.0",
+      "Name": "fabric:/Monitoring/MetricsCollector",
+      "ServiceKind": "Stateless",
+      "ServiceStatus": "Active",
+      "TypeName": "MetricsCollectorType",
+    },
+    {
+      "HealthState": "Ok",
+      "Id": "Monitoring/AlertService",
+      "IsServiceGroup": false,
+      "ManifestVersion": "1.0.0",
+      "Name": "fabric:/Monitoring/AlertService",
+      "ServiceKind": "Stateful",
+      "ServiceStatus": "Active",
+      "TypeName": "AlertServiceType",
+    },
+  ],
+  "services/WebAppTypeInstance0": [
+    {
+      "HealthState": "Ok",
+      "Id": "WebAppTypeInstance0/WebService",
+      "IsServiceGroup": false,
+      "ManifestVersion": "1.0.0",
+      "Name": "fabric:/WebAppTypeInstance0/WebService",
+      "ServiceKind": "Stateless",
+      "ServiceStatus": "Active",
+      "TypeName": "WebServiceType",
+    },
+  ],
+  "services/WebAppTypeInstance1": [
+    {
+      "HealthState": "Ok",
+      "Id": "WebAppTypeInstance1/WebService",
+      "IsServiceGroup": false,
+      "ManifestVersion": "1.0.0",
+      "Name": "fabric:/WebAppTypeInstance1/WebService",
+      "ServiceKind": "Stateless",
+      "ServiceStatus": "Active",
+      "TypeName": "WebServiceType",
+    },
+  ],
+  "services/WebAppTypeInstance2": [
+    {
+      "HealthState": "Ok",
+      "Id": "WebAppTypeInstance2/WebService",
+      "IsServiceGroup": false,
+      "ManifestVersion": "1.0.0",
+      "Name": "fabric:/WebAppTypeInstance2/WebService",
+      "ServiceKind": "Stateless",
+      "ServiceStatus": "Active",
+      "TypeName": "WebServiceType",
+    },
+  ],
+}
+`;

@@ -335,6 +335,8 @@
     "test:coverage": "jest --coverage --coverageReporters=text-lcov",
     "test:ci": "jest --ci --coverage --maxWorkers=2",
     "test:mock-server": "jest --testPathPatterns=mock-server.integration --testPathIgnorePatterns=/node_modules/ --verbose",
+    "test:snapshots": "jest --testPathPatterns=mock-server-snapshots --testPathIgnorePatterns=/node_modules/ --verbose",
+    "update:snapshots": "jest --testPathPatterns=mock-server-snapshots --testPathIgnorePatterns=/node_modules/ --updateSnapshot --verbose",
     "generate-fixtures": "npx tsc test/fixtures/generators/clusterGenerator.ts --outDir temp/gen --esModuleInterop --resolveJsonModule --target ES2020 --module commonjs --moduleResolution node --skipLibCheck && node temp/gen/clusterGenerator.js && node -e \"fs=require('fs');fs.rmSync('temp/gen',{recursive:true,force:true})\"",
     "capture-fixtures": "npx tsc scripts/capture-cluster-fixtures.ts --outDir temp/capture --esModuleInterop --resolveJsonModule --target ES2020 --module commonjs --moduleResolution node --skipLibCheck && node temp/capture/capture-cluster-fixtures.js",
     "prepare": "husky"
