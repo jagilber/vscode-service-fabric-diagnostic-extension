@@ -365,4 +365,84 @@ describe('SfProjectService', () => {
             expect(vscode.workspace.findFiles).toHaveBeenCalledTimes(2);
         });
     });
+
+    describe('external project paths', () => {
+        let mockContext: vscode.ExtensionContext;
+        let storedPaths: string[];
+
+        beforeEach(() => {
+            storedPaths = [];
+            mockContext = new (vscode as any).ExtensionContext();
+            (mockContext.globalState.get as jest.Mock).mockImplementation(
+                (_key: string, defaultVal: any) => storedPaths.length > 0 ? storedPaths : (defaultVal ?? [])
+            );
+            (mockContext.globalState.update as jest.Mock).mockImplementation(
+                (_key: string, value: any) => { storedPaths = value; return Promise.resolve(); }
+            );
+            service.setContext(mockContext);
+        });
+
+        test('should return empty array when no external paths', () => {
+            expect(service.getExternalProjectPaths()).toEqual([]);
+        });
+
+        test('should add and persist external project path', async () => {
+            await service.addExternalProjectPath('/some/path/App.sfproj');
+            expect(storedPaths).toHaveLength(1);
+            expect(storedPaths[0]).toContain('App.sfproj');
+        });
+
+        test('should not add duplicate path', async () => {
+            const resolved = require('path').resolve('/some/path/App.sfproj');
+            storedPaths = [resolved];
+            await service.addExternalProjectPath('/some/path/App.sfproj');
+            expect(storedPaths).toHaveLength(1);
+        });
+
+        test('should remove external project path', async () => {
+            const resolved = require('path').resolve('/some/path/App.sfproj');
+            storedPaths = [resolved];
+            await service.removeExternalProjectPath('/some/path/App.sfproj');
+            expect(storedPaths).toHaveLength(0);
+        });
+
+        test('should scan folder for sfproj files', async () => {
+            const tmpDir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'ext-folder-test-'));
+            try {
+                // Create nested .sfproj
+                const subDir = path.join(tmpDir, 'MyApp');
+                fs.mkdirSync(subDir);
+                fs.writeFileSync(path.join(subDir, 'MyApp.sfproj'), '<Project />');
+
+                const added = await service.addExternalFolder(tmpDir);
+                expect(added).toBe(1);
+                expect(storedPaths).toHaveLength(1);
+            } finally {
+                fs.rmSync(tmpDir, { recursive: true, force: true });
+            }
+        });
+
+        test('discoverProjects should include external paths', async () => {
+            const tmpDir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'ext-discover-test-'));
+            try {
+                const sfprojPath = path.join(tmpDir, 'ExtApp.sfproj');
+                fs.writeFileSync(sfprojPath, '<Project />');
+                fs.writeFileSync(path.join(tmpDir, 'ApplicationManifest.xml'), `<?xml version="1.0"?>
+<ApplicationManifest ApplicationTypeName="ExtAppType" ApplicationTypeVersion="2.0.0"
+                     xmlns="http://schemas.microsoft.com/2011/01/fabric">
+</ApplicationManifest>`);
+
+                storedPaths = [path.resolve(sfprojPath)];
+                (vscode.workspace.findFiles as jest.Mock).mockResolvedValue([]);
+
+                service.invalidateCache();
+                const results = await service.discoverProjects();
+                expect(results).toHaveLength(1);
+                expect(results[0].appTypeName).toBe('ExtAppType');
+                expect(results[0].isExternal).toBe(true);
+            } finally {
+                fs.rmSync(tmpDir, { recursive: true, force: true });
+            }
+        });
+    });
 });

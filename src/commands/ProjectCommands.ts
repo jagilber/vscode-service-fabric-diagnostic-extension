@@ -5,6 +5,7 @@
  */
 
 import * as vscode from 'vscode';
+import * as path from 'path';
 import { SfMgr } from '../sfMgr';
 import { SfUtility, debugLevel } from '../sfUtility';
 import { registerCommandWithErrorHandling } from '../utils/CommandUtils';
@@ -218,5 +219,99 @@ export function registerProjectCommands(
             }
         },
         'open manifest',
+    );
+
+    // -----------------------------------------------------------------------
+    // sfApplications.addExternalProject — browse for .sfproj or folder
+    // -----------------------------------------------------------------------
+    registerCommandWithErrorHandling(
+        context,
+        'sfApplications.addExternalProject',
+        async () => {
+            const choice = await vscode.window.showQuickPick(
+                [
+                    { label: '$(file) Browse for .sfproj file', value: 'file' as const },
+                    { label: '$(folder) Browse for folder (scans for .sfproj files)', value: 'folder' as const },
+                ],
+                { placeHolder: 'Add external Service Fabric project' },
+            );
+            if (!choice) { return; }
+
+            if (choice.value === 'file') {
+                const uris = await vscode.window.showOpenDialog({
+                    canSelectFiles: true,
+                    canSelectFolders: false,
+                    canSelectMany: true,
+                    filters: { 'Service Fabric Project': ['sfproj'] },
+                    title: 'Select .sfproj file(s)',
+                });
+                if (!uris || uris.length === 0) { return; }
+
+                for (const uri of uris) {
+                    await projectService.addExternalProjectPath(uri.fsPath);
+                }
+                vscode.window.showInformationMessage(`Added ${uris.length} external project(s)`);
+            } else {
+                const uris = await vscode.window.showOpenDialog({
+                    canSelectFiles: false,
+                    canSelectFolders: true,
+                    canSelectMany: false,
+                    title: 'Select folder to scan for .sfproj files',
+                });
+                if (!uris || uris.length === 0) { return; }
+
+                const added = await projectService.addExternalFolder(uris[0].fsPath);
+                if (added > 0) {
+                    vscode.window.showInformationMessage(`Found and added ${added} external project(s) from folder`);
+                } else {
+                    vscode.window.showWarningMessage('No .sfproj files found in the selected folder');
+                }
+            }
+            applicationsProvider.refresh();
+        },
+        'add external project',
+    );
+
+    // -----------------------------------------------------------------------
+    // sfApplications.removeExternalProject — pick and remove an external path
+    // -----------------------------------------------------------------------
+    registerCommandWithErrorHandling(
+        context,
+        'sfApplications.removeExternalProject',
+        async (node?: SfProjectNode) => {
+            if (node?.project?.isExternal) {
+                // If invoked from context menu on an external project node
+                await projectService.removeExternalProjectPath(node.project.sfprojPath);
+                applicationsProvider.refresh();
+                vscode.window.showInformationMessage(`Removed external project: ${node.project.appTypeName}`);
+                return;
+            }
+
+            // Otherwise show a picker of all registered external paths
+            const externalPaths = projectService.getExternalProjectPaths();
+            if (externalPaths.length === 0) {
+                vscode.window.showInformationMessage('No external projects registered');
+                return;
+            }
+
+            const picks = externalPaths.map(p => ({
+                label: path.basename(p, '.sfproj'),
+                description: p,
+                sfprojPath: p,
+            }));
+
+            const selected = await vscode.window.showQuickPick(picks, {
+                placeHolder: 'Select external project to remove',
+                canPickMany: true,
+            });
+            if (!selected || selected.length === 0) { return; }
+
+            for (const item of selected) {
+                await projectService.removeExternalProjectPath(item.sfprojPath);
+            }
+            applicationsProvider.refresh();
+            vscode.window.showInformationMessage(`Removed ${selected.length} external project(s)`);
+        },
+        'remove external project',
     );
 }

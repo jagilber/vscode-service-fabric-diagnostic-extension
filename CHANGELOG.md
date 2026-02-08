@@ -60,6 +60,11 @@ Primary focus on making extension accessible to:
   `sfApplications.deployProject`, `sfApplications.openManifest`.
 - **Activation event** — Extension activates on `workspaceContains:**/*.sfproj` in addition to
   existing activation events.
+- **External project support** — Add `.sfproj` projects from outside the current workspace via
+  "Add External Project/Folder" command. Browse for individual `.sfproj` files or scan entire
+  folders. External projects are persisted in `globalState` and shown with an orange icon and
+  `(external)` badge. Right-click to remove. Welcome view includes an "Add External Project"
+  button when no workspace projects are found.
 
 ### Added - Cluster Persistence & Visual Improvements
 - **Auto-reconnect clusters on activation** — Previously connected clusters are automatically

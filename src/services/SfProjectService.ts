@@ -26,15 +26,24 @@ import {
     UpgradeSettings,
 } from '../types/ProjectTypes';
 
+/** globalState key for persisted external project paths */
+const EXTERNAL_PROJECTS_KEY = 'sfApplications.externalProjectPaths';
+
 export class SfProjectService implements vscode.Disposable {
     private readonly _onDidChangeProjects = new vscode.EventEmitter<void>();
     readonly onDidChangeProjects = this._onDidChangeProjects.event;
 
     private readonly watchers: vscode.FileSystemWatcher[] = [];
     private cachedProjects: SfProjectInfo[] | undefined;
+    private context: vscode.ExtensionContext | undefined;
 
     constructor() {
         this.setupWatchers();
+    }
+
+    /** Set the extension context (must be called before external path operations) */
+    setContext(context: vscode.ExtensionContext): void {
+        this.context = context;
     }
 
     // ── Discovery ──────────────────────────────────────────────────────
@@ -64,6 +73,28 @@ export class SfProjectService implements vscode.Disposable {
             }
         }
 
+        // Also scan external project paths
+        const externalPaths = this.getExternalProjectPaths();
+        for (const extPath of externalPaths) {
+            try {
+                if (!fs.existsSync(extPath)) {
+                    SfUtility.outputLog(`SfProjectService: external path no longer exists: ${extPath}`, null, debugLevel.warn);
+                    continue;
+                }
+                // Check if this path was already found via workspace scan
+                if (projects.some(p => path.resolve(p.sfprojPath) === path.resolve(extPath))) {
+                    continue;
+                }
+                const project = await this.parseProject(extPath);
+                if (project) {
+                    project.isExternal = true;
+                    projects.push(project);
+                }
+            } catch (err) {
+                SfUtility.outputLog(`SfProjectService: failed to parse external project ${extPath}`, err, debugLevel.warn);
+            }
+        }
+
         SfUtility.outputLog(`SfProjectService: discovered ${projects.length} project(s)`, null, debugLevel.info);
         this.cachedProjects = projects;
         return projects;
@@ -72,6 +103,88 @@ export class SfProjectService implements vscode.Disposable {
     /** Force re-scan on next call to discoverProjects() */
     invalidateCache(): void {
         this.cachedProjects = undefined;
+    }
+
+    // ── External Project Paths ─────────────────────────────────────────
+
+    /** Get all persisted external .sfproj paths */
+    getExternalProjectPaths(): string[] {
+        if (!this.context) { return []; }
+        return this.context.globalState.get<string[]>(EXTERNAL_PROJECTS_KEY, []);
+    }
+
+    /** Add an external .sfproj path and persist it */
+    async addExternalProjectPath(sfprojPath: string): Promise<void> {
+        if (!this.context) {
+            SfUtility.outputLog('SfProjectService: cannot add external path — no context', null, debugLevel.warn);
+            return;
+        }
+        const resolved = path.resolve(sfprojPath);
+        const current = this.getExternalProjectPaths();
+        if (current.includes(resolved)) {
+            SfUtility.outputLog(`SfProjectService: external path already registered: ${resolved}`, null, debugLevel.info);
+            return;
+        }
+        current.push(resolved);
+        await this.context.globalState.update(EXTERNAL_PROJECTS_KEY, current);
+        SfUtility.outputLog(`SfProjectService: added external project path: ${resolved}`, null, debugLevel.info);
+        this.onProjectChanged();
+    }
+
+    /** Remove an external .sfproj path */
+    async removeExternalProjectPath(sfprojPath: string): Promise<void> {
+        if (!this.context) { return; }
+        const resolved = path.resolve(sfprojPath);
+        const current = this.getExternalProjectPaths();
+        const idx = current.indexOf(resolved);
+        if (idx < 0) { return; }
+        current.splice(idx, 1);
+        await this.context.globalState.update(EXTERNAL_PROJECTS_KEY, current);
+        SfUtility.outputLog(`SfProjectService: removed external project path: ${resolved}`, null, debugLevel.info);
+        this.onProjectChanged();
+    }
+
+    /** Add an external folder — scan it for .sfproj files and add all found */
+    async addExternalFolder(folderPath: string): Promise<number> {
+        const resolvedFolder = path.resolve(folderPath);
+        const foundPaths = this.scanFolderForSfprojs(resolvedFolder);
+        let added = 0;
+        for (const sfprojPath of foundPaths) {
+            const current = this.getExternalProjectPaths();
+            const resolved = path.resolve(sfprojPath);
+            if (!current.includes(resolved)) {
+                current.push(resolved);
+                if (this.context) {
+                    await this.context.globalState.update(EXTERNAL_PROJECTS_KEY, current);
+                }
+                added++;
+            }
+        }
+        if (added > 0) {
+            SfUtility.outputLog(`SfProjectService: added ${added} external project(s) from ${resolvedFolder}`, null, debugLevel.info);
+            this.onProjectChanged();
+        }
+        return added;
+    }
+
+    /** Recursively search a folder for .sfproj files (max depth 5) */
+    private scanFolderForSfprojs(dir: string, depth = 0, maxDepth = 5): string[] {
+        if (depth > maxDepth) { return []; }
+        const results: string[] = [];
+        try {
+            const entries = fs.readdirSync(dir, { withFileTypes: true });
+            for (const entry of entries) {
+                const fullPath = path.join(dir, entry.name);
+                if (entry.isFile() && entry.name.endsWith('.sfproj')) {
+                    results.push(fullPath);
+                } else if (entry.isDirectory() && !entry.name.startsWith('.') && entry.name !== 'node_modules' && entry.name !== 'bin' && entry.name !== 'obj') {
+                    results.push(...this.scanFolderForSfprojs(fullPath, depth + 1, maxDepth));
+                }
+            }
+        } catch {
+            // Permission denied or similar — skip
+        }
+        return results;
     }
 
     // ── .sfproj Parsing ────────────────────────────────────────────────

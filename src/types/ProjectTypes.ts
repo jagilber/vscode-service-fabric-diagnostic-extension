@@ -40,6 +40,9 @@ export interface SfProjectInfo {
 
     /** Discovered parameter files (ApplicationParameters/*.xml) */
     parameterFiles: ParameterFileInfo[];
+
+    /** True when the project was added from outside the workspace */
+    isExternal?: boolean;
 }
 
 // ── Service References ─────────────────────────────────────────────────

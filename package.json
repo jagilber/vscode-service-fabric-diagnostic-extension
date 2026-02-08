@@ -61,7 +61,7 @@
     "viewsWelcome": [
       {
         "view": "serviceFabricApplicationsView",
-        "contents": "No Service Fabric application projects (.sfproj) found in this workspace.\n[Learn more](https://learn.microsoft.com/en-us/azure/service-fabric/service-fabric-application-model)"
+        "contents": "No Service Fabric application projects (.sfproj) found in this workspace.\n[Add External Project](command:sfApplications.addExternalProject)\n[Learn more](https://learn.microsoft.com/en-us/azure/service-fabric/service-fabric-application-model)"
       }
     ],
     "commands": [
@@ -201,6 +201,16 @@
         "command": "sfApplications.openManifest",
         "title": "Open Application Manifest",
         "icon": "$(file-code)"
+      },
+      {
+        "command": "sfApplications.addExternalProject",
+        "title": "Add External Project/Folder",
+        "icon": "$(add)"
+      },
+      {
+        "command": "sfApplications.removeExternalProject",
+        "title": "Remove External Project",
+        "icon": "$(remove)"
       }
     ],
     "menus": {
@@ -219,6 +229,11 @@
           "command": "sfApplications.refresh",
           "when": "view == serviceFabricApplicationsView",
           "group": "navigation"
+        },
+        {
+          "command": "sfApplications.addExternalProject",
+          "when": "view == serviceFabricApplicationsView",
+          "group": "navigation"
         }
       ],
       "view/item/context": [
@@ -229,27 +244,32 @@
         },
         {
           "command": "sfApplications.buildProject",
-          "when": "view == serviceFabricApplicationsView && viewItem == sfProject",
+          "when": "view == serviceFabricApplicationsView && viewItem =~ /^sfProject/",
           "group": "inline@1"
         },
         {
           "command": "sfApplications.deployProject",
-          "when": "view == serviceFabricApplicationsView && viewItem == sfProject",
+          "when": "view == serviceFabricApplicationsView && viewItem =~ /^sfProject/",
           "group": "inline@2"
         },
         {
           "command": "sfApplications.openManifest",
-          "when": "view == serviceFabricApplicationsView && viewItem == sfProject",
+          "when": "view == serviceFabricApplicationsView && viewItem =~ /^sfProject/",
           "group": "navigation@1"
         },
         {
+          "command": "sfApplications.removeExternalProject",
+          "when": "view == serviceFabricApplicationsView && viewItem == sfProjectExternal",
+          "group": "navigation@2"
+        },
+        {
           "command": "sfApplications.buildProject",
-          "when": "view == serviceFabricApplicationsView && viewItem == sfProject",
+          "when": "view == serviceFabricApplicationsView && viewItem =~ /^sfProject/",
           "group": "project@1"
         },
         {
           "command": "sfApplications.deployProject",
-          "when": "view == serviceFabricApplicationsView && viewItem == sfProject",
+          "when": "view == serviceFabricApplicationsView && viewItem =~ /^sfProject/",
           "group": "project@2"
         },
         {

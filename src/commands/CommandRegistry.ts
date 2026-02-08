@@ -98,6 +98,8 @@ export const COMMAND_MANIFEST: Record<string, CommandMeta> = {
     'sfApplications.buildProject':                 { friendlyName: 'build project',        category: 'project',  requiresCluster: false },
     'sfApplications.deployProject':                { friendlyName: 'deploy project',       category: 'project',  requiresCluster: true },
     'sfApplications.openManifest':                 { friendlyName: 'open manifest',        category: 'project',  requiresCluster: false },
+    'sfApplications.addExternalProject':           { friendlyName: 'add external project', category: 'project',  requiresCluster: false },
+    'sfApplications.removeExternalProject':        { friendlyName: 'remove external project', category: 'project', requiresCluster: false },
 };
 
 // ---------------------------------------------------------------------------

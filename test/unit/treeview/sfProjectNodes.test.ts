@@ -118,6 +118,29 @@ describe('SF Application Tree Nodes', () => {
             expect(children).toHaveLength(1);
             expect(children[0]).toBeInstanceOf(ManifestNode);
         });
+
+        test('should show (external) in description for external projects', () => {
+            const extProject: SfProjectInfo = { ...mockProject, isExternal: true };
+            const node = new SfProjectNode(extProject);
+            expect(node.description).toBe('v1.2.3 (external)');
+        });
+
+        test('should have sfProjectExternal contextValue for external projects', () => {
+            const extProject: SfProjectInfo = { ...mockProject, isExternal: true };
+            const node = new SfProjectNode(extProject);
+            expect(node.contextValue).toBe('sfProjectExternal');
+        });
+
+        test('should use orange icon for external projects', () => {
+            const extProject: SfProjectInfo = { ...mockProject, isExternal: true };
+            const node = new SfProjectNode(extProject);
+            expect((node.iconPath as any).color?.id).toBe('charts.orange');
+        });
+
+        test('should use blue icon for workspace projects', () => {
+            const node = new SfProjectNode(mockProject);
+            expect((node.iconPath as any).color?.id).toBe('charts.blue');
+        });
     });
 
     describe('ServicesGroupNode', () => {

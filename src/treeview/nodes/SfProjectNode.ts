@@ -12,18 +12,25 @@ import { ParameterFileNode } from './ParameterFileNode';
 import { ProfileNode } from './ProfileNode';
 
 export class SfProjectNode extends vscode.TreeItem {
-    readonly contextValue = 'sfProject';
+    readonly contextValue: string;
 
     constructor(public readonly project: SfProjectInfo) {
         super(project.appTypeName || 'Unknown App', vscode.TreeItemCollapsibleState.Expanded);
         this.id = `sfProject:${project.sfprojPath}`;
-        this.description = `v${project.appTypeVersion}`;
+        this.contextValue = project.isExternal ? 'sfProjectExternal' : 'sfProject';
+
+        const versionLabel = `v${project.appTypeVersion}`;
+        this.description = project.isExternal ? `${versionLabel} (external)` : versionLabel;
+
         this.tooltip = new vscode.MarkdownString(
             `**${project.appTypeName}** v${project.appTypeVersion}\n\n` +
             `Services: ${project.services.length}\n\n` +
-            `Path: ${project.sfprojPath}`
+            `Path: ${project.sfprojPath}` +
+            (project.isExternal ? '\n\n_(external project)_' : '')
         );
-        this.iconPath = new vscode.ThemeIcon('package', new vscode.ThemeColor('charts.blue'));
+        this.iconPath = project.isExternal
+            ? new vscode.ThemeIcon('package', new vscode.ThemeColor('charts.orange'))
+            : new vscode.ThemeIcon('package', new vscode.ThemeColor('charts.blue'));
         this.resourceUri = vscode.Uri.file(project.sfprojPath);
     }
 

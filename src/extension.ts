@@ -101,6 +101,7 @@ export async function activate(context: vscode.ExtensionContext) {
     console.log('[SF Extension] 7.5/10 - Setting up SF Applications view...');
     // Create project services and applications tree view
     const projectService = new SfProjectService();
+    projectService.setContext(context);
     const deployService = new SfDeployService();
     const applicationsProvider = new SfApplicationsDataProvider(projectService, context);
     
