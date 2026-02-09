@@ -60,14 +60,20 @@ export async function activate(context: vscode.ExtensionContext) {
         });
         
         console.log('[SF Extension] 3/10 - Setting context...');
-        // Set context key to make views visible - add timeout to prevent hanging
-        await Promise.race([
-            vscode.commands.executeCommand('setContext', 'serviceFabricActive', true),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('setContext timeout')), 5000))
-        ]).catch(err => {
-            console.warn('[SF Extension] setContext failed or timed out:', err);
-            // Continue anyway - non-critical
-        });
+        // Check autoStart setting to determine if views should be visible immediately
+        const autoStart = vscode.workspace.getConfiguration('sfClusterExplorer').get<boolean>('autoStart', false);
+        if (autoStart) {
+            // Auto-start: show views immediately (old behavior)
+            await Promise.race([
+                vscode.commands.executeCommand('setContext', 'serviceFabricActive', true),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('setContext timeout')), 5000))
+            ]).catch(err => {
+                console.warn('[SF Extension] setContext failed or timed out:', err);
+            });
+        } else {
+            // Manual start: views stay hidden until a command is run
+            console.log('[SF Extension] autoStart=false, views hidden until explicitly started');
+        }
         
         const rootPath = (vscode.workspace.workspaceFolders && (vscode.workspace.workspaceFolders.length > 0))
             ? vscode.workspace.workspaceFolders[0].uri.fsPath : undefined;
@@ -114,6 +120,15 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(applicationsProvider);
     
     console.log('[SF Extension] 8/10 - Registering commands...');
+
+    // Register the Start Extension command — sets context to show views
+    context.subscriptions.push(
+        vscode.commands.registerCommand('sfClusterExplorer.startExtension', async () => {
+            await vscode.commands.executeCommand('setContext', 'serviceFabricActive', true);
+            SfUtility.outputLog('Service Fabric extension started via command', null, debugLevel.info);
+            vscode.window.showInformationMessage('Service Fabric Extension is now active.');
+        })
+    );
 
     // Register ALL commands via centralized CommandRegistry
     CommandRegistry.registerAll(context, sfMgr, sfPrompts, projectService, deployService, applicationsProvider);

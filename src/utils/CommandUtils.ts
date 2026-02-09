@@ -56,6 +56,8 @@ export function registerCommandWithErrorHandling(
 ): void {
     safeRegisterCommand(context, commandId, async (...args: any[]) => {
         try {
+            // Ensure views are visible when any SF command is explicitly invoked
+            await vscode.commands.executeCommand('setContext', 'serviceFabricActive', true);
             await handler(...args);
         } catch (error) {
             const actionName = friendlyName || extractActionFromCommandId(commandId);

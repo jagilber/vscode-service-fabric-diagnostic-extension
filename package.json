@@ -31,12 +31,38 @@
     "Other"
   ],
   "activationEvents": [
-    "onView:serviceFabricClusterView",
+    "onStartupFinished",
+    "onCommand:sfClusterExplorer.startExtension",
     "onCommand:sfClusterExplorer.refresh",
     "onCommand:sfClusterExplorer.sfSetClusterEndpoint",
     "onCommand:sfClusterExplorer.sfGetCluster",
-    "onView:serviceFabricApplicationsView",
-    "workspaceContains:**/*.sfproj"
+    "onCommand:sfClusterExplorer.sfGetClusters",
+    "onCommand:sfClusterExplorer.sfDeployDevCluster",
+    "onCommand:sfClusterExplorer.sfRemoveClusterEndpoint",
+    "onCommand:sfClusterExplorer.sfSetClusterRestCall",
+    "onCommand:sfClusterExplorer.showManagementView",
+    "onCommand:sfClusterExplorer.deployApplicationFromContext",
+    "onCommand:sfClusterExplorer.manageNodeFromContext",
+    "onCommand:sfClusterExplorer.exportSnapshot",
+    "onCommand:sfClusterExplorer.generateEventsReport",
+    "onCommand:sfClusterExplorer.generateHealthReport",
+    "onCommand:sfClusterExplorer.generateMetricsReport",
+    "onCommand:sfClusterExplorer.generateCommandsReference",
+    "onCommand:sfClusterExplorer.generateRepairTasksReport",
+    "onCommand:sfClusterExplorer.generateEssentialsReport",
+    "onCommand:sfClusterExplorer.removeClusterFromTree",
+    "onCommand:sfClusterExplorer.setActiveCluster",
+    "onCommand:sfClusterExplorer.restartReplica",
+    "onCommand:sfClusterExplorer.deleteReplica",
+    "onCommand:sfClusterExplorer.deleteService",
+    "onCommand:sfClusterExplorer.deleteApplication",
+    "onCommand:sfClusterExplorer.unprovisionApplicationType",
+    "onCommand:sfApplications.refresh",
+    "onCommand:sfApplications.buildProject",
+    "onCommand:sfApplications.deployProject",
+    "onCommand:sfApplications.openManifest",
+    "onCommand:sfApplications.addExternalProject",
+    "onCommand:sfApplications.removeExternalProject"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -44,11 +70,13 @@
       "explorer": [
         {
           "id": "serviceFabricClusterView",
-          "name": "Service Fabric Clusters"
+          "name": "Service Fabric Clusters",
+          "when": "serviceFabricActive"
         },
         {
           "id": "serviceFabricApplicationsView",
-          "name": "Service Fabric Applications"
+          "name": "Service Fabric Applications",
+          "when": "serviceFabricActive"
         },
         {
           "id": "serviceFabricManagementPanel",
@@ -65,6 +93,10 @@
       }
     ],
     "commands": [
+      {
+        "command": "sfClusterExplorer.startExtension",
+        "title": "service fabric: Start Extension"
+      },
       {
         "command": "sfClusterExplorer.refresh",
         "title": "Refresh",
@@ -373,6 +405,11 @@
       {
         "title": "Service Fabric Cluster Explorer",
         "properties": {
+          "sfClusterExplorer.autoStart": {
+            "type": "boolean",
+            "default": false,
+            "description": "Automatically show Service Fabric views when VS Code starts. When false, views remain hidden until you run 'service fabric: Start Extension' or any Service Fabric command."
+          },
           "sfClusterExplorer.autorefresh": {
             "type": "boolean",
             "default": false,

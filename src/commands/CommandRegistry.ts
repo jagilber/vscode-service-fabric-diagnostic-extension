@@ -53,6 +53,7 @@ export interface CommandMeta {
  */
 export const COMMAND_MANIFEST: Record<string, CommandMeta> = {
     // ---- Activation-event commands (must ALWAYS register) ----
+    'sfClusterExplorer.startExtension':           { friendlyName: 'start extension',     category: 'internal', requiresCluster: false, isActivationEvent: true },
     'sfClusterExplorer.refresh':                  { friendlyName: 'refresh',               category: 'view',     requiresCluster: false, isActivationEvent: true },
     'sfClusterExplorer.sfSetClusterEndpoint':     { friendlyName: 'add cluster endpoint',  category: 'cluster',  requiresCluster: false, isActivationEvent: true },
     'sfClusterExplorer.sfGetCluster':             { friendlyName: 'get cluster',           category: 'cluster',  requiresCluster: false, isActivationEvent: true },

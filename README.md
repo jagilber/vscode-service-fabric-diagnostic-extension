@@ -130,8 +130,10 @@ Right-click any cluster or node for quick actions:
    - You should see "Service Fabric Diagnostic Extension" installed
 
 4. **Activate the extension:**
-   - Open the Explorer sidebar (`Ctrl+Shift+E`)
-   - Look for **Service Fabric Clusters** view
+   - Press `Ctrl+Shift+P` / `Cmd+Shift+P` and run **service fabric: Start Extension**
+   - Or run any Service Fabric command from the Command Palette
+   - The **Service Fabric Clusters**, **Applications**, and **Management** views appear in the Explorer sidebar
+   - To auto-show views on startup, set `sfClusterExplorer.autoStart` to `true` in Settings
    - Follow [Configuration](#%EF%B8%8F-configuration) to add your first cluster
 
 **Troubleshooting VSIX Installation:**
@@ -339,22 +341,32 @@ Configure extension behavior in VS Code settings (`settings.json`):
 
 ```json
 {
-    "serviceFabric.clusters": [
+    "sfClusterExplorer.autoStart": false,
+    "sfClusterExplorer.autorefresh": false,
+    "sfClusterExplorer.refreshInterval": 30000,
+    "sfClusterExplorer.autoReconnect": true,
+    "sfClusterExplorer.clusters": [
         {
             "endpoint": "http://localhost:19080",
-            "name": "Local Dev Cluster"
+            "clusterCertificate": {}
         },
         {
-            "endpoint": "https://prod-cluster.westus.cloudapp.azure.com:19080",
-            "name": "Production Cluster",
-            "thumbprint": "ABC123..."
+            "endpoint": "https://mycluster.westus.cloudapp.azure.com:19080",
+            "clusterCertificate": {
+                "thumbprint": "ABC123..."
+            }
         }
-    ],
-    "serviceFabric.refreshInterval": 30000,
-    "serviceFabric.enableCaching": true,
-    "serviceFabric.logLevel": "info"
+    ]
 }
 ```
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `sfClusterExplorer.autoStart` | `false` | Show Service Fabric views automatically on VS Code startup. When `false`, run "service fabric: Start Extension" or any SF command to reveal views. |
+| `sfClusterExplorer.autorefresh` | `false` | Enable automatic refresh of cluster data at regular intervals |
+| `sfClusterExplorer.refreshInterval` | `30000` | Auto-refresh interval in milliseconds (minimum: 5000) |
+| `sfClusterExplorer.autoReconnect` | `true` | Automatically reconnect to previously connected clusters on startup |
+| `sfClusterExplorer.clusters` | `[]` | List of saved Service Fabric cluster endpoints |
 
 ## 📖 Usage
 

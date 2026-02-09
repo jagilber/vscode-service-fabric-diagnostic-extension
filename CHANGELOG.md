@@ -37,6 +37,26 @@ Primary focus on making extension accessible to:
 
 ## [Unreleased]
 
+### Added - Lazy Activation & Auto-Start Setting
+- **`sfClusterExplorer.autoStart` setting** — Controls whether Service Fabric views are visible
+  immediately on VS Code startup. Default: `false` (manual start). Set to `true` for the previous
+  always-visible behavior.
+- **`service fabric: Start Extension` command** — Explicitly activates the extension and reveals
+  all Service Fabric views in the Explorer sidebar.
+- **Lazy view activation** — All three views (Clusters, Applications, Management) are hidden until
+  the extension is explicitly started via command or the `autoStart` setting is enabled. Running
+  any Service Fabric command from the Command Palette also reveals views automatically.
+- **`onStartupFinished` activation** — Extension activates after VS Code startup completes,
+  ensuring all commands are registered and available from the Command Palette regardless of
+  view visibility.
+
+### Changed
+- **View `when` clauses** — All views now use `when: "serviceFabricActive"` context key to control
+  visibility. Previously only the Management panel used this guard.
+- **Activation events** — Replaced `onView:` and `workspaceContains:` activation events with
+  explicit `onCommand:` events for all commands plus `onStartupFinished`. This prevents
+  unwanted activation from workspace scanning or sidebar interaction.
+
 ### Added - Service Fabric Applications View
 - **New "Service Fabric Applications" view** in the Explorer sidebar for managing `.sfproj`
   projects. Discovers all Service Fabric application projects in the workspace, showing their
