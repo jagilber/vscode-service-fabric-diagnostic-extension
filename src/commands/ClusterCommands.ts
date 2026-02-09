@@ -111,4 +111,29 @@ export function registerClusterCommands(
         },
         'execute REST call'
     );
+    
+    // Reset extension state (recovery from corrupted state)
+    registerCommandWithErrorHandling(
+        context,
+        'sfClusterExplorer.resetExtensionState',
+        async () => {
+            const confirmed = await vscode.window.showWarningMessage(
+                'This will reset all extension state including connected clusters and active cluster selection. Continue?',
+                { modal: true },
+                'Reset State'
+            );
+            
+            if (confirmed === 'Reset State') {
+                // Clear all state keys
+                await context.globalState.update('connectedClusters', undefined);
+                await context.globalState.update('activeCluster', undefined);
+                await context.globalState.update('clusterConfigs', undefined);
+                
+                vscode.window.showInformationMessage(
+                    'Extension state has been reset. Please reload VS Code and reconnect to your clusters.'
+                );
+            }
+        },
+        'reset extension state'
+    );
 }

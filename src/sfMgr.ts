@@ -369,7 +369,16 @@ export class SfMgr {
             return;
         }
 
-        const connectedClusters = SfUtility.readExtensionConfig('connectedClusters') as string[] | undefined;
+        let connectedClusters: string[] | undefined;
+        try {
+            connectedClusters = SfUtility.readExtensionConfig('connectedClusters') as string[] | undefined;
+        } catch (error) {
+            SfUtility.outputLog('Failed to read connected clusters from state (may be corrupted)', error, debugLevel.warn);
+            // Clear corrupted state
+            SfUtility.saveExtensionConfig('connectedClusters', undefined);
+            return;
+        }
+        
         if (!connectedClusters || connectedClusters.length === 0) {
             SfUtility.outputLog('No previously connected clusters to restore', null, debugLevel.info);
             return;

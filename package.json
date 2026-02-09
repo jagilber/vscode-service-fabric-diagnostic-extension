@@ -190,6 +190,12 @@
         "icon": "$(star-full)"
       },
       {
+        "command": "sfClusterExplorer.resetExtensionState",
+        "title": "Reset Extension State",
+        "category": "Service Fabric",
+        "icon": "$(debug-restart-frame)"
+      },
+      {
         "command": "sfClusterExplorer.restartReplica",
         "title": "Restart Replica (Stateful Only)",
         "icon": "$(debug-restart)"

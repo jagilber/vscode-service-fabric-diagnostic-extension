@@ -164,7 +164,24 @@ export class SfUtility {
     }
 
     public static readExtensionConfig(key: string): unknown {
-        return this.context.globalState.get(key);
+        try {
+            return this.context.globalState.get(key);
+        } catch (error) {
+            // Handle corrupted globalState JSON
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            if (errorMsg.includes('JSON') || errorMsg.includes('parse')) {
+                this.outputLog(`Corrupted state detected for key '${key}'. State will be reset.`, error, debugLevel.warn);
+                // Try to reset this specific key
+                try {
+                    this.context.globalState.update(key, undefined);
+                } catch (resetError) {
+                    this.outputLog(`Failed to reset corrupted state for '${key}'`, resetError, debugLevel.error);
+                }
+                return undefined;
+            }
+            // Re-throw other errors
+            throw error;
+        }
     }
 
     public static readFile(path:string):string{
@@ -192,7 +209,12 @@ export class SfUtility {
     }
 
     public static saveExtensionConfig(key: string, value: unknown): void {
-        this.context.globalState.update(key, value);
+        try {
+            this.context.globalState.update(key, value);
+        } catch (error) {
+            this.outputLog(`Failed to save extension config for key '${key}'`, error, debugLevel.error);
+            // Don't throw - allow extension to continue even if state can't be saved
+        }
     }
 
     public static showError(message: string): void {

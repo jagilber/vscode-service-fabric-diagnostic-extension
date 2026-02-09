@@ -43,10 +43,20 @@ export async function activate(context: vscode.ExtensionContext) {
             });
             SfUtility.outputLog('Unhandled Promise Rejection', reason, debugLevel.error);
             
+            const errorMsg = reason?.message || String(reason);
+            
+            // Check for corrupted state.json error
+            if (errorMsg.includes('state.json') && errorMsg.includes('JSON')) {
+                vscode.window.showErrorMessage(
+                    'Service Fabric Extension: Corrupted extension state detected. ' +
+                    'The state has been reset. Please reconnect to your clusters.'
+                );
+                return;
+            }
+            
             // Only show user-facing errors for critical failures
             if (reason && !String(reason).includes('NetworkError') && !String(reason).includes('Request error')) {
-                vscode.window.showErrorMessage(`Service Fabric Extension Error: ${reason?.message || String(reason)}`);
-            }
+                vscode.window.showErrorMessage(`Service Fabric Extension Error: ${errorMsg}`);\n            }
         };
         
         console.log('[SF Extension] 2/10 - Setting up error handlers...');
