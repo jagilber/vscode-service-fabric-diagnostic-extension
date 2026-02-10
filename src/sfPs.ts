@@ -5,7 +5,7 @@ https://stackoverflow.com/questions/10179114/execute-powershell-script-from-node
 import { ChildProcessWithoutNullStreams, spawn } from 'child_process';
 import { Readable } from 'stream';
 import * as vscode from 'vscode';
-import { SfUtility } from './sfUtility';
+import { SfUtility, debugLevel } from './sfUtility';
 import { get } from 'http';
 
 export class SfPs {
@@ -133,9 +133,14 @@ export class SfPs {
             this.psSession?.stdout.setEncoding('utf-8');
 
             this.psSession?.stdout.on('data', function (data) {
-                const result = JSON.parse(data.toString()).result;
-                SfUtility.outputLog(`sfPs result data:`, result);
-                resolve(result);
+                try {
+                    const result = JSON.parse(data.toString()).result;
+                    SfUtility.outputLog(`sfPs result data:`, result);
+                    resolve(result);
+                } catch (parseError) {
+                    SfUtility.outputLog(`sfPs: Failed to parse JSON from stdout. Raw: ${data.toString()}`, parseError, debugLevel.warn);
+                    resolve(data.toString());
+                }
             });
             this.psSession?.stderr.on('data', function (data) {
                 // err.push(data.toString());

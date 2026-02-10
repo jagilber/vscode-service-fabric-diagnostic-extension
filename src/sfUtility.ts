@@ -129,11 +129,12 @@ export class SfUtility {
                 }
                 else if (level === debugLevel.error) {
                     (this.channel as any).error(message);
-                    this.showError(message);
+                    // NOTE: No popup here — callers should use showError() explicitly
+                    // to avoid duplicate notifications
                 }
                 else if (level === debugLevel.warn) {
                     (this.channel as any).warn(message);
-                    this.showWarning(message);
+                    // NOTE: No popup here — callers should use showWarning() explicitly
                 }
                 else if (level === debugLevel.info) {
                     (this.channel as any).info(message);
@@ -143,12 +144,6 @@ export class SfUtility {
                 const levelStr = ['ERROR', 'WARN', 'INFO', 'DEBUG', 'TRACE'][level] || 'INFO';
                 const timestamp = new Date().toISOString();
                 this.channel.appendLine(`[${timestamp}] [${levelStr}] ${message}`);
-                
-                if (level === debugLevel.error) {
-                    this.showError(message);
-                } else if (level === debugLevel.warn) {
-                    this.showWarning(message);
-                }
             }
         }
         catch (error) {
@@ -218,19 +213,17 @@ export class SfUtility {
     }
 
     public static showError(message: string): void {
-        //this.debuglog(message);
-        vscode.window.showErrorMessage(JSON.stringify(message, null, 4));
+        vscode.window.showErrorMessage(message);
     }
 
     public static showInformation(message: string): void {
-        //this.debuglog(message);
-        vscode.window.showInformationMessage(JSON.stringify(message, null, 4));
+        vscode.window.showInformationMessage(message);
     }
 
     public static showWarning(message: string): void {
-        //this.debuglog(message);
-        vscode.window.showWarningMessage(JSON.stringify(message, null, 4));
+        vscode.window.showWarningMessage(message);
     }
 }
 
-SfUtility.init();
+// NOTE: SfUtility.init() is called from extension.ts activate() with the extension context.
+// Do NOT call init() here at module level — context is not yet available.

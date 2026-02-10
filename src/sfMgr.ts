@@ -351,10 +351,14 @@ export class SfMgr {
     public async runPsCommand(command: string): Promise<string> {
         SfUtility.outputLog('runPsCommand: ' + command);
         const results = await this.ps.send(command);
-        const response = JSON.parse(results);
-
-        SfUtility.outputLog(`runPsCommand output:`, response);
-        return response;
+        try {
+            const response = JSON.parse(results);
+            SfUtility.outputLog(`runPsCommand output:`, response);
+            return response;
+        } catch (parseError) {
+            SfUtility.outputLog(`runPsCommand: Failed to parse JSON response. Raw output: ${results}`, parseError, debugLevel.warn);
+            return results;
+        }
     }
 
     /**

@@ -42,7 +42,12 @@ export class ManifestService {
         const xmlConverter = require('xml-js');
         this.jsonManifest = xmlConverter.xml2json(this.xmlManifest, { compact: true, spaces: 2 });
         SfUtility.outputLog(`json manifest: \r\n${this.jsonManifest}`);
-        this.jObjectManifest = JSON.parse(this.jsonManifest);
+        try {
+            this.jObjectManifest = JSON.parse(this.jsonManifest);
+        } catch (parseError) {
+            SfUtility.outputLog(`ManifestService: Failed to parse manifest JSON`, parseError, debugLevel.warn);
+            this.jObjectManifest = {};
+        }
 
         // Clear cached image store check when manifest changes
         this.cachedIsNativeImageStore = null;

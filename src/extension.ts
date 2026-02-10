@@ -33,30 +33,43 @@ export async function activate(context: vscode.ExtensionContext) {
         SfUtility.outputLog('Service Fabric extension activating', null, debugLevel.info);
         
         // Global unhandled promise rejection handler
-        // This catches promise rejections that slip through try-catch blocks or aren't awaited
+        // SCOPED: Only handles rejections originating from THIS extension (stack trace filtering)
+        const extensionId = 'vscode-service-fabric-diagnostic-extension';
         const unhandledRejectionHandler = (reason: any, promise: Promise<any>) => {
+            // Only handle rejections that originate from this extension
+            const stack = reason?.stack || '';
+            const reasonStr = String(reason);
+            if (!stack.includes(extensionId) && !reasonStr.includes(extensionId)) {
+                // Not from this extension — ignore silently
+                return;
+            }
+
             console.error('[SF Extension] Unhandled Promise Rejection:', {
                 reason: reason,
-                reasonString: String(reason),
-                stack: reason?.stack,
-                promise: promise
+                reasonString: reasonStr,
+                stack: stack,
             });
-            SfUtility.outputLog('Unhandled Promise Rejection', reason, debugLevel.error);
-            
-            const errorMsg = reason?.message || String(reason);
-            
-            // Check for corrupted state.json error
-            if (errorMsg.includes('state.json') && errorMsg.includes('JSON')) {
-                vscode.window.showErrorMessage(
+
+            const errorMsg = reason?.message || reasonStr;
+
+            // Check for corrupted globalState error — scope to this extension only
+            if (errorMsg.includes('globalState') && errorMsg.includes('JSON')) {
+                SfUtility.outputLog('Corrupted extension state detected — resetting', null, debugLevel.warn);
+                vscode.window.showWarningMessage(
                     'Service Fabric Extension: Corrupted extension state detected. ' +
                     'The state has been reset. Please reconnect to your clusters.'
                 );
                 return;
             }
-            
-            // Only show user-facing errors for critical failures
-            if (reason && !String(reason).includes('NetworkError') && !String(reason).includes('Request error')) {
-                vscode.window.showErrorMessage(`Service Fabric Extension Error: ${errorMsg}`);\n            }
+
+            // Log but don't show popup for network errors
+            if (reasonStr.includes('NetworkError') || reasonStr.includes('Request error') || reasonStr.includes('ECONNREFUSED')) {
+                SfUtility.outputLog(`Network error (suppressed popup): ${errorMsg}`, null, debugLevel.warn);
+                return;
+            }
+
+            // For other SF-originated errors, log to output channel (no popup)
+            SfUtility.outputLog(`Unhandled rejection: ${errorMsg}`, null, debugLevel.warn);
         };
         
         console.log('[SF Extension] 2/10 - Setting up error handlers...');
@@ -72,88 +85,107 @@ export async function activate(context: vscode.ExtensionContext) {
         console.log('[SF Extension] 3/10 - Setting context...');
         // Check autoStart setting to determine if views should be visible immediately
         const autoStart = vscode.workspace.getConfiguration('sfClusterExplorer').get<boolean>('autoStart', false);
+
+        // Helper: performs full initialization (SfMgr, tree views, commands, auto-reconnect)
+        const performFullInit = async () => {
+            const rootPath = (vscode.workspace.workspaceFolders && (vscode.workspace.workspaceFolders.length > 0))
+                ? vscode.workspace.workspaceFolders[0].uri.fsPath : undefined;
+
+            console.log('[SF Extension] 4/10 - Creating SfMgr...');
+            sfMgr = new SfMgr(context);
+
+            console.log('[SF Extension] 5/10 - Creating SfPrompts...');
+            sfPrompts = new SfPrompts(context);
+
+            console.log('[SF Extension] 6/10 - Storing instances...');
+            // Store for cleanup
+            sfMgrInstance = sfMgr;
+            sfPromptsInstance = sfPrompts;
+
+            console.log('[SF Extension] 7/10 - Registering Management WebView...');
+            // Register Management WebView provider
+            const managementProvider = new ManagementWebviewProvider(context.extensionUri, sfMgr);
+            context.subscriptions.push(
+                vscode.window.registerWebviewViewProvider(
+                    ManagementWebviewProvider.viewType,
+                    managementProvider
+                )
+            );
+
+            console.log('[SF Extension] 7.5/10 - Setting up SF Applications view...');
+            // Create project services and applications tree view
+            const projectService = new SfProjectService();
+            projectService.setContext(context);
+            const deployService = new SfDeployService();
+            const applicationsProvider = new SfApplicationsDataProvider(projectService, context);
+
+            projectServiceInstance = projectService;
+            deployServiceInstance = deployService;
+            applicationsProviderInstance = applicationsProvider;
+
+            context.subscriptions.push(projectService);
+            context.subscriptions.push(deployService);
+            context.subscriptions.push(applicationsProvider);
+
+            console.log('[SF Extension] 8/10 - Registering commands...');
+            // Register ALL commands via centralized CommandRegistry
+            CommandRegistry.registerAll(context, sfMgr, sfPrompts, projectService, deployService, applicationsProvider);
+
+            console.log('[SF Extension] 9/10 - All commands registered successfully');
+
+            // Post-registration validation — logs warnings for any manifest/registration mismatches
+            CommandRegistry.validateRegistrations();
+
+            // Auto-reconnect to previously connected clusters (fire-and-forget)
+            // Only runs when autoStart=true (explicit start also triggers this)
+            sfMgr.autoReconnectClusters().catch(err => {
+                SfUtility.outputLog('Auto-reconnect failed', err, debugLevel.warn);
+            });
+        };
+
         if (autoStart) {
-            // Auto-start: show views immediately (old behavior)
+            // Auto-start: show views and perform full initialization immediately
             await Promise.race([
                 vscode.commands.executeCommand('setContext', 'serviceFabricActive', true),
                 new Promise((_, reject) => setTimeout(() => reject(new Error('setContext timeout')), 5000))
             ]).catch(err => {
                 console.warn('[SF Extension] setContext failed or timed out:', err);
             });
+
+            await performFullInit();
+
+            // Register the Start Extension command (no-op when already started)
+            context.subscriptions.push(
+                vscode.commands.registerCommand('sfClusterExplorer.startExtension', async () => {
+                    SfUtility.outputLog('Extension already active (autoStart=true)', null, debugLevel.info);
+                    vscode.window.showInformationMessage('Service Fabric Extension is already active.');
+                })
+            );
         } else {
-            // Manual start: views stay hidden until a command is run
-            console.log('[SF Extension] autoStart=false, views hidden until explicitly started');
+            // Manual start: only register the start command; defer everything else
+            console.log('[SF Extension] autoStart=false — deferring full initialization until explicitly started');
+            SfUtility.outputLog('autoStart=false — extension loaded but inactive. Run "Service Fabric: Start Extension" to activate.', null, debugLevel.info);
+
+            let initialized = false;
+            context.subscriptions.push(
+                vscode.commands.registerCommand('sfClusterExplorer.startExtension', async () => {
+                    if (initialized) {
+                        vscode.window.showInformationMessage('Service Fabric Extension is already active.');
+                        return;
+                    }
+                    initialized = true;
+
+                    await vscode.commands.executeCommand('setContext', 'serviceFabricActive', true);
+                    await performFullInit();
+
+                    SfUtility.outputLog('Service Fabric extension started via command', null, debugLevel.info);
+                    vscode.window.showInformationMessage('Service Fabric Extension is now active.');
+                })
+            );
         }
-        
-        const rootPath = (vscode.workspace.workspaceFolders && (vscode.workspace.workspaceFolders.length > 0))
-            ? vscode.workspace.workspaceFolders[0].uri.fsPath : undefined;
 
-        console.log('[SF Extension] 4/10 - Creating SfMgr...');
-        sfMgr = new SfMgr(context);
-        
-        // Auto-reconnect to previously connected clusters (fire-and-forget)
-        sfMgr.autoReconnectClusters().catch(err => {
-            SfUtility.outputLog('Auto-reconnect failed', err, debugLevel.warn);
-        });
-        
-        console.log('[SF Extension] 5/10 - Creating SfPrompts...');
-        sfPrompts = new SfPrompts(context);
-    
-    console.log('[SF Extension] 6/10 - Storing instances...');
-    // Store for cleanup
-    sfMgrInstance = sfMgr;
-    sfPromptsInstance = sfPrompts;
-    
-    console.log('[SF Extension] 7/10 - Registering Management WebView...');
-    // Register Management WebView provider
-    const managementProvider = new ManagementWebviewProvider(context.extensionUri, sfMgr);
-    context.subscriptions.push(
-        vscode.window.registerWebviewViewProvider(
-            ManagementWebviewProvider.viewType,
-            managementProvider
-        )
-    );
-    
-    console.log('[SF Extension] 7.5/10 - Setting up SF Applications view...');
-    // Create project services and applications tree view
-    const projectService = new SfProjectService();
-    projectService.setContext(context);
-    const deployService = new SfDeployService();
-    const applicationsProvider = new SfApplicationsDataProvider(projectService, context);
-    
-    projectServiceInstance = projectService;
-    deployServiceInstance = deployService;
-    applicationsProviderInstance = applicationsProvider;
-    
-    context.subscriptions.push(projectService);
-    context.subscriptions.push(deployService);
-    context.subscriptions.push(applicationsProvider);
-    
-    console.log('[SF Extension] 8/10 - Registering commands...');
-
-    // Register the Start Extension command — sets context to show views
-    context.subscriptions.push(
-        vscode.commands.registerCommand('sfClusterExplorer.startExtension', async () => {
-            await vscode.commands.executeCommand('setContext', 'serviceFabricActive', true);
-            SfUtility.outputLog('Service Fabric extension started via command', null, debugLevel.info);
-            vscode.window.showInformationMessage('Service Fabric Extension is now active.');
-        })
-    );
-
-    // Register ALL commands via centralized CommandRegistry
-    CommandRegistry.registerAll(context, sfMgr, sfPrompts, projectService, deployService, applicationsProvider);
-
-    console.log('[SF Extension] 9/10 - All commands registered successfully');
-
-    // Post-registration validation — logs warnings for any manifest/registration mismatches
-    CommandRegistry.validateRegistrations();
-    
-    SfUtility.outputLog('Service Fabric extension activated', null, debugLevel.info);
-    console.log('[SF Extension] 10/10 - Extension activation complete ✅');
-    
-    // Show success notification
-    vscode.window.showInformationMessage('Service Fabric Extension activated successfully!');
-    
+        SfUtility.outputLog('Service Fabric extension activated', null, debugLevel.info);
+        console.log('[SF Extension] 10/10 - Extension activation complete');
     
     } catch (error) {
         console.error('[SF Extension] FATAL: Extension activation failed:', error);

@@ -189,7 +189,11 @@ const manifestHandlers: Record<string, DetailHandler> = {
         const manifestResp = await sfRest.getClusterManifest();
         if ((manifestResp as any).manifest) {
             sfConfig.setManifest(manifestResp);
-            return JSON.parse(sfConfig.getJsonManifest());
+            try {
+                return JSON.parse(sfConfig.getJsonManifest());
+            } catch (parseError) {
+                return { rawManifest: sfConfig.getJsonManifest(), parseError: String(parseError) };
+            }
         }
         return manifestResp;
     },
@@ -198,8 +202,12 @@ const manifestHandlers: Record<string, DetailHandler> = {
         if (!item.applicationId) { throw new Error('Application manifest requires applicationId'); }
         const appManifest = await sfRest.getApplicationManifest(item.applicationId);
         if (appManifest?.manifest) {
-            const xmlConverter = require('xml-js');
-            return JSON.parse(xmlConverter.xml2json(appManifest.manifest, { compact: true, spaces: 2 }));
+            try {
+                const xmlConverter = require('xml-js');
+                return JSON.parse(xmlConverter.xml2json(appManifest.manifest, { compact: true, spaces: 2 }));
+            } catch (parseError) {
+                return { rawManifest: appManifest.manifest, parseError: String(parseError) };
+            }
         }
         return appManifest;
     },
@@ -208,8 +216,12 @@ const manifestHandlers: Record<string, DetailHandler> = {
         if (!item.applicationId || !item.serviceId) { throw new Error('Service manifest requires applicationId and serviceId'); }
         const svcManifest = await sfRest.getServiceManifest(item.serviceId, item.applicationId);
         if (svcManifest?.manifest) {
-            const xmlConverter = require('xml-js');
-            return JSON.parse(xmlConverter.xml2json(svcManifest.manifest, { compact: true, spaces: 2 }));
+            try {
+                const xmlConverter = require('xml-js');
+                return JSON.parse(xmlConverter.xml2json(svcManifest.manifest, { compact: true, spaces: 2 }));
+            } catch (parseError) {
+                return { rawManifest: svcManifest.manifest, parseError: String(parseError) };
+            }
         }
         return svcManifest;
     },
