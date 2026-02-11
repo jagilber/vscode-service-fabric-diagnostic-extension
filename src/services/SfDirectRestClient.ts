@@ -512,9 +512,11 @@ export class SfDirectRestClient {
      * PUT /ImageStore/{contentPath}?api-version=6.0
      */
     async uploadToImageStore(contentPath: string, fileContent: Buffer): Promise<void> {
+        SfUtility.outputLog(`SfDirectRestClient.uploadToImageStore: path=${contentPath} size=${fileContent.length} bytes`, null, debugLevel.info);
         const encodedPath = contentPath.split('/').map(s => encodeURIComponent(s)).join('/');
         // Scale timeout based on file size: minimum 60s, add 60s per 5MB
         const uploadTimeout = Math.max(this.timeout, 60000 + Math.ceil(fileContent.length / (5 * 1024 * 1024)) * 60000);
+        SfUtility.outputLog(`SfDirectRestClient.uploadToImageStore: timeout=${uploadTimeout}ms`, null, debugLevel.info);
         await this.makeRequest<void>(
             'PUT',
             `/ImageStore/${encodedPath}`,
@@ -523,6 +525,7 @@ export class SfDirectRestClient {
             { 'Content-Type': 'application/octet-stream' },
             uploadTimeout,
         );
+        SfUtility.outputLog(`SfDirectRestClient.uploadToImageStore: complete ${contentPath}`, null, debugLevel.info);
     }
 
     /**
@@ -530,6 +533,7 @@ export class SfDirectRestClient {
      * POST /ApplicationTypes/$/Provision?api-version=6.2
      */
     async provisionApplicationType(imageStorePath: string, isAsync: boolean = true): Promise<void> {
+        SfUtility.outputLog(`SfDirectRestClient.provisionApplicationType: path=${imageStorePath} async=${isAsync}`, null, debugLevel.info);
         await this.makeRequest<void>(
             'POST',
             '/ApplicationTypes/$/Provision',
@@ -540,6 +544,7 @@ export class SfDirectRestClient {
             },
             '6.2',
         );
+        SfUtility.outputLog('SfDirectRestClient.provisionApplicationType: complete', null, debugLevel.info);
     }
 
     /**
@@ -552,6 +557,7 @@ export class SfDirectRestClient {
         typeVersion: string,
         parameters?: Record<string, string>,
     ): Promise<void> {
+        SfUtility.outputLog(`SfDirectRestClient.createApplication: name=${appName} type=${typeName} v=${typeVersion} params=${parameters ? Object.keys(parameters).length : 0}`, null, debugLevel.info);
         const body: any = {
             Name: appName,
             TypeName: typeName,
@@ -561,6 +567,7 @@ export class SfDirectRestClient {
             body.ParameterList = Object.entries(parameters).map(([Key, Value]) => ({ Key, Value }));
         }
         await this.makeRequest<void>('POST', '/Applications/$/Create', body);
+        SfUtility.outputLog('SfDirectRestClient.createApplication: complete', null, debugLevel.info);
     }
 
     /**
@@ -568,7 +575,9 @@ export class SfDirectRestClient {
      * POST /Applications/{applicationId}/$/Delete?api-version=6.0
      */
     async deleteApplication(applicationId: string): Promise<void> {
+        SfUtility.outputLog(`SfDirectRestClient.deleteApplication: id=${applicationId}`, null, debugLevel.info);
         await this.makeRequest<void>('POST', `/Applications/${applicationId}/$/Delete`);
+        SfUtility.outputLog('SfDirectRestClient.deleteApplication: complete', null, debugLevel.info);
     }
 
     /**
@@ -576,11 +585,13 @@ export class SfDirectRestClient {
      * POST /ApplicationTypes/{typeName}/$/Unprovision?api-version=6.0
      */
     async unprovisionApplicationType(applicationTypeName: string, applicationTypeVersion: string): Promise<void> {
+        SfUtility.outputLog(`SfDirectRestClient.unprovisionApplicationType: name=${applicationTypeName} v=${applicationTypeVersion}`, null, debugLevel.info);
         await this.makeRequest<void>(
             'POST',
             `/ApplicationTypes/${applicationTypeName}/$/Unprovision`,
             { ApplicationTypeVersion: applicationTypeVersion },
         );
+        SfUtility.outputLog('SfDirectRestClient.unprovisionApplicationType: complete', null, debugLevel.info);
     }
 
     /**
@@ -588,7 +599,9 @@ export class SfDirectRestClient {
      * DELETE /ImageStore/{contentPath}?api-version=6.0
      */
     async deleteImageStoreContent(contentPath: string): Promise<void> {
+        SfUtility.outputLog(`SfDirectRestClient.deleteImageStoreContent: path=${contentPath}`, null, debugLevel.info);
         await this.makeRequest<void>('DELETE', `/ImageStore/${contentPath}`);
+        SfUtility.outputLog('SfDirectRestClient.deleteImageStoreContent: complete', null, debugLevel.info);
     }
 
     /**
@@ -597,9 +610,12 @@ export class SfDirectRestClient {
      * Returns the list of registered versions for this type name.
      */
     async getApplicationType(applicationTypeName: string): Promise<any[]> {
+        SfUtility.outputLog(`SfDirectRestClient.getApplicationType: name=${applicationTypeName}`, null, debugLevel.info);
         const result = await this.makeRequest<any>('GET', `/ApplicationTypes/${applicationTypeName}`);
         // SF REST returns { Items: [...], ContinuationToken: "" } — unwrap
-        return result?.Items || result?.items || (Array.isArray(result) ? result : []);
+        const items = result?.Items || result?.items || (Array.isArray(result) ? result : []);
+        SfUtility.outputLog(`SfDirectRestClient.getApplicationType: returned ${items.length} type(s)`, null, debugLevel.info);
+        return items;
     }
 
     /**

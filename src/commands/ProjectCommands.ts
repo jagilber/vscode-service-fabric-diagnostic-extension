@@ -100,6 +100,7 @@ export function registerProjectCommands(
         context,
         'sfApplications.deployProject',
         async (node?: SfProjectNode) => {
+            SfUtility.outputLog('deployProject: command invoked', { hasNode: !!node, nodeProject: !!node?.project }, debugLevel.info);
             // Get the project
             let project = node?.project;
             if (!project) {
@@ -124,7 +125,8 @@ export function registerProjectCommands(
 
             // Pick a cluster to deploy to (active cluster or choose from configured)
             const cluster = await pickCluster(sfMgr);
-            if (!cluster) { return; }
+            if (!cluster) { SfUtility.outputLog('deployProject: no cluster selected, aborting', null, debugLevel.info); return; }
+            SfUtility.outputLog(`deployProject: cluster selected: ${cluster.endpoint}`, null, debugLevel.info);
 
             // Choose deploy method — use setting default, prompt only when set to 'ask'
             const deployMethodSetting = SfExtSettings.getSetting(sfExtSettingsList.deployMethod) as string || 'rest';
@@ -144,8 +146,10 @@ export function registerProjectCommands(
             }
 
             // Find package path
+            SfUtility.outputLog(`deployProject: method=${deployMethod}, looking for package`, null, debugLevel.info);
             const packagePath = deployService.findPackagePath(project);
             if (!packagePath) {
+                SfUtility.outputLog(`deployProject: no package found for ${project.appTypeName}`, null, debugLevel.warn);
                 const buildFirst = await vscode.window.showWarningMessage(
                     `No packaged output found for ${project.appTypeName}. Build first?`,
                     'Build',
@@ -156,6 +160,7 @@ export function registerProjectCommands(
                 }
                 return;
             }
+            SfUtility.outputLog(`deployProject: packagePath=${packagePath}`, null, debugLevel.info);
 
             // Choose parameter file if available
             let parameters: Record<string, string> = {};
@@ -587,8 +592,10 @@ export function registerProjectCommands(
 async function pickCluster(sfMgr: SfMgr): Promise<{ endpoint: string; sfRest: any } | undefined> {
     const activeCluster = sfMgr.getActiveCluster();
     const configs = sfMgr.getSfConfigs();
+    SfUtility.outputLog(`pickCluster: activeCluster=${activeCluster?.endpoint || 'none'}, configs=${configs.length}`, null, debugLevel.info);
 
     if (configs.length === 0 && !activeCluster) {
+        SfUtility.outputLog('pickCluster: no clusters configured', null, debugLevel.warn);
         vscode.window.showWarningMessage('No clusters configured. Add a cluster endpoint first.');
         return undefined;
     }
@@ -596,6 +603,7 @@ async function pickCluster(sfMgr: SfMgr): Promise<{ endpoint: string; sfRest: an
     // If only one cluster, use it directly
     if (configs.length === 1) {
         const config = configs[0];
+        SfUtility.outputLog(`pickCluster: single cluster, auto-selecting ${config.getClusterEndpoint()}`, null, debugLevel.info);
         return { endpoint: config.getClusterEndpoint(), sfRest: config.getSfRest() };
     }
 

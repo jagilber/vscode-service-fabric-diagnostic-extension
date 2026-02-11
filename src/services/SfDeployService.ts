@@ -116,9 +116,12 @@ export class SfDeployService implements vscode.Disposable {
         options: DeployOptions,
         packagePath: string,
     ): Promise<void> {
+        SfUtility.outputLog(`SfDeployService.deployToCluster: ENTERED - type=${options.typeName} v${options.typeVersion} app=${options.appName} cluster=${options.clusterEndpoint} pkg=${packagePath}`, null, debugLevel.info);
         if (!fs.existsSync(packagePath)) {
+            SfUtility.outputLog(`SfDeployService.deployToCluster: package path does not exist: ${packagePath}`, null, debugLevel.error);
             throw new Error(`Application package not found: ${packagePath}`);
         }
+        SfUtility.outputLog(`SfDeployService.deployToCluster: package exists, starting withProgress`, null, debugLevel.info);
 
         await vscode.window.withProgress(
             {
@@ -128,6 +131,7 @@ export class SfDeployService implements vscode.Disposable {
             },
             async (progress) => {
                 // Step 1: Upload to Image Store
+                SfUtility.outputLog('SfDeployService.deployToCluster: Step 1 - Upload to Image Store', null, debugLevel.info);
                 progress.report({ message: 'Uploading to Image Store...', increment: 0 });
                 const imageStorePath = options.typeName;
 
@@ -144,10 +148,12 @@ export class SfDeployService implements vscode.Disposable {
                 );
 
                 // Step 2: Provision application type
+                SfUtility.outputLog('SfDeployService.deployToCluster: Step 2 - Provision application type', null, debugLevel.info);
                 progress.report({ message: 'Provisioning application type...', increment: 40 });
                 await sfRest.provisionApplicationType(imageStorePath, true, options.typeName, options.typeVersion);
 
                 // Step 2b: Poll for provision completion
+                SfUtility.outputLog('SfDeployService.deployToCluster: Step 2b - Waiting for provision', null, debugLevel.info);
                 progress.report({ message: 'Waiting for provisioning to complete...', increment: 10 });
                 const provisioned = await sfRest.waitForProvision(
                     options.typeName,
@@ -160,6 +166,7 @@ export class SfDeployService implements vscode.Disposable {
                 }
 
                 // Step 3: Create application instance
+                SfUtility.outputLog('SfDeployService.deployToCluster: Step 3 - Create application instance', null, debugLevel.info);
                 progress.report({ message: 'Creating application instance...', increment: 20 });
                 await sfRest.createApplication(
                     options.appName,
@@ -169,6 +176,7 @@ export class SfDeployService implements vscode.Disposable {
                 );
 
                 // Step 4: Clean up image store
+                SfUtility.outputLog('SfDeployService.deployToCluster: Step 4 - Cleanup image store', null, debugLevel.info);
                 progress.report({ message: 'Cleaning up Image Store...', increment: 20 });
                 try {
                     await sfRest.deleteImageStoreContent(imageStorePath);
@@ -201,6 +209,7 @@ export class SfDeployService implements vscode.Disposable {
         typeName: string,
         typeVersion: string,
     ): Promise<void> {
+        SfUtility.outputLog(`SfDeployService.removeFromCluster: ENTERED - app=${appName} type=${typeName} v=${typeVersion}`, null, debugLevel.info);
         await vscode.window.withProgress(
             {
                 location: vscode.ProgressLocation.Notification,
@@ -209,11 +218,13 @@ export class SfDeployService implements vscode.Disposable {
             },
             async (progress) => {
                 // Step 1: Delete application instance
+                SfUtility.outputLog('SfDeployService.removeFromCluster: Step 1 - Delete application instance', null, debugLevel.info);
                 progress.report({ message: 'Deleting application...', increment: 0 });
                 const applicationId = appName.replace('fabric:/', '');
                 await sfRest.deleteApplication(applicationId);
 
                 // Step 2: Unprovision application type
+                SfUtility.outputLog('SfDeployService.removeFromCluster: Step 2 - Unprovision application type', null, debugLevel.info);
                 progress.report({ message: 'Unprovisioning application type...', increment: 50 });
                 await sfRest.unprovisionApplicationType(typeName, typeVersion);
 
@@ -242,7 +253,9 @@ export class SfDeployService implements vscode.Disposable {
         packagePath: string,
         upgradeSettings?: UpgradeSettings,
     ): Promise<void> {
+        SfUtility.outputLog(`SfDeployService.upgradeApplication: ENTERED - type=${options.typeName} v=${options.typeVersion} app=${options.appName} pkg=${packagePath}`, null, debugLevel.info);
         if (!fs.existsSync(packagePath)) {
+            SfUtility.outputLog(`SfDeployService.upgradeApplication: package not found: ${packagePath}`, null, debugLevel.error);
             throw new Error(`Application package not found: ${packagePath}`);
         }
 
@@ -254,6 +267,7 @@ export class SfDeployService implements vscode.Disposable {
             },
             async (progress) => {
                 // Step 1: Upload new package
+                SfUtility.outputLog('SfDeployService.upgradeApplication: Step 1 - Upload new package', null, debugLevel.info);
                 progress.report({ message: 'Uploading new package to Image Store...', increment: 0 });
                 const imageStorePath = options.typeName;
 
@@ -270,10 +284,12 @@ export class SfDeployService implements vscode.Disposable {
                 );
 
                 // Step 2: Provision new version
+                SfUtility.outputLog('SfDeployService.upgradeApplication: Step 2 - Provision new version', null, debugLevel.info);
                 progress.report({ message: 'Provisioning new version...', increment: 30 });
                 await sfRest.provisionApplicationType(imageStorePath, true, options.typeName, options.typeVersion);
 
                 // Step 2b: Poll for provision completion
+                SfUtility.outputLog('SfDeployService.upgradeApplication: Step 2b - Waiting for provision', null, debugLevel.info);
                 progress.report({ message: 'Waiting for provisioning...', increment: 10 });
                 const provisioned = await sfRest.waitForProvision(
                     options.typeName,
@@ -286,6 +302,7 @@ export class SfDeployService implements vscode.Disposable {
                 }
 
                 // Step 3: Start rolling upgrade
+                SfUtility.outputLog('SfDeployService.upgradeApplication: Step 3 - Start rolling upgrade', null, debugLevel.info);
                 progress.report({ message: 'Starting rolling upgrade...', increment: 20 });
                 const applicationId = options.appName.replace('fabric:/', '');
                 const failureAction = upgradeSettings?.failureAction || 'Rollback';
@@ -300,7 +317,8 @@ export class SfDeployService implements vscode.Disposable {
                     failureAction,
                 );
 
-                // Step 4: Clean up image store
+                // Step 4: Clean up image store (upgrade)
+                SfUtility.outputLog('SfDeployService.upgradeApplication: Step 4 - Cleanup image store', null, debugLevel.info);
                 progress.report({ message: 'Cleaning up Image Store...', increment: 20 });
                 try {
                     await sfRest.deleteImageStoreContent(imageStorePath);
@@ -333,6 +351,7 @@ export class SfDeployService implements vscode.Disposable {
         profile: PublishProfileInfo,
         packagePath: string,
     ): Promise<void> {
+        SfUtility.outputLog(`SfDeployService.deployWithPowerShell: ENTERED - type=${project.appTypeName} v=${project.appTypeVersion} endpoint=${profile.connectionEndpoint} pkg=${packagePath}`, null, debugLevel.info);
         const endpoint = profile.connectionEndpoint || 'localhost:19000';
         const paramFile = profile.parameterFilePath || '';
 
@@ -375,6 +394,7 @@ export class SfDeployService implements vscode.Disposable {
      * Looks for standard MSBuild package output locations.
      */
     findPackagePath(project: SfProjectInfo, configuration: string = 'Debug'): string | undefined {
+        SfUtility.outputLog(`SfDeployService.findPackagePath: projectDir=${project.projectDir} config=${configuration}`, null, debugLevel.info);
         const candidates = [
             path.join(project.projectDir, 'pkg', configuration),
             path.join(project.projectDir, 'pkg', 'Release'),
@@ -385,13 +405,15 @@ export class SfDeployService implements vscode.Disposable {
         ];
 
         for (const candidate of candidates) {
-            if (fs.existsSync(candidate)) {
-                // Verify it has an ApplicationManifest.xml
-                if (fs.existsSync(path.join(candidate, 'ApplicationManifest.xml'))) {
-                    return candidate;
-                }
+            const dirExists = fs.existsSync(candidate);
+            const hasManifest = dirExists && fs.existsSync(path.join(candidate, 'ApplicationManifest.xml'));
+            SfUtility.outputLog(`SfDeployService.findPackagePath: ${candidate} dir=${dirExists} manifest=${hasManifest}`, null, debugLevel.info);
+            if (dirExists && hasManifest) {
+                SfUtility.outputLog(`SfDeployService.findPackagePath: FOUND ${candidate}`, null, debugLevel.info);
+                return candidate;
             }
         }
+        SfUtility.outputLog('SfDeployService.findPackagePath: no package found in any candidate path', null, debugLevel.warn);
         return undefined;
     }
 
