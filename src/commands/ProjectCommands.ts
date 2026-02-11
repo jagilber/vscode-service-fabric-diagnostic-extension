@@ -597,18 +597,29 @@ async function pickCluster(sfMgr: SfMgr): Promise<{ endpoint: string; sfRest: an
     }
 
     // Multiple clusters — let user pick
+    // Pre-select localhost if available (most common deploy target)
     const items = configs.map((c: SfConfiguration) => {
         const ep = c.getClusterEndpoint();
         const isActive = activeCluster && ep === activeCluster.endpoint;
+        const isLocal = ep.includes('localhost') || ep.includes('127.0.0.1');
         return {
             label: isActive ? `$(check) ${ep}` : ep,
-            description: isActive ? '(active)' : '',
+            description: isActive ? '(active)' : isLocal ? '(local)' : '',
             config: c,
         };
     });
 
+    // Sort: active first, then local, then others
+    items.sort((a, b) => {
+        if (a.description === '(active)') { return -1; }
+        if (b.description === '(active)') { return 1; }
+        if (a.description === '(local)') { return -1; }
+        if (b.description === '(local)') { return 1; }
+        return 0;
+    });
+
     const picked = await vscode.window.showQuickPick(items, {
-        placeHolder: 'Select target cluster',
+        placeHolder: 'Select target cluster (active cluster is pre-selected)',
     });
     if (!picked) { return undefined; }
 

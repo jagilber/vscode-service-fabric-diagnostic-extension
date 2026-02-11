@@ -127,8 +127,10 @@ export class SfDirectRestClient {
      * @param path API path
      * @param body Optional request body
      * @param apiVersionOverride Optional API version override (defaults to this.apiVersion)
+     * @param customHeaders Optional custom headers
+     * @param timeoutMs Optional per-request timeout in ms (defaults to this.timeout)
      */
-    private async makeRequest<T>(method: string, path: string, body?: any, apiVersionOverride?: string, customHeaders?: Record<string, string>): Promise<T> {
+    private async makeRequest<T>(method: string, path: string, body?: any, apiVersionOverride?: string, customHeaders?: Record<string, string>, timeoutMs?: number): Promise<T> {
         const parsedUrl = url.parse(this.endpoint);
         const isHttps = parsedUrl.protocol === 'https:';
         
@@ -235,17 +237,18 @@ export class SfDirectRestClient {
                 reject(new NetworkError('Request error', { cause: err }));
             });
 
+            const effectiveTimeout = timeoutMs || this.timeout;
             req.on('timeout', () => {
                 if (requestAborted || requestCompleted) {
                     return; // Already handled
                 }
                 requestAborted = true;
                 req.destroy();
-                SfUtility.outputLog(`❌ Request timeout after ${this.timeout}ms`, null, debugLevel.error);
-                reject(new NetworkError('Request timeout', { cause: new Error(`Timeout after ${this.timeout}ms`) }));
+                SfUtility.outputLog(`❌ Request timeout after ${effectiveTimeout}ms`, null, debugLevel.error);
+                reject(new NetworkError('Request timeout', { cause: new Error(`Timeout after ${effectiveTimeout}ms`) }));
             });
 
-            req.setTimeout(this.timeout);
+            req.setTimeout(effectiveTimeout);
 
             // Handle socket errors
             req.on('socket', (socket) => {
@@ -510,12 +513,15 @@ export class SfDirectRestClient {
      */
     async uploadToImageStore(contentPath: string, fileContent: Buffer): Promise<void> {
         const encodedPath = encodeURIComponent(contentPath);
+        // Scale timeout based on file size: minimum 60s, add 60s per 5MB
+        const uploadTimeout = Math.max(this.timeout, 60000 + Math.ceil(fileContent.length / (5 * 1024 * 1024)) * 60000);
         await this.makeRequest<void>(
             'PUT',
             `/ImageStore/${encodedPath}`,
             fileContent,
             undefined,
             { 'Content-Type': 'application/octet-stream' },
+            uploadTimeout,
         );
     }
 
