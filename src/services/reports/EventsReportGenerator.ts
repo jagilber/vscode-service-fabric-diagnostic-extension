@@ -19,8 +19,11 @@ export async function generateEventsReport(
     sfMgr: SfMgr,
     item: any,
 ): Promise<void> {
-    if (!item || item.itemType !== 'events') {
-        SfUtility.showWarning('This command is only available for Events');
+    // Use contextValue (clean type like 'app-events') instead of itemType
+    // which may be compound (e.g. 'app-events:MyAppId')
+    const effectiveType = item?.contextValue || (item?.itemType || '').split(':')[0] || '';
+    if (!item || !effectiveType.endsWith('events')) {
+        SfUtility.showWarning('This command is only available for Events items');
         return;
     }
     const clusterEndpoint = resolveClusterEndpoint(item, sfMgr);
@@ -31,19 +34,26 @@ export async function generateEventsReport(
         title: 'Generating Events Report',
         cancellable: false,
     }, async (progress) => {
-        progress.report({ increment: 10, message: 'Fetching cluster events...' });
+        const itemType = effectiveType;
+        const entityLabel = getEntityLabel(itemType, item);
+        progress.report({ increment: 10, message: `Fetching ${entityLabel} events...` });
 
         const sfRest = sfMgr.getCurrentSfConfig().getSfRest();
         const endTime = new Date();
         const startTime = new Date();
         startTime.setDate(startTime.getDate() - 7);
-        const events = await sfRest.getClusterEvents(startTime.toISOString(), endTime.toISOString());
+        const events = await fetchEventsForItemType(sfRest, itemType, item, startTime.toISOString(), endTime.toISOString());
 
         progress.report({ increment: 40, message: `Processing ${events.length} events...` });
         progress.report({ increment: 30, message: 'Generating markdown...' });
 
-        let markdown = `# Service Fabric Cluster Events Report\n\n`;
+        let markdown = `# Service Fabric ${entityLabel} Events Report\n\n`;
         markdown += `**Cluster:** \`${clusterEndpoint}\`  \n`;
+        if (item.nodeName) { markdown += `**Node:** \`${item.nodeName}\`  \n`; }
+        if (item.applicationId) { markdown += `**Application:** \`${item.applicationId}\`  \n`; }
+        if (item.serviceId) { markdown += `**Service:** \`${item.serviceId}\`  \n`; }
+        if (item.partitionId) { markdown += `**Partition:** \`${item.partitionId}\`  \n`; }
+        if (item.replicaId) { markdown += `**Replica:** \`${item.replicaId}\`  \n`; }
         markdown += `**Generated:** ${new Date().toLocaleString()}  \n`;
         markdown += `**Period:** ${startTime.toLocaleDateString()} - ${endTime.toLocaleDateString()}  \n`;
         markdown += `**Total Events:** ${events.length}  \n\n---\n\n`;
@@ -82,4 +92,62 @@ export async function generateEventsReport(
 
         await writeAndOpenReport(context, clusterEndpoint, 'events-report', markdown, progress);
     });
+}
+
+/** Fetch events based on the item type context */
+async function fetchEventsForItemType(
+    sfRest: any, itemType: string, item: any,
+    startTime: string, endTime: string,
+): Promise<any[]> {
+    switch (itemType) {
+        case 'node-events':
+            if (item.nodeName) {
+                return sfRest.getNodeEvents?.(item.nodeName, startTime, endTime) 
+                    ?? sfRest.getClusterEvents(startTime, endTime);
+            }
+            return sfRest.getClusterEvents(startTime, endTime);
+        case 'app-events':
+        case 'application-events':
+            if (item.applicationId) {
+                return sfRest.getApplicationEvents?.(item.applicationId, startTime, endTime)
+                    ?? sfRest.getClusterEvents(startTime, endTime);
+            }
+            return sfRest.getClusterEvents(startTime, endTime);
+        case 'svc-events':
+        case 'service-events':
+            if (item.serviceId) {
+                return sfRest.getServiceEvents(item.serviceId, startTime, endTime);
+            }
+            return sfRest.getClusterEvents(startTime, endTime);
+        case 'part-events':
+        case 'partition-events':
+            if (item.partitionId) {
+                return sfRest.getPartitionEvents(item.partitionId, startTime, endTime);
+            }
+            return sfRest.getClusterEvents(startTime, endTime);
+        case 'rep-events':
+        case 'replica-events':
+            if (item.replicaId && item.partitionId) {
+                return sfRest.getReplicaEvents(item.replicaId, item.partitionId, startTime, endTime);
+            }
+            return sfRest.getClusterEvents(startTime, endTime);
+        default:
+            return sfRest.getClusterEvents(startTime, endTime);
+    }
+}
+
+/** Get a human-readable label for the entity type */
+function getEntityLabel(itemType: string, item: any): string {
+    switch (itemType) {
+        case 'node-events': return `Node (${item.nodeName || 'Unknown'})`;
+        case 'app-events':
+        case 'application-events': return `Application (${item.applicationId || 'Unknown'})`;
+        case 'svc-events':
+        case 'service-events': return `Service (${item.serviceId || 'Unknown'})`;
+        case 'part-events':
+        case 'partition-events': return `Partition (${item.partitionId || 'Unknown'})`;
+        case 'rep-events':
+        case 'replica-events': return `Replica (${item.replicaId || 'Unknown'})`;
+        default: return 'Cluster';
+    }
 }

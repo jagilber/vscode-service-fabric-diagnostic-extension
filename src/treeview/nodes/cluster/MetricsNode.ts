@@ -24,6 +24,15 @@ export class MetricsNode extends BaseTreeNode {
         item.id = this.id;
         item.iconPath = this.iconService.getStaticIcon('graph', 'charts.red');
         item.resourceUri = this.ctx.resourceUri;
+        item.command = {
+            command: 'sfClusterExplorer.showItemDetails',
+            title: 'Show Details',
+            arguments: [{
+                itemType: 'metrics',
+                id: this.id,
+                clusterEndpoint: this.ctx.clusterEndpoint,
+            }],
+        };
         return item;
     }
 

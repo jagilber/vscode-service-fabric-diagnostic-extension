@@ -26,6 +26,15 @@ export class CommandsNode extends BaseTreeNode {
         item.id = this.id;
         item.iconPath = this.iconService.getStaticIcon('terminal', 'charts.blue');
         item.resourceUri = this.ctx.resourceUri;
+        item.command = {
+            command: 'sfClusterExplorer.showItemDetails',
+            title: 'Show Details',
+            arguments: [{
+                itemType: 'commands',
+                id: this.id,
+                clusterEndpoint: this.ctx.clusterEndpoint,
+            }],
+        };
         return item;
     }
 
@@ -67,6 +76,15 @@ class CommandSectionNode implements ITreeNode {
         item.id = this.id;
         item.iconPath = this.iconService.getStaticIcon(this.section.icon, this.section.color);
         item.resourceUri = this.ctx.resourceUri;
+        item.command = {
+            command: 'sfClusterExplorer.showItemDetails',
+            title: 'Show Details',
+            arguments: [{
+                itemType: 'commands',
+                id: this.id,
+                clusterEndpoint: this.ctx.clusterEndpoint,
+            }],
+        };
         return item;
     }
 
@@ -105,6 +123,15 @@ class CommandCategoryNode implements ITreeNode {
         item.id = this.id;
         item.iconPath = this.iconService.getStaticIcon(this.category.icon, this.category.color);
         item.resourceUri = this.ctx.resourceUri;
+        item.command = {
+            command: 'sfClusterExplorer.showItemDetails',
+            title: 'Show Details',
+            arguments: [{
+                itemType: 'commands',
+                id: this.id,
+                clusterEndpoint: this.ctx.clusterEndpoint,
+            }],
+        };
         return item;
     }
 

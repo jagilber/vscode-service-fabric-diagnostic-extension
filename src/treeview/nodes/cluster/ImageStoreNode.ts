@@ -49,17 +49,16 @@ export class ImageStoreNode extends BaseTreeNode {
             ? 'Service Fabric Image Store'
             : `Image Store Path: ${this.storePath}`;
 
-        if (this.isRoot) {
-            item.command = {
-                command: 'sfClusterExplorer.showItemDetails',
-                title: 'Show Details',
-                arguments: [{
-                    itemType: this.itemType,
-                    id: this.id,
-                    clusterEndpoint: this.ctx.clusterEndpoint,
-                }],
-            };
-        }
+        item.command = {
+            command: 'sfClusterExplorer.showItemDetails',
+            title: 'Show Details',
+            arguments: [{
+                itemType: this.isRoot ? this.itemType : 'image-store-folder',
+                id: this.id,
+                clusterEndpoint: this.ctx.clusterEndpoint,
+                path: this.storePath,
+            }],
+        };
 
         return item;
     }
@@ -163,6 +162,22 @@ class ImageStoreFileNode implements ITreeNode {
             }
         }
         item.tooltip = lines.join('\n');
+
+        item.command = {
+            command: 'sfClusterExplorer.showItemDetails',
+            title: 'Show Details',
+            arguments: [{
+                itemType: this.itemType,
+                id: this.id,
+                clusterEndpoint: this.ctx.clusterEndpoint,
+                path: this.fileInfo.storeRelativePath,
+                size: this.fileInfo.fileSize,
+                version: this.fileInfo.fileVersion?.versionNumber,
+                modifiedDate: this.fileInfo.modifiedDate,
+                label: name,
+                isReserved: this.fileInfo.isReserved,
+            }],
+        };
 
         return item;
     }

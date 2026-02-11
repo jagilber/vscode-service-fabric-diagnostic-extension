@@ -38,6 +38,18 @@ export class ReplicasGroupNode extends BaseTreeNode {
         item.id = this.id;
         item.iconPath = this.iconService.getHealthIcon(this.healthState, 'copy');
         item.resourceUri = this.ctx.resourceUri;
+        item.command = {
+            command: 'sfClusterExplorer.showItemDetails',
+            title: 'Show Details',
+            arguments: [{
+                itemType: this.itemType,
+                id: this.id,
+                clusterEndpoint: this.ctx.clusterEndpoint,
+                applicationId: this.applicationId,
+                serviceId: this.serviceId,
+                partitionId: this.partitionId,
+            }],
+        };
 
         // Prefetch replica data in background so count/health populate
         // without waiting for the user to expand this node

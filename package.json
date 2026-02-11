@@ -341,6 +341,31 @@
           "group": "reports@1"
         },
         {
+          "command": "sfClusterExplorer.generateEventsReport",
+          "when": "view == serviceFabricClusterView && viewItem == node-events",
+          "group": "reports@1"
+        },
+        {
+          "command": "sfClusterExplorer.generateEventsReport",
+          "when": "view == serviceFabricClusterView && viewItem == app-events",
+          "group": "reports@1"
+        },
+        {
+          "command": "sfClusterExplorer.generateEventsReport",
+          "when": "view == serviceFabricClusterView && viewItem == service-events",
+          "group": "reports@1"
+        },
+        {
+          "command": "sfClusterExplorer.generateEventsReport",
+          "when": "view == serviceFabricClusterView && viewItem == partition-events",
+          "group": "reports@1"
+        },
+        {
+          "command": "sfClusterExplorer.generateEventsReport",
+          "when": "view == serviceFabricClusterView && viewItem == replica-events",
+          "group": "reports@1"
+        },
+        {
           "command": "sfClusterExplorer.generateHealthReport",
           "when": "view == serviceFabricClusterView && viewItem == cluster",
           "group": "reports@2"
@@ -358,6 +383,31 @@
         {
           "command": "sfClusterExplorer.generateHealthReport",
           "when": "view == serviceFabricClusterView && viewItem == health",
+          "group": "reports@1"
+        },
+        {
+          "command": "sfClusterExplorer.generateHealthReport",
+          "when": "view == serviceFabricClusterView && viewItem == node-health",
+          "group": "reports@1"
+        },
+        {
+          "command": "sfClusterExplorer.generateHealthReport",
+          "when": "view == serviceFabricClusterView && viewItem == app-health",
+          "group": "reports@1"
+        },
+        {
+          "command": "sfClusterExplorer.generateHealthReport",
+          "when": "view == serviceFabricClusterView && viewItem == service-health",
+          "group": "reports@1"
+        },
+        {
+          "command": "sfClusterExplorer.generateHealthReport",
+          "when": "view == serviceFabricClusterView && viewItem == partition-health",
+          "group": "reports@1"
+        },
+        {
+          "command": "sfClusterExplorer.generateHealthReport",
+          "when": "view == serviceFabricClusterView && viewItem == replica-health",
           "group": "reports@1"
         },
         {

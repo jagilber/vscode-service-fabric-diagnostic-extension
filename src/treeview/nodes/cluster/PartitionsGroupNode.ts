@@ -37,6 +37,17 @@ export class PartitionsGroupNode extends BaseTreeNode {
         item.id = this.id;
         item.iconPath = this.iconService.getHealthIcon(this.healthState, 'layers');
         item.resourceUri = this.ctx.resourceUri;
+        item.command = {
+            command: 'sfClusterExplorer.showItemDetails',
+            title: 'Show Details',
+            arguments: [{
+                itemType: this.itemType,
+                id: this.id,
+                clusterEndpoint: this.ctx.clusterEndpoint,
+                applicationId: this.applicationId,
+                serviceId: this.serviceId,
+            }],
+        };
 
         // Prefetch partition data in background so count/health populate
         // without waiting for the user to expand this node

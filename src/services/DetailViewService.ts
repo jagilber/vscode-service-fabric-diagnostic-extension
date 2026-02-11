@@ -114,6 +114,31 @@ const applicationTypeHandlers: Record<string, DetailHandler> = {
     },
 };
 
+// Group nodes
+const groupHandlers: Record<string, DetailHandler> = {
+    'nodes-group': async ({ sfRest }) => sfRest.getNodes(),
+
+    'applications-group': async ({ sfRest }) => {
+        const [appTypes, apps] = await Promise.all([
+            sfRest.getApplicationTypes(),
+            sfRest.getApplications(),
+        ]);
+        return { applicationTypes: appTypes, applications: apps };
+    },
+
+    'system-group': async ({ sfRest }) => sfRest.getSystemServices('System'),
+
+    'partitions-group': async ({ sfRest, item }) => {
+        if (!item.applicationId || !item.serviceId) { throw new Error('Partitions group requires applicationId and serviceId'); }
+        return sfRest.getServicePartitions(item.serviceId, item.applicationId);
+    },
+
+    'replicas-group': async ({ sfRest, item }) => {
+        if (!item.applicationId || !item.serviceId || !item.partitionId) { throw new Error('Replicas group requires applicationId, serviceId, and partitionId'); }
+        return sfRest.getPartitionReplicas(item.serviceId, item.applicationId, item.partitionId);
+    },
+};
+
 // Node
 const nodeHandlers: Record<string, DetailHandler> = {
     'node': async ({ sfRest, item }) => {
@@ -161,12 +186,13 @@ const applicationHandlers: Record<string, DetailHandler> = {
 // Service
 const serviceHandlers: Record<string, DetailHandler> = {
     'service': async ({ sfRest, item }) => {
-        if (!item.applicationId) { throw new Error(`Service ${item.itemId} missing applicationId`); }
+        const serviceId = item.serviceId || item.itemId;
+        if (!item.applicationId) { throw new Error(`Service ${serviceId} missing applicationId`); }
         try {
-            return await sfRest.getServiceInfo(item.itemId, item.applicationId);
+            return await sfRest.getServiceInfo(serviceId, item.applicationId);
         } catch (err: any) {
             if (err.statusCode === 404 || err.message?.includes('404')) {
-                return { id: item.itemId, name: item.label, note: 'System service — full details not available via standard API.', error: err.message };
+                return { id: serviceId, name: item.label, note: 'System service — full details not available via standard API.', error: err.message };
             }
             throw err;
         }
@@ -331,6 +357,7 @@ const deployedHandlers: Record<string, DetailHandler> = {
 
 const HANDLER_REGISTRY: Record<string, DetailHandler> = {
     ...clusterHandlers,
+    ...groupHandlers,
     ...applicationTypeHandlers,
     ...nodeHandlers,
     ...applicationHandlers,

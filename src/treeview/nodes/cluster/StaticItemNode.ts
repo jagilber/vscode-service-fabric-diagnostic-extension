@@ -17,6 +17,15 @@ export class StaticItemNode implements ITreeNode {
     readonly itemType: string;
     readonly isLoaded = true;
 
+    // Expose parent context for context menu commands (reports, etc.)
+    readonly clusterEndpoint: string;
+    readonly nodeName?: string;
+    readonly applicationId?: string;
+    readonly serviceId?: string;
+    readonly partitionId?: string;
+    readonly replicaId?: string;
+    readonly serviceManifestName?: string;
+
     private readonly icon: vscode.ThemeIcon;
 
     constructor(
@@ -31,6 +40,13 @@ export class StaticItemNode implements ITreeNode {
         this.itemType = itemType;
         this.contextValue = contextValue;
         this.id = `${itemType}:${ctx.clusterEndpoint}`;
+        this.clusterEndpoint = ctx.clusterEndpoint;
+        this.nodeName = ctx.parentNodeName;
+        this.applicationId = ctx.parentApplicationId;
+        this.serviceId = ctx.parentServiceId;
+        this.partitionId = ctx.parentPartitionId;
+        this.replicaId = ctx.parentReplicaId;
+        this.serviceManifestName = ctx.parentServiceManifestName;
         // Icon created once at construction — never mutated
         this.icon = iconService.getStaticIcon(iconId, colorId);
     }

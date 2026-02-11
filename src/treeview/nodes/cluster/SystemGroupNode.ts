@@ -50,6 +50,15 @@ export class SystemGroupNode extends BaseTreeNode {
         item.id = this.id;
         item.iconPath = this.iconService.getHealthIcon(healthState, 'gear');
         item.resourceUri = this.ctx.resourceUri;
+        item.command = {
+            command: 'sfClusterExplorer.showItemDetails',
+            title: 'Show Details',
+            arguments: [{
+                itemType: this.itemType,
+                id: this.id,
+                clusterEndpoint: this.ctx.clusterEndpoint,
+            }],
+        };
         return item;
     }
 
