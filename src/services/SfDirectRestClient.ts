@@ -597,7 +597,9 @@ export class SfDirectRestClient {
      * Returns the list of registered versions for this type name.
      */
     async getApplicationType(applicationTypeName: string): Promise<any[]> {
-        return this.makeRequest<any[]>('GET', `/ApplicationTypes/${applicationTypeName}`);
+        const result = await this.makeRequest<any>('GET', `/ApplicationTypes/${applicationTypeName}`);
+        // SF REST returns { Items: [...], ContinuationToken: "" } — unwrap
+        return result?.Items || result?.items || (Array.isArray(result) ? result : []);
     }
 
     /**
