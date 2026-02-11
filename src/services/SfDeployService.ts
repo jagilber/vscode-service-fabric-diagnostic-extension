@@ -109,7 +109,7 @@ export class SfDeployService implements vscode.Disposable {
 
     /**
      * Deploy an application package to a cluster using the REST API.
-     * Steps: Upload → Provision (poll) → Create → Cleanup Image Store
+     * Steps: Upload → Provision (poll) → Cleanup Image Store → Create
      */
     async deployToCluster(
         sfRest: SfRest,
@@ -165,8 +165,17 @@ export class SfDeployService implements vscode.Disposable {
                     throw new Error(`Provisioning timed out for ${options.typeName} v${options.typeVersion}`);
                 }
 
-                // Step 3: Create application instance
-                SfUtility.outputLog('SfDeployService.deployToCluster: Step 3 - Create application instance', null, debugLevel.info);
+                // Step 3: Clean up image store (per MS best practice: after successful provision, before create)
+                SfUtility.outputLog('SfDeployService.deployToCluster: Step 3 - Cleanup image store', null, debugLevel.info);
+                progress.report({ message: 'Cleaning up Image Store...', increment: 10 });
+                try {
+                    await sfRest.deleteImageStoreContent(imageStorePath);
+                } catch (cleanupErr) {
+                    SfUtility.outputLog('SfDeployService: image store cleanup failed (non-fatal)', cleanupErr, debugLevel.warn);
+                }
+
+                // Step 4: Create application instance
+                SfUtility.outputLog('SfDeployService.deployToCluster: Step 4 - Create application instance', null, debugLevel.info);
                 progress.report({ message: 'Creating application instance...', increment: 20 });
                 await sfRest.createApplication(
                     options.appName,
@@ -174,15 +183,6 @@ export class SfDeployService implements vscode.Disposable {
                     options.typeVersion,
                     options.parameters,
                 );
-
-                // Step 4: Clean up image store
-                SfUtility.outputLog('SfDeployService.deployToCluster: Step 4 - Cleanup image store', null, debugLevel.info);
-                progress.report({ message: 'Cleaning up Image Store...', increment: 20 });
-                try {
-                    await sfRest.deleteImageStoreContent(imageStorePath);
-                } catch (cleanupErr) {
-                    SfUtility.outputLog('SfDeployService: image store cleanup failed (non-fatal)', cleanupErr, debugLevel.warn);
-                }
 
                 progress.report({ message: 'Deploy complete!', increment: 10 });
                 SfUtility.outputLog(
@@ -245,7 +245,7 @@ export class SfDeployService implements vscode.Disposable {
     // ── Upgrade via REST API ───────────────────────────────────────────
 
     /**
-     * Upgrade an application: upload new package → provision new version → start rolling upgrade → cleanup.
+     * Upgrade an application: upload new package → provision new version → cleanup → start rolling upgrade.
      */
     async upgradeApplication(
         sfRest: SfRest,
@@ -301,8 +301,17 @@ export class SfDeployService implements vscode.Disposable {
                     throw new Error(`Provisioning timed out for ${options.typeName} v${options.typeVersion}`);
                 }
 
-                // Step 3: Start rolling upgrade
-                SfUtility.outputLog('SfDeployService.upgradeApplication: Step 3 - Start rolling upgrade', null, debugLevel.info);
+                // Step 3: Clean up image store (per MS best practice: after provision, before upgrade)
+                SfUtility.outputLog('SfDeployService.upgradeApplication: Step 3 - Cleanup image store', null, debugLevel.info);
+                progress.report({ message: 'Cleaning up Image Store...', increment: 10 });
+                try {
+                    await sfRest.deleteImageStoreContent(imageStorePath);
+                } catch (cleanupErr) {
+                    SfUtility.outputLog('SfDeployService: image store cleanup failed (non-fatal)', cleanupErr, debugLevel.warn);
+                }
+
+                // Step 4: Start rolling upgrade
+                SfUtility.outputLog('SfDeployService.upgradeApplication: Step 4 - Start rolling upgrade', null, debugLevel.info);
                 progress.report({ message: 'Starting rolling upgrade...', increment: 20 });
                 const applicationId = options.appName.replace('fabric:/', '');
                 const failureAction = upgradeSettings?.failureAction || 'Rollback';
@@ -316,15 +325,6 @@ export class SfDeployService implements vscode.Disposable {
                     mode,
                     failureAction,
                 );
-
-                // Step 4: Clean up image store (upgrade)
-                SfUtility.outputLog('SfDeployService.upgradeApplication: Step 4 - Cleanup image store', null, debugLevel.info);
-                progress.report({ message: 'Cleaning up Image Store...', increment: 20 });
-                try {
-                    await sfRest.deleteImageStoreContent(imageStorePath);
-                } catch (cleanupErr) {
-                    SfUtility.outputLog('SfDeployService: image store cleanup failed (non-fatal)', cleanupErr, debugLevel.warn);
-                }
 
                 progress.report({ message: 'Upgrade started!', increment: 20 });
                 SfUtility.outputLog(
@@ -368,13 +368,13 @@ export class SfDeployService implements vscode.Disposable {
             `# Register/provision the application type`,
             `Register-ServiceFabricApplicationType -ApplicationPathInImageStore "${project.appTypeName}"`,
             ``,
+            `# Clean up image store (after successful provision, per MS best practice)`,
+            `Remove-ServiceFabricApplicationPackage -ApplicationPackagePathInImageStore "${project.appTypeName}" -ImageStoreConnectionString fabric:ImageStore`,
+            ``,
             `# Create application instance`,
             paramFile
                 ? `New-ServiceFabricApplication -ApplicationName "fabric:/${project.appTypeName}" -ApplicationTypeName "${project.appTypeName}" -ApplicationTypeVersion "${project.appTypeVersion}" -ApplicationParameter (Get-Content "${paramFile}" | ConvertFrom-Xml)`
                 : `New-ServiceFabricApplication -ApplicationName "fabric:/${project.appTypeName}" -ApplicationTypeName "${project.appTypeName}" -ApplicationTypeVersion "${project.appTypeVersion}"`,
-            ``,
-            `# Clean up image store`,
-            `Remove-ServiceFabricApplicationPackage -ApplicationPackagePathInImageStore "${project.appTypeName}" -ImageStoreConnectionString fabric:ImageStore`,
             ``,
             `Write-Host "Deploy complete!" -ForegroundColor Green`,
         ].join('\n');
