@@ -1353,7 +1353,12 @@ export class SfRest implements IHttpOptionsProvider {
             }
             
             SfUtility.outputLog('sfRest:provisionApplicationType:complete', null, debugLevel.info);
-        } catch (error) {
+        } catch (error: any) {
+            // 409 = type+version already provisioned — not an error
+            if (error?.statusCode === 409 || error?.cause?.statusCode === 409) {
+                SfUtility.outputLog(`sfRest:provisionApplicationType: already exists (409), continuing`, null, debugLevel.info);
+                return;
+            }
             SfUtility.outputLog(`Failed to provision application type from ${imageStorePath}`, error, debugLevel.error);
             throw new NetworkError(`Failed to provision application type`, { cause: error });
         }
@@ -1387,7 +1392,12 @@ export class SfRest implements IHttpOptionsProvider {
             }
             
             SfUtility.outputLog('sfRest:createApplication:complete', null, debugLevel.info);
-        } catch (error) {
+        } catch (error: any) {
+            // 409 = application already exists — not an error for idempotent deploys
+            if (error?.statusCode === 409 || error?.cause?.statusCode === 409) {
+                SfUtility.outputLog(`sfRest:createApplication: already exists (409), continuing`, null, debugLevel.info);
+                return;
+            }
             SfUtility.outputLog(`Failed to create application ${appName}`, error, debugLevel.error);
             throw new NetworkError(`Failed to create application ${appName}`, { cause: error });
         }
