@@ -16,6 +16,7 @@ import { SfProjectNode } from '../treeview/nodes/applications/SfProjectNode';
 import { ProfileNode } from '../treeview/nodes/applications/ProfileNode';
 import { DeployOptions } from '../types/ProjectTypes';
 import { SfConfiguration } from '../sfConfiguration';
+import { SfExtSettings, sfExtSettingsList } from '../sfExtSettings';
 
 export function registerProjectCommands(
     context: vscode.ExtensionContext,
@@ -125,15 +126,22 @@ export function registerProjectCommands(
             const cluster = await pickCluster(sfMgr);
             if (!cluster) { return; }
 
-            // Choose deploy method
-            const deployMethodChoice = await vscode.window.showQuickPick(
-                [
-                    { label: 'REST API', description: 'Upload → Provision → Create (direct HTTP)', value: 'rest' as const },
-                    { label: 'PowerShell', description: 'SF SDK cmdlets (requires SF SDK)', value: 'powershell' as const },
-                ],
-                { placeHolder: 'Select deploy method' },
-            );
-            if (!deployMethodChoice) { return; }
+            // Choose deploy method — use setting default, prompt only when set to 'ask'
+            const deployMethodSetting = SfExtSettings.getSetting(sfExtSettingsList.deployMethod) as string || 'rest';
+            let deployMethod: 'rest' | 'powershell';
+            if (deployMethodSetting === 'ask') {
+                const deployMethodChoice = await vscode.window.showQuickPick(
+                    [
+                        { label: 'REST API', description: 'Upload → Provision → Create (direct HTTP)', value: 'rest' as const },
+                        { label: 'PowerShell', description: 'SF SDK cmdlets (requires SF SDK)', value: 'powershell' as const },
+                    ],
+                    { placeHolder: 'Select deploy method' },
+                );
+                if (!deployMethodChoice) { return; }
+                deployMethod = deployMethodChoice.value;
+            } else {
+                deployMethod = deployMethodSetting === 'powershell' ? 'powershell' : 'rest';
+            }
 
             // Find package path
             const packagePath = deployService.findPackagePath(project);
@@ -180,7 +188,7 @@ export function registerProjectCommands(
                 upgrade: false,
             };
 
-            if (deployMethodChoice.value === 'rest') {
+            if (deployMethod === 'rest') {
                 await deployService.deployToCluster(cluster.sfRest, options, packagePath);
             } else {
                 // PowerShell deploy — pick a profile

@@ -45,6 +45,9 @@ export class SfRest implements IHttpOptionsProvider {
     // Flag to use direct REST instead of Azure SDK
     private useDirectRest = true; // Set to true to bypass Azure SDK
 
+    // Cached image store connection string (e.g. 'file:C:\path' or 'fabric:ImageStore')
+    private imageStoreConnectionString?: string;
+
     constructor(
         context: vscode.ExtensionContext,
         apiVersion?: string,
@@ -643,6 +646,28 @@ export class SfRest implements IHttpOptionsProvider {
         return clusterManifest;
     }
 
+    /**
+     * Get the ImageStoreConnectionString from the cluster manifest.
+     * Returns 'fabric:ImageStore' (service-based) or 'file:C:\path' (file-based).
+     * Result is cached after first retrieval.
+     */
+    public async getImageStoreConnectionString(): Promise<string> {
+        if (this.imageStoreConnectionString) {
+            return this.imageStoreConnectionString;
+        }
+        try {
+            const manifest = await this.getClusterManifest();
+            const xml = manifest.manifest || '';
+            const match = xml.match(/ImageStoreConnectionString["'][^>]*Value\s*=\s*["']([^"']+)["']/);
+            this.imageStoreConnectionString = match?.[1] || 'fabric:ImageStore';
+        } catch (error) {
+            SfUtility.outputLog('sfRest:getImageStoreConnectionString: failed to parse manifest, assuming fabric:ImageStore', error, debugLevel.warn);
+            this.imageStoreConnectionString = 'fabric:ImageStore';
+        }
+        SfUtility.outputLog(`sfRest:getImageStoreConnectionString: ${this.imageStoreConnectionString}`, null, debugLevel.info);
+        return this.imageStoreConnectionString;
+    }
+
     public async getClusterHealth(): Promise<sfModels.ClusterHealth> {
         const clusterHealth = await this.sfApi.getClusterHealth();
         SfUtility.outputLog('sfMgr:connectToCluster:clusterHealth:', clusterHealth);
@@ -1233,9 +1258,18 @@ export class SfRest implements IHttpOptionsProvider {
      */
     public async uploadToImageStore(contentPath: string, fileContent: Buffer): Promise<void> {
         try {
-            SfUtility.outputLog(`sfRest:uploadToImageStore: ${contentPath} (${fileContent.length} bytes) endpoint=${this.clusterHttpEndpoint} useDirectRest=${this.useDirectRest} hasDirectClient=${!!this.directClient}`, null, debugLevel.info);
-            
-            if (this.useDirectRest && this.directClient) {
+            const imageStoreConn = await this.getImageStoreConnectionString();
+            SfUtility.outputLog(`sfRest:uploadToImageStore: ${contentPath} (${fileContent.length} bytes) endpoint=${this.clusterHttpEndpoint} imageStore=${imageStoreConn}`, null, debugLevel.info);
+
+            if (imageStoreConn.startsWith('file:')) {
+                // File-based image store (dev clusters) — copy directly to disk
+                const fs = await import('fs');
+                const path = await import('path');
+                const basePath = imageStoreConn.substring('file:'.length);
+                const destPath = path.join(basePath, ...contentPath.split('/'));
+                await fs.promises.mkdir(path.dirname(destPath), { recursive: true });
+                await fs.promises.writeFile(destPath, new Uint8Array(fileContent));
+            } else if (this.useDirectRest && this.directClient) {
                 await this.directClient.uploadToImageStore(contentPath, fileContent);
             } else {
                 // Use direct HTTP PUT since Azure SDK doesn't expose upload
@@ -1365,7 +1399,16 @@ export class SfRest implements IHttpOptionsProvider {
     public async deleteImageStoreContent(contentPath: string): Promise<void> {
         try {
             SfUtility.outputLog(`sfRest:deleteImageStoreContent: ${contentPath}`, null, debugLevel.info);
-            if (this.useDirectRest && this.directClient) {
+            const imageStoreConn = await this.getImageStoreConnectionString();
+
+            if (imageStoreConn.startsWith('file:')) {
+                // File-based image store — delete from disk
+                const fs = await import('fs');
+                const path = await import('path');
+                const basePath = imageStoreConn.substring('file:'.length);
+                const targetPath = path.join(basePath, ...contentPath.split('/'));
+                await fs.promises.rm(targetPath, { recursive: true, force: true });
+            } else if (this.useDirectRest && this.directClient) {
                 await this.directClient.deleteImageStoreContent(contentPath);
             } else {
                 // Fallback: use direct HTTP DELETE

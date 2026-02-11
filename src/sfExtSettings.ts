@@ -7,7 +7,8 @@ export const  enum sfExtSettingsList {
     clusterCertificate = 'clusters.cluster.certificate',
     autorefresh = 'autorefresh',
     refreshInterval = 'refreshInterval',
-    autoReconnect = 'autoReconnect'
+    autoReconnect = 'autoReconnect',
+    deployMethod = 'deployMethod'
 }
 
 export class SfExtSettings {

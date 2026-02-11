@@ -524,6 +524,17 @@
             "type": "boolean",
             "default": true,
             "description": "Automatically reconnect to previously connected clusters when VS Code starts"
+          },
+          "sfClusterExplorer.deployMethod": {
+            "type": "string",
+            "default": "rest",
+            "enum": ["rest", "powershell", "ask"],
+            "enumDescriptions": [
+              "Use REST API (Upload → Provision → Create via direct HTTP)",
+              "Use PowerShell SF SDK cmdlets (requires SF SDK installed)",
+              "Prompt to choose each time"
+            ],
+            "description": "Default deployment method for Service Fabric applications"
           }
         }
       }
