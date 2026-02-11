@@ -1359,6 +1359,145 @@ export class SfRest implements IHttpOptionsProvider {
     }
 
     /**
+     * Delete an application package from the Image Store.
+     */
+    public async deleteImageStoreContent(contentPath: string): Promise<void> {
+        try {
+            SfUtility.outputLog(`sfRest:deleteImageStoreContent: ${contentPath}`, null, debugLevel.info);
+            if (this.useDirectRest && this.directClient) {
+                await this.directClient.deleteImageStoreContent(contentPath);
+            } else {
+                // Fallback: use direct HTTP DELETE
+                await this.directImageStoreDelete(contentPath);
+            }
+            SfUtility.outputLog('sfRest:deleteImageStoreContent:complete', null, debugLevel.info);
+        } catch (error) {
+            SfUtility.outputLog(`Failed to delete image store content ${contentPath}`, error, debugLevel.error);
+            throw new NetworkError(`Failed to delete image store content`, { cause: error });
+        }
+    }
+
+    /**
+     * Get application type info to check provision status.
+     * Returns the list of registered versions for a given type name.
+     */
+    public async getApplicationTypeInfo(applicationTypeName: string): Promise<any[]> {
+        try {
+            SfUtility.outputLog(`sfRest:getApplicationTypeInfo: ${applicationTypeName}`, null, debugLevel.info);
+            if (this.useDirectRest && this.directClient) {
+                return await this.directClient.getApplicationType(applicationTypeName);
+            } else {
+                const result = await this.sfApi.getApplicationTypeInfoList();
+                const items = (result as any)?.items || result || [];
+                return Array.isArray(items) ? items.filter((t: any) => t.name === applicationTypeName || t.Name === applicationTypeName) : [];
+            }
+        } catch (error) {
+            SfUtility.outputLog(`Failed to get application type info for ${applicationTypeName}`, error, debugLevel.error);
+            return [];
+        }
+    }
+
+    /**
+     * Wait for application type to be provisioned (polling).
+     * Returns true if the type+version is found as 'Available', false on timeout.
+     */
+    public async waitForProvision(
+        applicationTypeName: string,
+        applicationTypeVersion: string,
+        timeoutMs: number = 60000,
+        pollIntervalMs: number = 3000,
+    ): Promise<boolean> {
+        const deadline = Date.now() + timeoutMs;
+        SfUtility.outputLog(`sfRest:waitForProvision: waiting for ${applicationTypeName} v${applicationTypeVersion}`, null, debugLevel.info);
+
+        while (Date.now() < deadline) {
+            try {
+                const types = await this.getApplicationTypeInfo(applicationTypeName);
+                const match = types.find((t: any) => {
+                    const ver = t.version || t.Version || t.applicationTypeVersion || t.ApplicationTypeVersion;
+                    const status = t.status || t.Status || '';
+                    return ver === applicationTypeVersion && (status === 'Available' || status === '' || !status);
+                });
+                if (match) {
+                    SfUtility.outputLog(`sfRest:waitForProvision: ${applicationTypeName} v${applicationTypeVersion} is available`, null, debugLevel.info);
+                    return true;
+                }
+            } catch {
+                // Ignore errors during polling — type may not exist yet
+            }
+            await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
+        }
+
+        SfUtility.outputLog(`sfRest:waitForProvision: timed out waiting for ${applicationTypeName} v${applicationTypeVersion}`, null, debugLevel.warn);
+        return false;
+    }
+
+    /**
+     * Upgrade an existing application instance (rolling upgrade).
+     */
+    public async upgradeApplication(
+        applicationId: string,
+        typeName: string,
+        targetVersion: string,
+        parameters?: Record<string, string>,
+        upgradeKind: string = 'Rolling',
+        rollingUpgradeMode: string = 'Monitored',
+        failureAction: string = 'Rollback',
+    ): Promise<void> {
+        try {
+            SfUtility.outputLog(`sfRest:upgradeApplication: ${applicationId} → v${targetVersion}`, null, debugLevel.info);
+            if (this.useDirectRest && this.directClient) {
+                await this.directClient.upgradeApplication(applicationId, typeName, targetVersion, parameters, upgradeKind, rollingUpgradeMode, failureAction);
+            } else {
+                // Azure SDK upgrade path
+                const upgradeDescription: any = {
+                    name: applicationId,
+                    targetApplicationTypeVersion: targetVersion,
+                    upgradeKind: upgradeKind === 'Rolling' ? 'Rolling' : 'Rolling',
+                    rollingUpgradeMode: rollingUpgradeMode,
+                    monitoringPolicy: { failureAction },
+                    parameterList: parameters
+                        ? Object.entries(parameters).map(([key, value]) => ({ key, value }))
+                        : undefined,
+                };
+                await this.sfApi.startApplicationUpgrade(applicationId, upgradeDescription);
+            }
+            SfUtility.outputLog('sfRest:upgradeApplication:complete', null, debugLevel.info);
+        } catch (error) {
+            SfUtility.outputLog(`Failed to upgrade application ${applicationId}`, error, debugLevel.error);
+            throw new NetworkError(`Failed to upgrade application ${applicationId}`, { cause: error });
+        }
+    }
+
+    /**
+     * Direct HTTP DELETE to image store.
+     */
+    private async directImageStoreDelete(contentPath: string): Promise<void> {
+        const encodedPath = encodeURIComponent(contentPath);
+        const requestPath = `/ImageStore/${encodedPath}?api-version=${this.clientApiVersion}`;
+        const options = this.createHttpOptions(requestPath);
+        (options as any).method = 'DELETE';
+        (options as any).headers = this.createSfAutoRestHttpHeaders();
+
+        return new Promise((resolve, reject) => {
+            const protocol = this.clusterHttpEndpoint.startsWith('https') ? https : require('http');
+            const req = protocol.request(options, (res: any) => {
+                let body = '';
+                res.on('data', (chunk: string) => { body += chunk; });
+                res.on('end', () => {
+                    if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+                        resolve();
+                    } else {
+                        reject(new Error(`Image store delete failed: HTTP ${res.statusCode} - ${body}`));
+                    }
+                });
+            });
+            req.on('error', reject);
+            req.end();
+        });
+    }
+
+    /**
      * Direct HTTP PUT to image store (fallback when not using directClient).
      */
     private async directImageStoreUpload(contentPath: string, fileContent: Buffer): Promise<void> {

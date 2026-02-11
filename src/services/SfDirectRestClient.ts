@@ -556,4 +556,69 @@ export class SfDirectRestClient {
         }
         await this.makeRequest<void>('POST', '/Applications/$/Create', body);
     }
+
+    /**
+     * Delete an application instance.
+     * POST /Applications/{applicationId}/$/Delete?api-version=6.0
+     */
+    async deleteApplication(applicationId: string): Promise<void> {
+        await this.makeRequest<void>('POST', `/Applications/${applicationId}/$/Delete`);
+    }
+
+    /**
+     * Unprovision (unregister) an application type + version.
+     * POST /ApplicationTypes/{typeName}/$/Unprovision?api-version=6.0
+     */
+    async unprovisionApplicationType(applicationTypeName: string, applicationTypeVersion: string): Promise<void> {
+        await this.makeRequest<void>(
+            'POST',
+            `/ApplicationTypes/${applicationTypeName}/$/Unprovision`,
+            { ApplicationTypeVersion: applicationTypeVersion },
+        );
+    }
+
+    /**
+     * Delete an application package from the Image Store.
+     * DELETE /ImageStore/{contentPath}?api-version=6.0
+     */
+    async deleteImageStoreContent(contentPath: string): Promise<void> {
+        await this.makeRequest<void>('DELETE', `/ImageStore/${contentPath}`);
+    }
+
+    /**
+     * Get the provisioning status of an application type.
+     * GET /ApplicationTypes/{typeName}?api-version=6.0
+     * Returns the list of registered versions for this type name.
+     */
+    async getApplicationType(applicationTypeName: string): Promise<any[]> {
+        return this.makeRequest<any[]>('GET', `/ApplicationTypes/${applicationTypeName}`);
+    }
+
+    /**
+     * Upgrade an existing application instance.
+     * POST /Applications/{applicationId}/$/Upgrade?api-version=6.0
+     */
+    async upgradeApplication(
+        applicationId: string,
+        typeName: string,
+        targetVersion: string,
+        parameters?: Record<string, string>,
+        upgradeKind: string = 'Rolling',
+        rollingUpgradeMode: string = 'Monitored',
+        failureAction: string = 'Rollback',
+    ): Promise<void> {
+        const body: any = {
+            Name: applicationId,
+            TargetApplicationTypeVersion: targetVersion,
+            UpgradeKind: upgradeKind,
+            RollingUpgradeMode: rollingUpgradeMode,
+            MonitoringPolicy: {
+                FailureAction: failureAction,
+            },
+        };
+        if (parameters) {
+            body.Parameters = Object.entries(parameters).map(([Key, Value]) => ({ Key, Value }));
+        }
+        await this.makeRequest<void>('POST', `/Applications/${applicationId}/$/Upgrade`, body);
+    }
 }

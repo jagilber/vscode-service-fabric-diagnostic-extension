@@ -22,6 +22,7 @@ import {
     DeployMethod,
     BuildResult,
     PublishProfileInfo,
+    UpgradeSettings,
 } from '../types/ProjectTypes';
 
 export class SfDeployService implements vscode.Disposable {
@@ -108,7 +109,7 @@ export class SfDeployService implements vscode.Disposable {
 
     /**
      * Deploy an application package to a cluster using the REST API.
-     * Steps: Upload → Provision → Create
+     * Steps: Upload → Provision (poll) → Create → Cleanup Image Store
      */
     async deployToCluster(
         sfRest: SfRest,
@@ -134,7 +135,7 @@ export class SfDeployService implements vscode.Disposable {
                     packagePath,
                     imageStorePath,
                     (fileName, current, total) => {
-                        const pct = Math.round((current / total) * 50);
+                        const pct = Math.round((current / total) * 40);
                         progress.report({
                             message: `Uploading ${fileName} (${current}/${total})`,
                             increment: pct > 0 ? 1 : 0,
@@ -143,14 +144,23 @@ export class SfDeployService implements vscode.Disposable {
                 );
 
                 // Step 2: Provision application type
-                progress.report({ message: 'Provisioning application type...', increment: 50 });
+                progress.report({ message: 'Provisioning application type...', increment: 40 });
                 await sfRest.provisionApplicationType(imageStorePath, true);
 
-                // Wait briefly for async provisioning
-                await new Promise(resolve => setTimeout(resolve, 2000));
+                // Step 2b: Poll for provision completion
+                progress.report({ message: 'Waiting for provisioning to complete...', increment: 10 });
+                const provisioned = await sfRest.waitForProvision(
+                    options.typeName,
+                    options.typeVersion,
+                    60000,
+                    3000,
+                );
+                if (!provisioned) {
+                    throw new Error(`Provisioning timed out for ${options.typeName} v${options.typeVersion}`);
+                }
 
                 // Step 3: Create application instance
-                progress.report({ message: 'Creating application instance...', increment: 25 });
+                progress.report({ message: 'Creating application instance...', increment: 20 });
                 await sfRest.createApplication(
                     options.appName,
                     options.typeName,
@@ -158,7 +168,15 @@ export class SfDeployService implements vscode.Disposable {
                     options.parameters,
                 );
 
-                progress.report({ message: 'Deploy complete!', increment: 25 });
+                // Step 4: Clean up image store
+                progress.report({ message: 'Cleaning up Image Store...', increment: 20 });
+                try {
+                    await sfRest.deleteImageStoreContent(imageStorePath);
+                } catch (cleanupErr) {
+                    SfUtility.outputLog('SfDeployService: image store cleanup failed (non-fatal)', cleanupErr, debugLevel.warn);
+                }
+
+                progress.report({ message: 'Deploy complete!', increment: 10 });
                 SfUtility.outputLog(
                     `SfDeployService: successfully deployed ${options.appName} (${options.typeName} v${options.typeVersion})`,
                     null,
@@ -169,6 +187,138 @@ export class SfDeployService implements vscode.Disposable {
 
         vscode.window.showInformationMessage(
             `Successfully deployed ${options.appName} (${options.typeName} v${options.typeVersion})`,
+        );
+    }
+
+    // ── Remove from Cluster ────────────────────────────────────────────
+
+    /**
+     * Remove an application from cluster: delete app → unprovision type.
+     */
+    async removeFromCluster(
+        sfRest: SfRest,
+        appName: string,
+        typeName: string,
+        typeVersion: string,
+    ): Promise<void> {
+        await vscode.window.withProgress(
+            {
+                location: vscode.ProgressLocation.Notification,
+                title: `Removing ${appName}`,
+                cancellable: false,
+            },
+            async (progress) => {
+                // Step 1: Delete application instance
+                progress.report({ message: 'Deleting application...', increment: 0 });
+                const applicationId = appName.replace('fabric:/', '');
+                await sfRest.deleteApplication(applicationId);
+
+                // Step 2: Unprovision application type
+                progress.report({ message: 'Unprovisioning application type...', increment: 50 });
+                await sfRest.unprovisionApplicationType(typeName, typeVersion);
+
+                progress.report({ message: 'Remove complete!', increment: 50 });
+                SfUtility.outputLog(
+                    `SfDeployService: removed ${appName} (${typeName} v${typeVersion})`,
+                    null,
+                    debugLevel.info,
+                );
+            },
+        );
+
+        vscode.window.showInformationMessage(
+            `Removed ${appName} (${typeName} v${typeVersion})`,
+        );
+    }
+
+    // ── Upgrade via REST API ───────────────────────────────────────────
+
+    /**
+     * Upgrade an application: upload new package → provision new version → start rolling upgrade → cleanup.
+     */
+    async upgradeApplication(
+        sfRest: SfRest,
+        options: DeployOptions,
+        packagePath: string,
+        upgradeSettings?: UpgradeSettings,
+    ): Promise<void> {
+        if (!fs.existsSync(packagePath)) {
+            throw new Error(`Application package not found: ${packagePath}`);
+        }
+
+        await vscode.window.withProgress(
+            {
+                location: vscode.ProgressLocation.Notification,
+                title: `Upgrading ${options.typeName}`,
+                cancellable: false,
+            },
+            async (progress) => {
+                // Step 1: Upload new package
+                progress.report({ message: 'Uploading new package to Image Store...', increment: 0 });
+                const imageStorePath = options.typeName;
+
+                await sfRest.uploadApplicationPackage(
+                    packagePath,
+                    imageStorePath,
+                    (fileName, current, total) => {
+                        const pct = Math.round((current / total) * 30);
+                        progress.report({
+                            message: `Uploading ${fileName} (${current}/${total})`,
+                            increment: pct > 0 ? 1 : 0,
+                        });
+                    },
+                );
+
+                // Step 2: Provision new version
+                progress.report({ message: 'Provisioning new version...', increment: 30 });
+                await sfRest.provisionApplicationType(imageStorePath, true);
+
+                // Step 2b: Poll for provision completion
+                progress.report({ message: 'Waiting for provisioning...', increment: 10 });
+                const provisioned = await sfRest.waitForProvision(
+                    options.typeName,
+                    options.typeVersion,
+                    60000,
+                    3000,
+                );
+                if (!provisioned) {
+                    throw new Error(`Provisioning timed out for ${options.typeName} v${options.typeVersion}`);
+                }
+
+                // Step 3: Start rolling upgrade
+                progress.report({ message: 'Starting rolling upgrade...', increment: 20 });
+                const applicationId = options.appName.replace('fabric:/', '');
+                const failureAction = upgradeSettings?.failureAction || 'Rollback';
+                const mode = upgradeSettings?.mode || 'Monitored';
+                await sfRest.upgradeApplication(
+                    applicationId,
+                    options.typeName,
+                    options.typeVersion,
+                    options.parameters,
+                    'Rolling',
+                    mode,
+                    failureAction,
+                );
+
+                // Step 4: Clean up image store
+                progress.report({ message: 'Cleaning up Image Store...', increment: 20 });
+                try {
+                    await sfRest.deleteImageStoreContent(imageStorePath);
+                } catch (cleanupErr) {
+                    SfUtility.outputLog('SfDeployService: image store cleanup failed (non-fatal)', cleanupErr, debugLevel.warn);
+                }
+
+                progress.report({ message: 'Upgrade started!', increment: 20 });
+                SfUtility.outputLog(
+                    `SfDeployService: started upgrade for ${options.appName} → v${options.typeVersion}`,
+                    null,
+                    debugLevel.info,
+                );
+            },
+        );
+
+        vscode.window.showInformationMessage(
+            `Upgrade started for ${options.appName} → v${options.typeVersion}. Monitor progress in Cluster Explorer.`,
         );
     }
 
@@ -203,6 +353,9 @@ export class SfDeployService implements vscode.Disposable {
             paramFile
                 ? `New-ServiceFabricApplication -ApplicationName "fabric:/${project.appTypeName}" -ApplicationTypeName "${project.appTypeName}" -ApplicationTypeVersion "${project.appTypeVersion}" -ApplicationParameter (Get-Content "${paramFile}" | ConvertFrom-Xml)`
                 : `New-ServiceFabricApplication -ApplicationName "fabric:/${project.appTypeName}" -ApplicationTypeName "${project.appTypeName}" -ApplicationTypeVersion "${project.appTypeVersion}"`,
+            ``,
+            `# Clean up image store`,
+            `Remove-ServiceFabricApplicationPackage -ApplicationPackagePathInImageStore "${project.appTypeName}" -ImageStoreConnectionString fabric:ImageStore`,
             ``,
             `Write-Host "Deploy complete!" -ForegroundColor Green`,
         ].join('\n');

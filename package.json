@@ -60,6 +60,9 @@
     "onCommand:sfApplications.refresh",
     "onCommand:sfApplications.buildProject",
     "onCommand:sfApplications.deployProject",
+    "onCommand:sfApplications.removeFromCluster",
+    "onCommand:sfApplications.upgradeApplication",
+    "onCommand:sfApplications.deployWithProfile",
     "onCommand:sfApplications.openManifest",
     "onCommand:sfApplications.addExternalProject",
     "onCommand:sfApplications.removeExternalProject"
@@ -246,6 +249,21 @@
         "icon": "$(add)"
       },
       {
+        "command": "sfApplications.removeFromCluster",
+        "title": "Remove from Cluster",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "sfApplications.upgradeApplication",
+        "title": "Upgrade Application",
+        "icon": "$(arrow-up)"
+      },
+      {
+        "command": "sfApplications.deployWithProfile",
+        "title": "Deploy with Profile",
+        "icon": "$(rocket)"
+      },
+      {
         "command": "sfApplications.removeExternalProject",
         "title": "Remove External Project",
         "icon": "$(remove)"
@@ -309,6 +327,26 @@
           "command": "sfApplications.deployProject",
           "when": "view == serviceFabricApplicationsView && viewItem =~ /^sfProject/",
           "group": "project@2"
+        },
+        {
+          "command": "sfApplications.upgradeApplication",
+          "when": "view == serviceFabricApplicationsView && viewItem =~ /^sfProject/",
+          "group": "project@3"
+        },
+        {
+          "command": "sfApplications.removeFromCluster",
+          "when": "view == serviceFabricApplicationsView && viewItem =~ /^sfProject/",
+          "group": "project@4"
+        },
+        {
+          "command": "sfApplications.deployWithProfile",
+          "when": "view == serviceFabricApplicationsView && viewItem == publishProfile",
+          "group": "inline@1"
+        },
+        {
+          "command": "sfApplications.deployWithProfile",
+          "when": "view == serviceFabricApplicationsView && viewItem == publishProfile",
+          "group": "profile@1"
         },
         {
           "command": "sfClusterExplorer.showManagementView",
