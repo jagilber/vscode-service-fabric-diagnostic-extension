@@ -1233,7 +1233,7 @@ export class SfRest implements IHttpOptionsProvider {
      */
     public async uploadToImageStore(contentPath: string, fileContent: Buffer): Promise<void> {
         try {
-            SfUtility.outputLog(`sfRest:uploadToImageStore: ${contentPath} (${fileContent.length} bytes)`, null, debugLevel.info);
+            SfUtility.outputLog(`sfRest:uploadToImageStore: ${contentPath} (${fileContent.length} bytes) endpoint=${this.clusterHttpEndpoint} useDirectRest=${this.useDirectRest} hasDirectClient=${!!this.directClient}`, null, debugLevel.info);
             
             if (this.useDirectRest && this.directClient) {
                 await this.directClient.uploadToImageStore(contentPath, fileContent);
@@ -1244,7 +1244,8 @@ export class SfRest implements IHttpOptionsProvider {
             
             SfUtility.outputLog('sfRest:uploadToImageStore:complete', null, debugLevel.info);
         } catch (error) {
-            SfUtility.outputLog(`Failed to upload to image store: ${contentPath}`, error, debugLevel.error);
+            const errMsg = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+            SfUtility.outputLog(`Failed to upload to image store: ${contentPath} - ${errMsg}`, error, debugLevel.error);
             throw new NetworkError(`Failed to upload to image store: ${contentPath}`, { cause: error });
         }
     }
@@ -1473,7 +1474,7 @@ export class SfRest implements IHttpOptionsProvider {
      * Direct HTTP DELETE to image store.
      */
     private async directImageStoreDelete(contentPath: string): Promise<void> {
-        const encodedPath = encodeURIComponent(contentPath);
+        const encodedPath = contentPath.split('/').map(s => encodeURIComponent(s)).join('/');
         const requestPath = `/ImageStore/${encodedPath}?api-version=${this.clientApiVersion}`;
         const options = this.createHttpOptions(requestPath);
         (options as any).method = 'DELETE';
@@ -1501,7 +1502,7 @@ export class SfRest implements IHttpOptionsProvider {
      * Direct HTTP PUT to image store (fallback when not using directClient).
      */
     private async directImageStoreUpload(contentPath: string, fileContent: Buffer): Promise<void> {
-        const encodedPath = encodeURIComponent(contentPath);
+        const encodedPath = contentPath.split('/').map(s => encodeURIComponent(s)).join('/');
         const requestPath = `/ImageStore/${encodedPath}?api-version=${this.clientApiVersion}`;
         const options = this.createHttpOptions(requestPath);
         (options as any).method = 'PUT';

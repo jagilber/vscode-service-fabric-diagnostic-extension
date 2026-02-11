@@ -108,11 +108,18 @@ export class SfUtility {
         //console.log("SFRest:debuglog:" + message);
         try{
             if (messageObject !== null && messageObject !== undefined) {
-                message += JSON.stringify(messageObject, null, 2);
+                if (messageObject instanceof Error) {
+                    const errObj: Record<string, unknown> = { errorName: messageObject.name, errorMessage: messageObject.message, errorStack: messageObject.stack };
+                    for (const key of Object.keys(messageObject)) { errObj[key] = (messageObject as any)[key]; }
+                    message += JSON.stringify(errObj, null, 2);
+                } else {
+                    message += JSON.stringify(messageObject, null, 2);
+                }
             }    
         }
         catch(error){
-            //this.channel.error(JSON.stringify(error, null, 2));
+            // If JSON serialization fails, at least capture the string representation
+            try { message += String(messageObject); } catch { /* ignore */ }
         }
 
         try {

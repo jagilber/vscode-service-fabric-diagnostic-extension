@@ -512,7 +512,7 @@ export class SfDirectRestClient {
      * PUT /ImageStore/{contentPath}?api-version=6.0
      */
     async uploadToImageStore(contentPath: string, fileContent: Buffer): Promise<void> {
-        const encodedPath = encodeURIComponent(contentPath);
+        const encodedPath = contentPath.split('/').map(s => encodeURIComponent(s)).join('/');
         // Scale timeout based on file size: minimum 60s, add 60s per 5MB
         const uploadTimeout = Math.max(this.timeout, 60000 + Math.ceil(fileContent.length / (5 * 1024 * 1024)) * 60000);
         await this.makeRequest<void>(
