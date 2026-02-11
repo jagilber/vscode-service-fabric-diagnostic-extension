@@ -2,12 +2,14 @@
  * Manages cluster connection state: endpoint, certificate discovery, PEM retrieval
  * Extracted from sfConfiguration.ts — handles TLS handshake cert discovery and cert store lookups
  */
+import * as url from 'url';
 import { PeerCertificate } from 'tls';
 import { SfUtility, debugLevel } from '../sfUtility';
 import { SfRest } from '../sfRest';
 import { SfPs } from '../sfPs';
 import { PiiObfuscation } from '../utils/PiiObfuscation';
 import { clusterCertificate } from '../types/ClusterTypes';
+import { SfConstants } from '../sfConstants';
 
 /**
  * Manages cluster endpoint and certificate state
@@ -31,8 +33,32 @@ export class ClusterConnectionManager {
     }
 
     public setClusterEndpoint(clusterHttpEndpoint: string): void {
-        SfUtility.outputLog(`ClusterConnectionManager:setClusterEndpoint: ${PiiObfuscation.endpoint(clusterHttpEndpoint)}`, null, debugLevel.info);
-        this.clusterHttpEndpoint = clusterHttpEndpoint;
+        const normalized = ClusterConnectionManager.normalizeEndpoint(clusterHttpEndpoint);
+        SfUtility.outputLog(`ClusterConnectionManager:setClusterEndpoint: ${PiiObfuscation.endpoint(normalized)}`, null, debugLevel.info);
+        this.clusterHttpEndpoint = normalized;
+    }
+
+    /**
+     * Normalize a cluster endpoint URL: add default port 19080 if none specified,
+     * strip trailing slashes for consistent comparison.
+     */
+    public static normalizeEndpoint(endpoint: string): string {
+        if (!endpoint) { return endpoint; }
+        let normalized = endpoint.trim();
+        // Strip trailing slashes
+        normalized = normalized.replace(/\/+$/, '');
+        try {
+            const parsed = new url.URL(normalized);
+            // URL class sets port to '' when using protocol default (80/443)
+            // SF gateway always needs an explicit port — default to 19080
+            if (!parsed.port) {
+                parsed.port = String(SfConstants.SF_HTTP_GATEWAY_PORT);
+                normalized = parsed.toString().replace(/\/+$/, '');
+            }
+        } catch {
+            // Not a valid URL — return as-is
+        }
+        return normalized;
     }
 
     public getClusterCertificate(): clusterCertificate | undefined {

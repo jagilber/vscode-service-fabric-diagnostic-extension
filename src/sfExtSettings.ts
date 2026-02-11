@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { debugLevel, SfUtility } from './sfUtility';
+import { ClusterConnectionManager } from './services/ClusterConnectionManager';
 
 export const  enum sfExtSettingsList {
     clusters = 'clusters',
@@ -54,9 +55,16 @@ export class SfExtSettings {
         const currentSetting = SfExtSettings.getSetting(setting);
         if (Array.isArray(currentSetting)) {
             if (value) {
-                // child setting/array - check for duplicate by endpoint string if it's a cluster object
-                const isDuplicate = setting === sfExtSettingsList.clusters 
-                    ? currentSetting.some((item: any) => item.endpoint === value.endpoint)
+                // Normalize endpoint before comparison to prevent duplicates with/without port
+                const normalizedEndpoint = setting === sfExtSettingsList.clusters && value.endpoint
+                    ? ClusterConnectionManager.normalizeEndpoint(value.endpoint)
+                    : null;
+                if (normalizedEndpoint) { value.endpoint = normalizedEndpoint; }
+
+                // child setting/array - check for duplicate by normalized endpoint
+                const isDuplicate = setting === sfExtSettingsList.clusters && normalizedEndpoint
+                    ? currentSetting.some((item: any) => 
+                        ClusterConnectionManager.normalizeEndpoint(item.endpoint) === normalizedEndpoint)
                     : currentSetting.includes(value);
                     
                 if (!isDuplicate) {

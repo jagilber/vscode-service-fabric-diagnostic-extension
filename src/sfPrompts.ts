@@ -6,6 +6,7 @@ import { SfExtSettings, sfExtSettingsList } from './sfExtSettings';
 import { SfRest } from './sfRest';
 import { SfMgr } from './sfMgr';
 import { ClusterConnectionError } from './models/Errors';
+import { ClusterConnectionManager } from './services/ClusterConnectionManager';
 
 export class SfPrompts {
     private exampleClusterEndpoint = "https://sftestcluster.eastus.cloudapp.azure.com:19080";
@@ -26,8 +27,11 @@ export class SfPrompts {
 
         if (!clusterEndpoint) { return; }
 
+        // Normalize: add default port 19080 if not specified
+        const normalizedEndpoint = ClusterConnectionManager.normalizeEndpoint(clusterEndpoint);
+
         // Only prompt for certificate if HTTPS endpoint
-        const isHttps = clusterEndpoint.toLowerCase().startsWith('https');
+        const isHttps = normalizedEndpoint.toLowerCase().startsWith('https');
         let clusterCertificate: string | undefined;
         
         if (isHttps) {
@@ -37,7 +41,7 @@ export class SfPrompts {
             });
         }
 
-        this.sfConfig.setClusterEndpoint(clusterEndpoint);
+        this.sfConfig.setClusterEndpoint(normalizedEndpoint);
 
         if (clusterCertificate) {
             this.sfConfig.setClusterCertificate(clusterCertificate);
@@ -247,7 +251,8 @@ export class SfPrompts {
                     // Recursively flatten nested arrays
                     flatten(item);
                 } else if (item && typeof item === 'object' && item.endpoint) {
-                    // Valid cluster object with endpoint
+                    // Normalize endpoint (add default port 19080 if missing)
+                    item.endpoint = ClusterConnectionManager.normalizeEndpoint(item.endpoint);
                     if (!seen.has(item.endpoint)) {
                         seen.add(item.endpoint);
                         flattened.push(item as clusterEndpointInfo);

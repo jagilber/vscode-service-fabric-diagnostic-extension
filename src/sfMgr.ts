@@ -18,6 +18,7 @@ import { ApplicationInfo } from './types';
 import { SfHttpClient } from './utils/SfHttpClient';
 import { SfSdkInstaller } from './services/SfSdkInstaller';
 import { SfClusterService } from './services/SfClusterService';
+import { ClusterConnectionManager } from './services/ClusterConnectionManager';
 
 import * as xmlConverter from 'xml-js';
 import { IClusterTreeView } from './treeview/IClusterTreeView';
@@ -317,12 +318,35 @@ export class SfMgr {
 
     public async loadSfConfigs(): Promise<void> {
         SfUtility.outputLog('Loading cluster configs from settings...', null, debugLevel.info);
-        const clusters: clusterEndpointInfo[] | any = SfExtSettings.getSetting(sfExtSettingsList.clusters);
+        let clusters: clusterEndpointInfo[] | any = SfExtSettings.getSetting(sfExtSettingsList.clusters);
         
         if (!clusters || !Array.isArray(clusters)) {
             SfUtility.outputLog('No clusters found in settings or invalid format', null, debugLevel.warn);
             return;
         }
+
+        // Normalize endpoints (add default port 19080) and deduplicate
+        const seen = new Set<string>();
+        const deduped: clusterEndpointInfo[] = [];
+        for (const cluster of clusters) {
+            if (cluster && cluster.endpoint) {
+                cluster.endpoint = ClusterConnectionManager.normalizeEndpoint(cluster.endpoint);
+                if (!seen.has(cluster.endpoint)) {
+                    seen.add(cluster.endpoint);
+                    deduped.push(cluster);
+                } else {
+                    SfUtility.outputLog(`loadSfConfigs: removing duplicate cluster: ${cluster.endpoint}`, null, debugLevel.info);
+                }
+            }
+        }
+
+        // Persist cleaned list if duplicates were removed
+        if (deduped.length !== clusters.length) {
+            SfUtility.outputLog(`loadSfConfigs: cleaned ${clusters.length - deduped.length} duplicate(s), saving`, null, debugLevel.info);
+            const settings = vscode.workspace.getConfiguration('sfClusterExplorer');
+            await settings.update(sfExtSettingsList.clusters, deduped, vscode.ConfigurationTarget.Global);
+        }
+        clusters = deduped;
         
         SfUtility.outputLog(`Found ${clusters.length} cluster(s) in settings`, null, debugLevel.info);
         
@@ -338,13 +362,14 @@ export class SfMgr {
     }
 
     public removeSfConfig(clusterHttpEndpoint: string) {
-        const index = this.sfConfigs.findIndex((config: SfConfiguration) => config.getClusterEndpoint() === clusterHttpEndpoint);
+        const normalized = ClusterConnectionManager.normalizeEndpoint(clusterHttpEndpoint);
+        const index = this.sfConfigs.findIndex((config: SfConfiguration) => config.getClusterEndpoint() === normalized);
         if (index > -1) {
             this.sfConfigs.splice(index, 1);
-            SfUtility.outputLog('sfMgr:removeSfConfig:clusterHttpEndpoint removed:' + clusterHttpEndpoint);
+            SfUtility.outputLog('sfMgr:removeSfConfig:clusterHttpEndpoint removed:' + normalized);
         }
         else {
-            SfUtility.outputLog('sfMgr:removeSfConfig:clusterHttpEndpoint not found:' + clusterHttpEndpoint);
+            SfUtility.outputLog('sfMgr:removeSfConfig:clusterHttpEndpoint not found:' + normalized);
         }
     }
 
