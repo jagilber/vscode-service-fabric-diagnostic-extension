@@ -58,8 +58,8 @@ describe('ClusterCommands', () => {
         registerClusterCommands(mockContext, mockSfMgr, mockSfPrompts);
     });
 
-    test('should register all 8 cluster commands', () => {
-        expect(vscode.commands.registerCommand).toHaveBeenCalledTimes(8);
+    test('should register all 9 cluster commands', () => {
+        expect(vscode.commands.registerCommand).toHaveBeenCalledTimes(9);
     });
 
     test('sfGetClusters should call sfMgr.getClusters', async () => {
@@ -95,14 +95,14 @@ describe('ClusterCommands', () => {
     test('removeClusterFromTree should confirm then remove', async () => {
         (vscode.window.showWarningMessage as jest.Mock).mockResolvedValue('Remove');
         const handler = registeredHandlers['sfClusterExplorer.removeClusterFromTree'];
-        await handler({ label: 'http://cluster:19080' });
+        await handler({ clusterEndpoint: 'http://cluster:19080' });
         expect(mockSfMgr.removeClusterFromTree).toHaveBeenCalledWith('http://cluster:19080');
     });
 
     test('removeClusterFromTree should not remove on cancel', async () => {
         (vscode.window.showWarningMessage as jest.Mock).mockResolvedValue(undefined);
         const handler = registeredHandlers['sfClusterExplorer.removeClusterFromTree'];
-        await handler({ label: 'http://cluster:19080' });
+        await handler({ clusterEndpoint: 'http://cluster:19080' });
         expect(mockSfMgr.removeClusterFromTree).not.toHaveBeenCalled();
     });
 
@@ -113,7 +113,7 @@ describe('ClusterCommands', () => {
 
     test('setActiveCluster should call sfMgr.setActiveCluster', async () => {
         const handler = registeredHandlers['sfClusterExplorer.setActiveCluster'];
-        await handler({ label: 'http://cluster:19080' });
+        await handler({ clusterEndpoint: 'http://cluster:19080' });
         expect(mockSfMgr.setActiveCluster).toHaveBeenCalledWith('http://cluster:19080');
     });
 

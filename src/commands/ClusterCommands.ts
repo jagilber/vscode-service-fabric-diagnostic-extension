@@ -68,11 +68,11 @@ export function registerClusterCommands(
         context,
         'sfClusterExplorer.removeClusterFromTree',
         async (item: any) => {
-            if (!item || !item.label) {
+            if (!item || !item.clusterEndpoint) {
                 throw new Error('Cannot remove cluster: invalid tree item');
             }
             
-            const clusterEndpoint = item.label;
+            const clusterEndpoint = item.clusterEndpoint;
             const confirmed = await vscode.window.showWarningMessage(
                 `Remove cluster "${clusterEndpoint}" from tree view?`,
                 { modal: true },
@@ -92,11 +92,11 @@ export function registerClusterCommands(
         context,
         'sfClusterExplorer.setActiveCluster',
         async (item: any) => {
-            if (!item || !item.label) {
+            if (!item || !item.clusterEndpoint) {
                 throw new Error('Cannot set active cluster: invalid tree item');
             }
             
-            const clusterEndpoint = item.label;
+            const clusterEndpoint = item.clusterEndpoint;
             sfMgr.setActiveCluster(clusterEndpoint);
         },
         'set active cluster'
