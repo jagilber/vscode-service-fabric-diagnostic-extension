@@ -145,7 +145,7 @@ export class SfDeployService implements vscode.Disposable {
 
                 // Step 2: Provision application type
                 progress.report({ message: 'Provisioning application type...', increment: 40 });
-                await sfRest.provisionApplicationType(imageStorePath, true);
+                await sfRest.provisionApplicationType(imageStorePath, true, options.typeName, options.typeVersion);
 
                 // Step 2b: Poll for provision completion
                 progress.report({ message: 'Waiting for provisioning to complete...', increment: 10 });
@@ -271,7 +271,7 @@ export class SfDeployService implements vscode.Disposable {
 
                 // Step 2: Provision new version
                 progress.report({ message: 'Provisioning new version...', increment: 30 });
-                await sfRest.provisionApplicationType(imageStorePath, true);
+                await sfRest.provisionApplicationType(imageStorePath, true, options.typeName, options.typeVersion);
 
                 // Step 2b: Poll for provision completion
                 progress.report({ message: 'Waiting for provisioning...', increment: 10 });

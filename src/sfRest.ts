@@ -1337,7 +1337,7 @@ export class SfRest implements IHttpOptionsProvider {
      * Provision an application type from the Image Store.
      * POST /ApplicationTypes/$/Provision?api-version=6.2
      */
-    public async provisionApplicationType(imageStorePath: string, isAsync: boolean = true): Promise<void> {
+    public async provisionApplicationType(imageStorePath: string, isAsync: boolean = true, expectedTypeName?: string, expectedTypeVersion?: string): Promise<void> {
         try {
             SfUtility.outputLog(`sfRest:provisionApplicationType: ${imageStorePath} (async=${isAsync})`, null, debugLevel.info);
             
@@ -1354,10 +1354,22 @@ export class SfRest implements IHttpOptionsProvider {
             
             SfUtility.outputLog('sfRest:provisionApplicationType:complete', null, debugLevel.info);
         } catch (error: any) {
-            // 409 = type+version already provisioned — not an error
-            if (error?.statusCode === 409 || error?.cause?.statusCode === 409) {
-                SfUtility.outputLog(`sfRest:provisionApplicationType: already exists (409), continuing`, null, debugLevel.info);
-                return;
+            if ((error?.statusCode === 409 || error?.cause?.statusCode === 409) && expectedTypeName && expectedTypeVersion) {
+                // 409 = type already exists — verify the correct version is provisioned and Available
+                SfUtility.outputLog(`sfRest:provisionApplicationType: 409 received, verifying ${expectedTypeName} v${expectedTypeVersion} is Available`, null, debugLevel.info);
+                const types = await this.getApplicationTypeInfo(expectedTypeName);
+                const match = types.find((t: any) => {
+                    const ver = t.version || t.Version || t.applicationTypeVersion || t.ApplicationTypeVersion;
+                    const status = t.status || t.Status || '';
+                    return ver === expectedTypeVersion && (status === 'Available' || status === '' || !status);
+                });
+                if (match) {
+                    SfUtility.outputLog(`sfRest:provisionApplicationType: verified ${expectedTypeName} v${expectedTypeVersion} is Available`, null, debugLevel.info);
+                    return;
+                }
+                // Wrong version or not Available — fail
+                SfUtility.outputLog(`sfRest:provisionApplicationType: existing type does not match expected ${expectedTypeName} v${expectedTypeVersion}`, types, debugLevel.error);
+                throw new Error(`Application type ${expectedTypeName} exists but v${expectedTypeVersion} is not Available. Registered versions: ${JSON.stringify(types.map((t: any) => ({ version: t.Version || t.version, status: t.Status || t.status })))}`);
             }
             SfUtility.outputLog(`Failed to provision application type from ${imageStorePath}`, error, debugLevel.error);
             throw new NetworkError(`Failed to provision application type`, { cause: error });
@@ -1393,10 +1405,34 @@ export class SfRest implements IHttpOptionsProvider {
             
             SfUtility.outputLog('sfRest:createApplication:complete', null, debugLevel.info);
         } catch (error: any) {
-            // 409 = application already exists — not an error for idempotent deploys
             if (error?.statusCode === 409 || error?.cause?.statusCode === 409) {
-                SfUtility.outputLog(`sfRest:createApplication: already exists (409), continuing`, null, debugLevel.info);
-                return;
+                // 409 = application already exists — verify it matches what we're deploying
+                SfUtility.outputLog(`sfRest:createApplication: 409 received, verifying existing ${appName} matches ${typeName} v${typeVersion}`, null, debugLevel.info);
+                try {
+                    const appId = appName.replace('fabric:/', '');
+                    let existingApp: any;
+                    if (this.useDirectRest && this.directClient) {
+                        existingApp = await this.directClient.getApplicationInfo(appId);
+                    } else {
+                        existingApp = await this.sfApi.getApplicationInfo(appId);
+                    }
+                    const existingType = existingApp?.TypeName || existingApp?.typeName;
+                    const existingVersion = existingApp?.TypeVersion || existingApp?.typeVersion;
+                    if (existingType === typeName && existingVersion === typeVersion) {
+                        SfUtility.outputLog(`sfRest:createApplication: verified ${appName} already exists with ${typeName} v${typeVersion}`, null, debugLevel.info);
+                        return;
+                    }
+                    // Mismatch — this is dangerous, do NOT proceed
+                    SfUtility.outputLog(`sfRest:createApplication: MISMATCH! ${appName} exists with ${existingType} v${existingVersion} but deploying ${typeName} v${typeVersion}`, null, debugLevel.error);
+                    throw new Error(`Application ${appName} already exists with ${existingType} v${existingVersion}. Cannot overwrite with ${typeName} v${typeVersion}. Remove the existing application first or use upgrade.`);
+                } catch (verifyError: any) {
+                    if (verifyError.message?.includes('already exists with')) {
+                        throw verifyError; // Re-throw our mismatch error
+                    }
+                    // Could not verify — do NOT proceed blindly
+                    SfUtility.outputLog(`sfRest:createApplication: cannot verify existing ${appName}, failing safe`, verifyError, debugLevel.error);
+                    throw new Error(`Application ${appName} already exists (409) but could not verify its state. Remove it manually or use upgrade.`);
+                }
             }
             SfUtility.outputLog(`Failed to create application ${appName}`, error, debugLevel.error);
             throw new NetworkError(`Failed to create application ${appName}`, { cause: error });
