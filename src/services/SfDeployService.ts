@@ -16,6 +16,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { SfRest } from '../sfRest';
 import { SfUtility, debugLevel } from '../sfUtility';
+import { SfConstants } from '../sfConstants';
 import {
     SfProjectInfo,
     DeployOptions,
@@ -158,7 +159,7 @@ export class SfDeployService implements vscode.Disposable {
                 const provisioned = await sfRest.waitForProvision(
                     options.typeName,
                     options.typeVersion,
-                    60000,
+                    SfConstants.getTimeoutMs(),
                     3000,
                 );
                 if (!provisioned) {
@@ -294,7 +295,7 @@ export class SfDeployService implements vscode.Disposable {
                 const provisioned = await sfRest.waitForProvision(
                     options.typeName,
                     options.typeVersion,
-                    60000,
+                    SfConstants.getTimeoutMs(),
                     3000,
                 );
                 if (!provisioned) {

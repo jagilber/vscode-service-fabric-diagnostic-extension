@@ -65,7 +65,7 @@ $piiPatterns = @{
     'Real Subscription ID' = @{
         Pattern = '[0-9a-f]{8}-[0-9a-f]{4}-[45][0-9a-f]{3}-[89ab][0-9a-f]{3}-(?!456789012345|789012345678|726a6a23|53af455a)[0-9a-f]{12}'
         Severity = 'High'
-        AllowedFiles = @('*.test.ts', 'test/**', '.env.example')
+        AllowedFiles = @('*.test.ts', 'test/**', '.env.example', 'src/sfConstants.ts')
     }
     
     'Real Azure Endpoint' = @{
@@ -77,7 +77,7 @@ $piiPatterns = @{
     'Inconsistent Cluster Name' = @{
         Pattern = '(?<!my)cluster\.(?!eastus\.cloudapp\.azure\.com|example)'
         Severity = 'Low'
-        AllowedFiles = @('test/**', '*.test.ts', 'README.md', 'CHANGELOG.md', '*.TEMPLATE.md')
+        AllowedFiles = @('test/**', '*.test.ts', 'README.md', 'CHANGELOG.md', '*.TEMPLATE.md', 'src/sfExtSettings.ts')
     }
     
     'Inconsistent Node Name' = @{

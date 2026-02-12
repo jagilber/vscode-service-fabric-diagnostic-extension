@@ -1,3 +1,5 @@
+import * as vscode from 'vscode';
+
 export class SfConstants {
     public static readonly SF_SDK_DIR = 'C:\\Program Files\\Microsoft SDKs\\Service Fabric\\ClusterSetup';
     public static readonly SF_DEV_CLUSTER_SETUP = `${SfConstants.SF_SDK_DIR}\\DevClusterSetup.ps1`;
@@ -9,4 +11,25 @@ export class SfConstants {
     public static readonly SF_HTTP_GATEWAY_PORT = 19080;
     public static readonly SF_HTTP_GATEWAY_ENDPOINT = `http://localhost:${SfConstants.SF_HTTP_GATEWAY_PORT}`;
 
+    /** Default SF operation timeout in seconds (matches SF cluster default) */
+    public static readonly SF_DEFAULT_TIMEOUT_SEC = 1200;
+
+    /**
+     * Get the configured timeout in milliseconds.
+     * Priority: SF_TIMEOUT_SEC env var → sfClusterExplorer.timeoutSeconds setting → 1200s default
+     */
+    public static getTimeoutMs(): number {
+        const envVal = process.env.SF_TIMEOUT_SEC;
+        if (envVal) {
+            const parsed = parseInt(envVal, 10);
+            if (!isNaN(parsed) && parsed > 0) {
+                return parsed * 1000;
+            }
+        }
+        const settingVal = vscode.workspace.getConfiguration('sfClusterExplorer').get<number>('timeoutSeconds');
+        if (settingVal && settingVal > 0) {
+            return settingVal * 1000;
+        }
+        return SfConstants.SF_DEFAULT_TIMEOUT_SEC * 1000;
+    }
 }

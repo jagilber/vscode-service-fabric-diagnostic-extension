@@ -535,6 +535,12 @@
               "Prompt to choose each time"
             ],
             "description": "Default deployment method for Service Fabric applications"
+          },
+          "sfClusterExplorer.timeoutSeconds": {
+            "type": "number",
+            "default": 1200,
+            "minimum": 10,
+            "description": "Operation timeout in seconds for Service Fabric REST API calls (default: 1200 = 20 minutes, matches SF cluster default). Can also be set via SF_TIMEOUT_SEC environment variable."
           }
         }
       }
