@@ -59,8 +59,13 @@ describe('SfDirectRestClient — Image Store Upload', () => {
             const entry: any = { opts: { ...opts }, bodyChunks: [], ended: false };
             capturedRequests.push(entry);
 
+            const handlers: Record<string, Function[]> = {};
             const mockReq: any = {
-                on: jest.fn().mockReturnThis(),
+                on: jest.fn((event: string, handler: Function) => {
+                    if (!handlers[event]) { handlers[event] = []; }
+                    handlers[event].push(handler);
+                    return mockReq;
+                }),
                 end: jest.fn((chunk?: Buffer) => {
                     if (chunk) { entry.bodyChunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)); }
                     entry.ended = true;
@@ -80,7 +85,15 @@ describe('SfDirectRestClient — Image Store Upload', () => {
             const response = responseFactory
                 ? responseFactory(opts, reqIndex++)
                 : createMockResponse(200, undefined);
-            process.nextTick(() => callback(response));
+
+            // If request has Expect: 100-continue, fire 'continue' before the response
+            // so the body gets sent (mirrors real Node.js behavior)
+            process.nextTick(() => {
+                if (opts.headers && opts.headers['Expect'] === '100-continue') {
+                    (handlers['continue'] || []).forEach(h => h());
+                }
+                callback(response);
+            });
             return mockReq;
         });
     }

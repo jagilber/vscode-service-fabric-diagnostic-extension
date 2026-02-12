@@ -192,9 +192,17 @@ export class SfDirectRestClient {
             options.key = this.key;
         }
 
-        // For binary uploads, set Content-Length in headers upfront
+        // For binary uploads, set Content-Length and Expect: 100-continue.
+        // The SF HTTP Gateway (HTTP.sys) uses lazy client-cert negotiation: the initial
+        // TLS handshake completes WITHOUT requesting the client certificate. Only after
+        // HTTP.sys sees the request headers does it trigger a TLS renegotiation to request
+        // the cert. Without Expect: 100-continue, the client sends headers+body immediately
+        // and the large body data blocks the TLS renegotiation, causing an infinite hang.
+        // With Expect: 100-continue, headers are sent first, the server renegotiates TLS,
+        // confirms the client cert, sends "100 Continue", and THEN the body is sent.
         if (isBinaryBody) {
             options.headers!['Content-Length'] = body.length;
+            options.headers!['Expect'] = '100-continue';
         }
 
         const logUrl = `${parsedUrl.protocol}//${options.hostname}:${options.port}${fullPath}`;
@@ -309,31 +317,32 @@ export class SfDirectRestClient {
 
                 socket.on('close', (hadError) => {
                     SfUtility.outputLog(`🔌 Socket closed (hadError=${hadError}, bytesWritten=${socket.bytesWritten})`, null, debugLevel.info);
+                    // NOTE: Do NOT reject here. With keepAlive:false, the PREVIOUS request's
+                    // socket close event fires via the new request's socket handler (Node.js
+                    // assigns the dying socket first, then creates a fresh one internally).
+                    // Rejecting here would kill the new request that is processing normally
+                    // on a different underlying socket. The timeout handler provides the
+                    // safety net for truly dead connections.
                 });
             });
 
             // Send body if provided
             if (body) {
                 if (isBinaryBody) {
-                    SfUtility.outputLog(`📤 Request body: <binary ${body.length} bytes>`, null, debugLevel.info);
-                    // Write binary body with backpressure handling
-                    const canContinue = req.write(body);
-                    if (!canContinue) {
-                        SfUtility.outputLog(`📤 Write returned false (backpressure), waiting for drain...`, null, debugLevel.info);
-                        req.once('drain', () => {
-                            SfUtility.outputLog(`📤 Drain event received, ending request`, null, debugLevel.info);
-                            req.end();
-                        });
-                    } else {
-                        SfUtility.outputLog(`📤 Write accepted ${body.length} bytes, ending request`, null, debugLevel.info);
-                        req.end();
-                    }
+                    SfUtility.outputLog(`📤 Sending <binary ${body.length} bytes> (waiting for 100-continue)`, null, debugLevel.info);
+                    // With Expect: 100-continue, Node.js sends only the headers first.
+                    // The server completes TLS renegotiation (client cert request), then
+                    // sends "100 Continue". Node.js fires the 'continue' event, and we
+                    // send the body. This prevents TLS renegotiation deadlock.
+                    req.on('continue', () => {
+                        SfUtility.outputLog(`📤 100-continue received, sending body (${body.length} bytes)`, null, debugLevel.info);
+                        req.end(body);
+                    });
                 } else {
                     const bodyStr = typeof body === 'string' ? body : JSON.stringify(body);
                     SfUtility.outputLog(`📤 Request body: ${bodyStr}`, null, debugLevel.info);
                     req.setHeader('Content-Length', Buffer.byteLength(bodyStr));
-                    req.write(bodyStr);
-                    req.end();
+                    req.end(bodyStr);
                 }
             } else {
                 req.end();
