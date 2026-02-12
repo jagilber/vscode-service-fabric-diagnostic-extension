@@ -856,6 +856,19 @@ export class SfDirectRestClient {
     }
 
     /**
+     * Get Image Store content (files and folders) at the given path.
+     * GET /ImageStore/{contentPath}?api-version=6.0
+     * Returns { StoreFiles: [...], StoreFolders: [...] }
+     */
+    async getImageStoreContent(contentPath: string): Promise<any> {
+        SfUtility.outputLog(`SfDirectRestClient.getImageStoreContent: path=${contentPath}`, null, debugLevel.info);
+        const encodedPath = contentPath.split('/').map(s => encodeURIComponent(s)).join('/');
+        const result = await this.makeRequest<any>('GET', `/ImageStore/${encodedPath}`);
+        SfUtility.outputLog(`SfDirectRestClient.getImageStoreContent: files=${result?.StoreFiles?.length || 0} folders=${result?.StoreFolders?.length || 0}`, null, debugLevel.info);
+        return result;
+    }
+
+    /**
      * Delete an application package from the Image Store.
      * DELETE /ImageStore/{contentPath}?api-version=6.0
      */

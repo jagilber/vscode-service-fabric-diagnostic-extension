@@ -721,11 +721,16 @@ export class SfRest implements IHttpOptionsProvider {
      * @param path - Relative path in image store (empty for root)
      * @returns Image store content with files and folders
      */
-    public async getImageStoreContent(path?: string): Promise<sfModels.ImageStoreContent> {
+    public async getImageStoreContent(path?: string): Promise<any> {
         try {
-            const endpoint = path ? `ImageStore/${encodeURIComponent(path)}` : 'ImageStore';
             SfUtility.outputLog(`sfRest:getImageStoreContent:path=${path || 'root'}`, null, debugLevel.info);
             
+            if (this.useDirectRest && this.directClient) {
+                const result = await this.directClient.getImageStoreContent(path || '');
+                SfUtility.outputLog(`sfRest:getImageStoreContent:files=${result?.StoreFiles?.length || 0}, folders=${result?.StoreFolders?.length || 0}`, null, debugLevel.info);
+                return result;
+            }
+
             const content = await this.sfApi.getImageStoreContent(path || '');
             SfUtility.outputLog(`sfRest:getImageStoreContent:files=${content.storeFiles?.length || 0}, folders=${content.storeFolders?.length || 0}`, null, debugLevel.debug);
             return content;
@@ -1412,10 +1417,62 @@ export class SfRest implements IHttpOptionsProvider {
                 await this.uploadFileToImageStore(imageStorePath, file.path, file.size);
             }
             
+            // Upload _.dir marker files for fabric:ImageStore (service-based Image Store).
+            // The Image Store Service requires these 0-byte marker files to recognize
+            // uploaded paths as directories for the provision process.
+            // File-based image stores (file:C:\path) use real OS directories and don't need markers.
+            const imageStoreConn = await this.getImageStoreConnectionString();
+            if (!imageStoreConn.startsWith('file:')) {
+                const dirs = new Set<string>();
+                dirs.add(imageStoreRelativePath);
+                for (const file of allFiles) {
+                    const relativePath = path.relative(localPackagePath, file.path).replace(/\\/g, '/');
+                    const dirParts = relativePath.split('/');
+                    // Add each intermediate directory
+                    for (let d = 1; d < dirParts.length; d++) {
+                        dirs.add(`${imageStoreRelativePath}/${dirParts.slice(0, d).join('/')}`);
+                    }
+                }
+                SfUtility.outputLog(`sfRest:uploadApplicationPackage: uploading ${dirs.size} _.dir marker(s)`, null, debugLevel.info);
+                const emptyBuffer = Buffer.alloc(0);
+                for (const dir of dirs) {
+                    const markerPath = `${dir}/_.dir`;
+                    SfUtility.outputLog(`sfRest:uploadApplicationPackage: uploading marker ${markerPath}`, null, debugLevel.info);
+                    await this.uploadToImageStore(markerPath, emptyBuffer);
+                }
+            }
+            
             SfUtility.outputLog('sfRest:uploadApplicationPackage:complete', null, debugLevel.info);
         } catch (error) {
             SfUtility.outputLog(`Failed to upload application package from ${localPackagePath}`, error, debugLevel.error);
             throw new NetworkError(`Failed to upload application package`, { cause: error });
+        }
+    }
+
+    /**
+     * Verify that uploaded content exists in the Image Store before provisioning.
+     * Logs the content listing for diagnostics.
+     */
+    public async verifyImageStoreContent(imageStorePath: string): Promise<boolean> {
+        try {
+            const content = await this.getImageStoreContent(imageStorePath);
+            if (!content) {
+                SfUtility.outputLog(`sfRest:verifyImageStoreContent: no content at ${imageStorePath}`, null, debugLevel.warn);
+                return false;
+            }
+            const files = content?.StoreFiles || content?.storeFiles || [];
+            const folders = content?.StoreFolders || content?.storeFolders || [];
+            SfUtility.outputLog(`sfRest:verifyImageStoreContent: ${imageStorePath} → ${files.length} files, ${folders.length} folders`, null, debugLevel.info);
+            for (const f of files) {
+                SfUtility.outputLog(`  file: ${f?.StoreRelativePath || f?.storeRelativePath || JSON.stringify(f)}`, null, debugLevel.info);
+            }
+            for (const d of folders) {
+                SfUtility.outputLog(`  folder: ${d?.StoreRelativePath || d?.storeRelativePath || JSON.stringify(d)}`, null, debugLevel.info);
+            }
+            return files.length > 0 || folders.length > 0;
+        } catch (error) {
+            SfUtility.outputLog(`sfRest:verifyImageStoreContent: error verifying ${imageStorePath}`, error, debugLevel.warn);
+            return false;
         }
     }
 

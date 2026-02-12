@@ -148,9 +148,15 @@ export class SfDeployService implements vscode.Disposable {
                     },
                 );
 
-                // Step 2: Provision application type
-                SfUtility.outputLog('SfDeployService.deployToCluster: Step 2 - Provision application type', null, debugLevel.info);
-                progress.report({ message: 'Provisioning application type...', increment: 40 });
+                // Step 2: Verify upload and provision application type
+                SfUtility.outputLog('SfDeployService.deployToCluster: Step 2 - Verify upload + Provision', null, debugLevel.info);
+                progress.report({ message: 'Verifying upload...', increment: 5 });
+                const verified = await sfRest.verifyImageStoreContent(imageStorePath);
+                if (!verified) {
+                    SfUtility.outputLog('SfDeployService.deployToCluster: WARNING - Image Store content verification failed, proceeding with provision anyway', null, debugLevel.warn);
+                }
+
+                progress.report({ message: 'Provisioning application type...', increment: 35 });
                 await sfRest.provisionApplicationType(imageStorePath, true, options.typeName, options.typeVersion);
 
                 // Step 2b: Poll for provision completion

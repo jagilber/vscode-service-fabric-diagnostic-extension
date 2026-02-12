@@ -305,8 +305,31 @@ async function main() {
         console.log(`  Body: ${commitResult2.body}`);
     }
 
-    // 7. Cleanup
-    console.log('\n[6] Cleanup...');
+    // 7. Verify Image Store content listing (diagnostic for FABRIC_E_DIRECTORY_NOT_FOUND)
+    console.log('\n[6] Verifying Image Store content listing...');
+    const contentResult = await makeRequest(agent, 'GET', `/ImageStore/${testPath}?api-version=6.0`);
+    console.log(`  GET /ImageStore/${testPath} -> ${contentResult.status}`);
+    if (contentResult.status === 200) {
+        try {
+            const parsed = JSON.parse(contentResult.body);
+            console.log(`  StoreFiles: ${parsed?.StoreFiles?.length || 0}`);
+            for (const f of (parsed?.StoreFiles || [])) {
+                console.log(`    - ${f?.StoreRelativePath} (${f?.FileSize} bytes)`);
+            }
+            console.log(`  StoreFolders: ${parsed?.StoreFolders?.length || 0}`);
+            for (const d of (parsed?.StoreFolders || [])) {
+                console.log(`    - ${d?.StoreRelativePath} (${d?.FileCount} files)`);
+            }
+        } catch (e) {
+            console.log(`  Raw body: ${contentResult.body.substring(0, 500)}`);
+        }
+    } else {
+        console.log(`  Body: ${contentResult.body}`);
+        console.log('  ⚠️  Image Store cannot list content at this path — this is likely the root cause of FABRIC_E_DIRECTORY_NOT_FOUND!');
+    }
+
+    // 8. Cleanup
+    console.log('\n[7] Cleanup...');
     try {
         const delResult = await makeRequest(agent, 'DELETE', `/ImageStore/${testPath}?api-version=6.0`);
         console.log(`  Delete status: ${delResult.status}`);
