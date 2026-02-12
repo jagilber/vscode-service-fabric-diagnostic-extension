@@ -1270,7 +1270,34 @@ export class SfRest implements IHttpOptionsProvider {
                 await fs.promises.mkdir(path.dirname(destPath), { recursive: true });
                 await fs.promises.writeFile(destPath, new Uint8Array(fileContent));
             } else if (this.useDirectRest && this.directClient) {
-                await this.directClient.uploadToImageStore(contentPath, fileContent);
+                // Retry on transient SSL/network errors (e.g. ERR_SSL_BAD_DECRYPT with large files)
+                const maxRetries = 2;
+                for (let attempt = 0; attempt <= maxRetries; attempt++) {
+                    try {
+                        await this.directClient.uploadToImageStore(contentPath, fileContent);
+                        break;
+                    } catch (uploadErr: any) {
+                        // Walk the error chain to find the underlying error code.
+                        // NetworkError stores the original error in context.cause (not native Error.cause).
+                        let code = '';
+                        let msg = '';
+                        let err = uploadErr;
+                        while (err) {
+                            if (!code && err.code) { code = err.code; }
+                            if (!msg && err.message) { msg = err.message; }
+                            // Walk both native Error.cause and our custom context.cause
+                            err = err.cause || err.context?.cause;
+                        }
+                        const isTransient = code === 'ERR_SSL_BAD_DECRYPT' || code === 'ECONNRESET' || code === 'EPIPE' || code === 'EPROTO'
+                            || msg.includes('BAD_DECRYPT');
+                        if (isTransient && attempt < maxRetries) {
+                            SfUtility.outputLog(`⚠️ Transient SSL/network error uploading ${contentPath} (attempt ${attempt + 1}/${maxRetries + 1}): ${code || msg}`, uploadErr, debugLevel.warn);
+                            await new Promise(r => setTimeout(r, 2000 * (attempt + 1)));
+                            continue;
+                        }
+                        throw uploadErr;
+                    }
+                }
             } else {
                 // Use direct HTTP PUT since Azure SDK doesn't expose upload
                 await this.directImageStoreUpload(contentPath, fileContent);
@@ -1494,7 +1521,7 @@ export class SfRest implements IHttpOptionsProvider {
     public async waitForProvision(
         applicationTypeName: string,
         applicationTypeVersion: string,
-        timeoutMs: number = 60000,
+        timeoutMs: number = SfConstants.getTimeoutMs(),
         pollIntervalMs: number = 3000,
     ): Promise<boolean> {
         const deadline = Date.now() + timeoutMs;

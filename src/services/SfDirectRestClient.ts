@@ -30,12 +30,15 @@
  * @see ARCHITECTURE.md "Service Fabric REST API Quirks & Workarounds" for complete documentation
  * @verified 2026-02-03
  */
+import * as crypto from 'crypto';
 import * as https from 'https';
 import * as http from 'http';
+import * as tls from 'tls';
 import * as url from 'url';
 import { SfUtility, debugLevel } from '../sfUtility';
 import { HttpError, NetworkError } from '../models/Errors';
 import { PiiObfuscation } from '../utils/PiiObfuscation';
+import { SfConstants } from '../sfConstants';
 
 export interface SfRestOptions {
     endpoint: string;
@@ -105,6 +108,7 @@ export class SfDirectRestClient {
     private timeout: number;
     private certificate?: string | Buffer;
     private key?: Buffer;
+    private httpsAgent?: https.Agent;
 
     constructor(options: SfRestOptions) {
         // Ensure endpoint has protocol
@@ -114,9 +118,22 @@ export class SfDirectRestClient {
         }
         this.endpoint = endpoint;
         this.apiVersion = options.apiVersion || '6.0';
-        this.timeout = options.timeout || 60000;
+        this.timeout = options.timeout || SfConstants.getTimeoutMs();
         this.certificate = options.certificate;
         this.key = options.key;
+
+        // Create a dedicated HTTPS agent that bypasses VS Code's proxy-patched globalAgent.
+        // This ensures upload requests get their own fresh TLS connections.
+        const parsedEndpoint = url.parse(this.endpoint);
+        if (parsedEndpoint.protocol === 'https:') {
+            this.httpsAgent = new https.Agent({
+                cert: this.certificate,
+                key: this.key,
+                rejectUnauthorized: false,
+                keepAlive: false,
+                maxSockets: Infinity,
+            });
+        }
 
         SfUtility.outputLog(`SfDirectRestClient initialized: ${PiiObfuscation.endpoint(this.endpoint)}`, null, debugLevel.info);
     }
@@ -144,8 +161,11 @@ export class SfDirectRestClient {
         // Add api-version and timeout to path
         const separator = path.includes('?') ? '&' : '?';
         const requestApiVersion = apiVersionOverride || this.apiVersion;
-        const fullPath = `${path}${separator}api-version=${requestApiVersion}&timeout=60`;
+        const effectiveTimeoutMs = timeoutMs || this.timeout;
+        const timeoutSec = Math.round(effectiveTimeoutMs / 1000);
+        const fullPath = `${path}${separator}api-version=${requestApiVersion}&timeout=${timeoutSec}`;
 
+        const isBinaryBody = Buffer.isBuffer(body);
         const options: https.RequestOptions = {
             hostname: parsedUrl.hostname,
             port: parsedUrl.port ? parseInt(parsedUrl.port) : (isHttps ? 443 : 19080),
@@ -154,15 +174,26 @@ export class SfDirectRestClient {
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
+                'Connection': 'close',
                 ...customHeaders,
             },
             rejectUnauthorized: false
         };
 
-        // Add certificate auth if provided
+        // Use dedicated HTTPS agent to bypass VS Code's proxy-patched globalAgent
+        if (isHttps && this.httpsAgent) {
+            options.agent = this.httpsAgent;
+        }
+
+        // Add certificate auth if provided (also needed when agent doesn't carry certs)
         if (this.certificate && this.key) {
             options.cert = this.certificate;
             options.key = this.key;
+        }
+
+        // For binary uploads, set Content-Length in headers upfront
+        if (isBinaryBody) {
+            options.headers!['Content-Length'] = body.length;
         }
 
         const logUrl = `${parsedUrl.protocol}//${options.hostname}:${options.port}${fullPath}`;
@@ -176,6 +207,8 @@ export class SfDirectRestClient {
             let requestAborted = false;
 
             const req = requestModule.request(options, (res) => {
+                SfUtility.outputLog(`📥 Response headers received: ${res.statusCode} ${res.statusMessage}`, null, debugLevel.info);
+
                 res.on('data', (chunk: Buffer) => {
                     chunks.push(chunk);
                 });
@@ -237,21 +270,33 @@ export class SfDirectRestClient {
                 reject(new NetworkError('Request error', { cause: err }));
             });
 
-            const effectiveTimeout = timeoutMs || this.timeout;
             req.on('timeout', () => {
                 if (requestAborted || requestCompleted) {
                     return; // Already handled
                 }
                 requestAborted = true;
                 req.destroy();
-                SfUtility.outputLog(`❌ Request timeout after ${effectiveTimeout}ms`, null, debugLevel.error);
-                reject(new NetworkError('Request timeout', { cause: new Error(`Timeout after ${effectiveTimeout}ms`) }));
+                SfUtility.outputLog(`❌ Request timeout after ${effectiveTimeoutMs}ms`, null, debugLevel.error);
+                reject(new NetworkError('Request timeout', { cause: new Error(`Timeout after ${effectiveTimeoutMs}ms`) }));
             });
 
-            req.setTimeout(effectiveTimeout);
+            req.setTimeout(effectiveTimeoutMs);
 
-            // Handle socket errors
+            // Socket-level diagnostic logging
             req.on('socket', (socket) => {
+                const tlsSock = socket as tls.TLSSocket;
+                SfUtility.outputLog(`🔌 Socket assigned (connecting=${socket.connecting})`, null, debugLevel.info);
+
+                socket.on('connect', () => {
+                    SfUtility.outputLog(`🔌 TCP connected to ${PiiObfuscation.generic(options.hostname || '')}:${options.port}`, null, debugLevel.info);
+                });
+
+                if (typeof tlsSock.on === 'function') {
+                    tlsSock.on('secureConnect', () => {
+                        SfUtility.outputLog(`🔒 TLS handshake complete (authorized=${tlsSock.authorized}, protocol=${tlsSock.getProtocol?.()})`, null, debugLevel.info);
+                    });
+                }
+
                 socket.on('error', (err) => {
                     if (requestAborted || requestCompleted) {
                         return; // Already handled
@@ -260,23 +305,38 @@ export class SfDirectRestClient {
                     SfUtility.outputLog(`❌ Socket error: ${err.message}`, err, debugLevel.error);
                     reject(new NetworkError('Socket error', { cause: err }));
                 });
+
+                socket.on('close', (hadError) => {
+                    SfUtility.outputLog(`🔌 Socket closed (hadError=${hadError}, bytesWritten=${socket.bytesWritten})`, null, debugLevel.info);
+                });
             });
 
             // Send body if provided
             if (body) {
-                if (Buffer.isBuffer(body)) {
+                if (isBinaryBody) {
                     SfUtility.outputLog(`📤 Request body: <binary ${body.length} bytes>`, null, debugLevel.info);
-                    req.setHeader('Content-Length', body.length);
-                    req.write(body);
+                    // Write binary body with backpressure handling
+                    const canContinue = req.write(body);
+                    if (!canContinue) {
+                        SfUtility.outputLog(`📤 Write returned false (backpressure), waiting for drain...`, null, debugLevel.info);
+                        req.once('drain', () => {
+                            SfUtility.outputLog(`📤 Drain event received, ending request`, null, debugLevel.info);
+                            req.end();
+                        });
+                    } else {
+                        SfUtility.outputLog(`📤 Write accepted ${body.length} bytes, ending request`, null, debugLevel.info);
+                        req.end();
+                    }
                 } else {
                     const bodyStr = typeof body === 'string' ? body : JSON.stringify(body);
                     SfUtility.outputLog(`📤 Request body: ${bodyStr}`, null, debugLevel.info);
                     req.setHeader('Content-Length', Buffer.byteLength(bodyStr));
                     req.write(bodyStr);
+                    req.end();
                 }
+            } else {
+                req.end();
             }
-
-            req.end();
         }).catch((error) => {
             // Wrap any unhandled errors with context
             SfUtility.outputLog(`❌ makeRequest failed for ${method} ${logUrl}`, error, debugLevel.error);
@@ -508,24 +568,111 @@ export class SfDirectRestClient {
     // ==================== DEPLOY / PROVISION APIs ====================
 
     /**
+     * Threshold for switching to session-based chunked upload.
+     * The SF HTTP Gateway has a DefaultHttpRequestTimeout of 120 seconds.
+     * Large files that can't upload within 120s will fail when the gateway kills the connection.
+     * Max entity body for upload chunk is 10MB on the server side; we use a smaller value
+     * to leave headroom for TLS overhead and slower connections.
+     */
+    private static readonly CHUNK_UPLOAD_THRESHOLD = 2 * 1024 * 1024;
+
+    /**
+     * Size of each chunk for session-based chunked upload (4MB).
+     * Server max is 10MB (MaxEntityBodyForUploadChunkSize). We use 4MB which is
+     * comfortably within the gateway's 120-second request timeout even on slow links.
+     */
+    private static readonly UPLOAD_CHUNK_SIZE = 4 * 1024 * 1024;
+
+    /**
      * Upload a file to the Image Store.
-     * PUT /ImageStore/{contentPath}?api-version=6.0
+     * Small files use a single PUT to /ImageStore/{contentPath}.
+     * Large files (> CHUNK_UPLOAD_THRESHOLD) use the session-based chunked upload API:
+     *   PUT /ImageStore/{path}/$/UploadChunk?session-id={guid}  (repeat per chunk)
+     *   POST /ImageStore/$/CommitUploadSession?session-id={guid}
      */
     async uploadToImageStore(contentPath: string, fileContent: Buffer): Promise<void> {
         SfUtility.outputLog(`SfDirectRestClient.uploadToImageStore: path=${contentPath} size=${fileContent.length} bytes`, null, debugLevel.info);
         const encodedPath = contentPath.split('/').map(s => encodeURIComponent(s)).join('/');
-        // Scale timeout based on file size: minimum 60s, add 60s per 5MB
-        const uploadTimeout = Math.max(this.timeout, 60000 + Math.ceil(fileContent.length / (5 * 1024 * 1024)) * 60000);
-        SfUtility.outputLog(`SfDirectRestClient.uploadToImageStore: timeout=${uploadTimeout}ms`, null, debugLevel.info);
-        await this.makeRequest<void>(
-            'PUT',
-            `/ImageStore/${encodedPath}`,
-            fileContent,
-            undefined,
-            { 'Content-Type': 'application/octet-stream' },
-            uploadTimeout,
-        );
+
+        if (fileContent.length > SfDirectRestClient.CHUNK_UPLOAD_THRESHOLD) {
+            await this.uploadToImageStoreChunked(encodedPath, fileContent);
+        } else {
+            // Small file: single-shot upload
+            const uploadTimeout = Math.max(this.timeout, 120000);
+            SfUtility.outputLog(`SfDirectRestClient.uploadToImageStore: single-shot timeout=${uploadTimeout}ms`, null, debugLevel.info);
+            await this.makeRequest<void>(
+                'PUT',
+                `/ImageStore/${encodedPath}`,
+                fileContent,
+                undefined,
+                { 'Content-Type': 'application/octet-stream' },
+                uploadTimeout,
+            );
+        }
         SfUtility.outputLog(`SfDirectRestClient.uploadToImageStore: complete ${contentPath}`, null, debugLevel.info);
+    }
+
+    /**
+     * Upload a large file to Image Store using the session-based chunked upload API.
+     * 1. Generate a session GUID
+     * 2. PUT each chunk to /ImageStore/{path}/$/UploadChunk?session-id={guid} with Content-Range
+     * 3. POST /ImageStore/$/CommitUploadSession?session-id={guid} to finalize
+     * On failure, attempts to clean up the session via DELETE.
+     */
+    private async uploadToImageStoreChunked(encodedPath: string, fileContent: Buffer): Promise<void> {
+        const chunkSize = SfDirectRestClient.UPLOAD_CHUNK_SIZE;
+        const totalSize = fileContent.length;
+        const totalChunks = Math.ceil(totalSize / chunkSize);
+        const sessionId = crypto.randomUUID();
+        const chunkTimeout = 120000; // 2 minutes per chunk — well within gateway timeout
+
+        SfUtility.outputLog(`SfDirectRestClient.uploadToImageStoreChunked: sessionId=${sessionId} ${totalChunks} chunks of up to ${chunkSize} bytes, total=${totalSize}`, null, debugLevel.info);
+
+        try {
+            // Upload each chunk
+            for (let i = 0; i < totalChunks; i++) {
+                const start = i * chunkSize;
+                const end = Math.min(start + chunkSize, totalSize);
+                const chunk = fileContent.subarray(start, end);
+
+                SfUtility.outputLog(`SfDirectRestClient.uploadToImageStoreChunked: chunk ${i + 1}/${totalChunks} bytes ${start}-${end - 1}/${totalSize}`, null, debugLevel.info);
+
+                await this.makeRequest<void>(
+                    'PUT',
+                    `/ImageStore/${encodedPath}/$/UploadChunk?session-id=${sessionId}`,
+                    chunk,
+                    undefined,
+                    {
+                        'Content-Type': 'application/octet-stream',
+                        'Content-Range': `bytes ${start}-${end - 1}/${totalSize}`,
+                    },
+                    chunkTimeout,
+                );
+            }
+
+            // Commit the upload session
+            SfUtility.outputLog(`SfDirectRestClient.uploadToImageStoreChunked: committing session ${sessionId}`, null, debugLevel.info);
+            await this.makeRequest<void>(
+                'POST',
+                `/ImageStore/$/CommitUploadSession?session-id=${sessionId}`,
+                undefined,
+                undefined,
+                undefined,
+                chunkTimeout,
+            );
+        } catch (err) {
+            // Attempt to clean up the failed session
+            SfUtility.outputLog(`SfDirectRestClient.uploadToImageStoreChunked: error, deleting session ${sessionId}`, err, debugLevel.error);
+            try {
+                await this.makeRequest<void>(
+                    'DELETE',
+                    `/ImageStore/$/DeleteUploadSession?session-id=${sessionId}`,
+                );
+            } catch (cleanupErr) {
+                SfUtility.outputLog(`SfDirectRestClient.uploadToImageStoreChunked: failed to delete session ${sessionId}`, cleanupErr, debugLevel.warn);
+            }
+            throw err;
+        }
     }
 
     /**
