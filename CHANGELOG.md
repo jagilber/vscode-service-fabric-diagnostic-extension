@@ -37,6 +37,21 @@ Primary focus on making extension accessible to:
 
 ## [Unreleased]
 
+### Fixed - REST API Deployment Pipeline
+- **TLS upload stall with mTLS clusters** — Uploads to Service Fabric clusters using mutual TLS
+  (client certificate authentication) would hang indefinitely due to HTTP.sys lazy client-cert
+  negotiation causing a TLS renegotiation deadlock. Fixed by sending `Expect: 100-continue` header
+  on binary uploads and waiting for the server's `100 Continue` response before streaming the body.
+  Affects `SfDirectRestClient` chunked and single-shot uploads.
+- **`FABRIC_E_DIRECTORY_NOT_FOUND` during provision** — After uploading application packages to
+  `fabric:ImageStore` (Image Store Service), provisioning would fail because the Image Store Service
+  requires 0-byte `_.dir` marker files in every directory. Fixed by automatically uploading `_.dir`
+  markers after all package files are uploaded. Only applies to `fabric:ImageStore` (not file-share
+  or Azure blob image stores).
+- **Image Store cleanup disabled after provision** — The cleanup step that deletes the uploaded
+  package from the image store after provisioning has been temporarily disabled to allow debugging
+  and verification of deployments.
+
 ### Added - Lazy Activation & Auto-Start Setting
 - **`sfClusterExplorer.autoStart` setting** — Controls whether Service Fabric views are visible
   immediately on VS Code startup. Default: `false` (manual start). Set to `true` for the previous

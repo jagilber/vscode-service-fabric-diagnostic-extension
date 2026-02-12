@@ -59,7 +59,7 @@ $piiPatterns = @{
     'Email Address' = @{
         Pattern = '\b[A-Za-z0-9._%+-]+@(?!microsoft\.com|contoso\.com|example\.com)[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
         Severity = 'Medium'
-        AllowedFiles = @('README.md', 'CONTRIBUTING.md', 'package.json')
+        AllowedFiles = @('README.md', 'CONTRIBUTING.md', 'package.json', 'package-lock.json')
     }
     
     'Real Subscription ID' = @{

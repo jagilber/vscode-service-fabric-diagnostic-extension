@@ -173,13 +173,14 @@ export class SfDeployService implements vscode.Disposable {
                 }
 
                 // Step 3: Clean up image store (per MS best practice: after successful provision, before create)
-                SfUtility.outputLog('SfDeployService.deployToCluster: Step 3 - Cleanup image store', null, debugLevel.info);
-                progress.report({ message: 'Cleaning up Image Store...', increment: 10 });
-                try {
-                    await sfRest.deleteImageStoreContent(imageStorePath);
-                } catch (cleanupErr) {
-                    SfUtility.outputLog('SfDeployService: image store cleanup failed (non-fatal)', cleanupErr, debugLevel.warn);
-                }
+                // DISABLED: Skipping cleanup to avoid potential issues with image store state
+                SfUtility.outputLog('SfDeployService.deployToCluster: Step 3 - Cleanup image store (SKIPPED)', null, debugLevel.info);
+                progress.report({ message: 'Skipping Image Store cleanup...', increment: 10 });
+                // try {
+                //     await sfRest.deleteImageStoreContent(imageStorePath);
+                // } catch (cleanupErr) {
+                //     SfUtility.outputLog('SfDeployService: image store cleanup failed (non-fatal)', cleanupErr, debugLevel.warn);
+                // }
 
                 // Step 4: Create application instance
                 SfUtility.outputLog('SfDeployService.deployToCluster: Step 4 - Create application instance', null, debugLevel.info);

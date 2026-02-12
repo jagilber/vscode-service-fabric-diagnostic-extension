@@ -528,7 +528,11 @@
           "sfClusterExplorer.deployMethod": {
             "type": "string",
             "default": "rest",
-            "enum": ["rest", "powershell", "ask"],
+            "enum": [
+              "rest",
+              "powershell",
+              "ask"
+            ],
             "enumDescriptions": [
               "Use REST API (Upload → Provision → Create via direct HTTP)",
               "Use PowerShell SF SDK cmdlets (requires SF SDK installed)",
@@ -607,6 +611,7 @@
     "jest": "^30.2.0",
     "license-checker": "^25.0.1",
     "ts-jest": "^29.4.6",
+    "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   }
 }
