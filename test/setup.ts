@@ -180,7 +180,27 @@ jest.mock('vscode', () => ({
     },
     MarkdownString: class MarkdownString {
         constructor(public value?: string, public supportThemeIcons?: boolean) {}
-    }
+    },
+    languages: {
+        createDiagnosticCollection: jest.fn(() => ({
+            set: jest.fn(),
+            clear: jest.fn(),
+            dispose: jest.fn(),
+            delete: jest.fn(),
+            get: jest.fn(),
+            has: jest.fn(),
+            forEach: jest.fn(),
+        })),
+    },
+    Diagnostic: class Diagnostic {
+        constructor(public range: any, public message: string, public severity?: number) {}
+    },
+    DiagnosticSeverity: {
+        Error: 0,
+        Warning: 1,
+        Information: 2,
+        Hint: 3,
+    },
 }), { virtual: true });
 
 // Suppress console output during tests unless VERBOSE=true

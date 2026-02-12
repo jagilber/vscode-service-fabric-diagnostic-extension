@@ -2,7 +2,7 @@
   "name": "vscode-service-fabric-diagnostic-extension",
   "displayName": "Service Fabric Diagnostic Extension",
   "description": "Manage and diagnose Azure Service Fabric clusters with visual tree view, health monitoring, and operational tools",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "publisher": "jagilber",
   "license": "MIT",
   "keywords": [
@@ -63,9 +63,10 @@
     "onCommand:sfApplications.removeFromCluster",
     "onCommand:sfApplications.upgradeApplication",
     "onCommand:sfApplications.deployWithProfile",
-    "onCommand:sfApplications.openManifest",
+    "onCommand:sfApplications.openProjectInCode",
     "onCommand:sfApplications.addExternalProject",
-    "onCommand:sfApplications.removeExternalProject"
+    "onCommand:sfApplications.removeExternalProject",
+    "onCommand:sfApplications.validateManifest"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -239,9 +240,9 @@
         "icon": "$(cloud-upload)"
       },
       {
-        "command": "sfApplications.openManifest",
-        "title": "Open Application Manifest",
-        "icon": "$(file-code)"
+        "command": "sfApplications.openProjectInCode",
+        "title": "Open Project in Code",
+        "icon": "$(folder-opened)"
       },
       {
         "command": "sfApplications.addExternalProject",
@@ -267,6 +268,11 @@
         "command": "sfApplications.removeExternalProject",
         "title": "Remove External Project",
         "icon": "$(remove)"
+      },
+      {
+        "command": "sfApplications.validateManifest",
+        "title": "Validate Manifest",
+        "icon": "$(check-all)"
       }
     ],
     "menus": {
@@ -309,7 +315,7 @@
           "group": "inline@2"
         },
         {
-          "command": "sfApplications.openManifest",
+          "command": "sfApplications.openProjectInCode",
           "when": "view == serviceFabricApplicationsView && viewItem =~ /^sfProject/",
           "group": "navigation@1"
         },
@@ -332,6 +338,16 @@
           "command": "sfApplications.upgradeApplication",
           "when": "view == serviceFabricApplicationsView && viewItem =~ /^sfProject/",
           "group": "project@3"
+        },
+        {
+          "command": "sfApplications.validateManifest",
+          "when": "view == serviceFabricApplicationsView && viewItem =~ /^sfProject/",
+          "group": "project@4"
+        },
+        {
+          "command": "sfApplications.validateManifest",
+          "when": "view == serviceFabricApplicationsView && viewItem == manifest",
+          "group": "inline@1"
         },
         {
           "command": "sfApplications.removeFromCluster",
@@ -597,7 +613,8 @@
     "minimist": "^1.2.6",
     "mkdirp": "^0.5.1",
     "rimraf": "^2.6.2",
-    "xml-js": "^1.6.11"
+    "xml-js": "^1.6.11",
+    "xmllint-wasm": "^5.1.0"
   },
   "devDependencies": {
     "@types/ftp": "^0.3.36",

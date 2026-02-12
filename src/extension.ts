@@ -8,6 +8,7 @@ import { ManagementWebviewProvider } from './views/ManagementWebviewProvider';
 import { CommandRegistry } from './commands/CommandRegistry';
 import { SfProjectService } from './services/SfProjectService';
 import { SfDeployService } from './services/SfDeployService';
+import { SfManifestValidator } from './services/SfManifestValidator';
 import { SfApplicationsDataProvider } from './treeview/SfApplicationsDataProvider';
 
 // Global references for cleanup
@@ -15,6 +16,7 @@ let sfMgrInstance: SfMgr | undefined;
 let sfPromptsInstance: SfPrompts | undefined;
 let projectServiceInstance: SfProjectService | undefined;
 let deployServiceInstance: SfDeployService | undefined;
+let manifestValidatorInstance: SfManifestValidator | undefined;
 let applicationsProviderInstance: SfApplicationsDataProvider | undefined;
 
 
@@ -117,19 +119,22 @@ export async function activate(context: vscode.ExtensionContext) {
             const projectService = new SfProjectService();
             projectService.setContext(context);
             const deployService = new SfDeployService();
+            const manifestValidator = new SfManifestValidator();
             const applicationsProvider = new SfApplicationsDataProvider(projectService, context);
 
             projectServiceInstance = projectService;
             deployServiceInstance = deployService;
+            manifestValidatorInstance = manifestValidator;
             applicationsProviderInstance = applicationsProvider;
 
             context.subscriptions.push(projectService);
             context.subscriptions.push(deployService);
+            context.subscriptions.push(manifestValidator);
             context.subscriptions.push(applicationsProvider);
 
             console.log('[SF Extension] 8/10 - Registering commands...');
             // Register ALL commands via centralized CommandRegistry
-            CommandRegistry.registerAll(context, sfMgr, sfPrompts, projectService, deployService, applicationsProvider);
+            CommandRegistry.registerAll(context, sfMgr, sfPrompts, projectService, deployService, applicationsProvider, manifestValidator);
 
             console.log('[SF Extension] 9/10 - All commands registered successfully');
 
@@ -226,6 +231,10 @@ export function deactivate(): void {
         if (deployServiceInstance) {
             deployServiceInstance.dispose();
             deployServiceInstance = undefined;
+        }
+        if (manifestValidatorInstance) {
+            manifestValidatorInstance.dispose();
+            manifestValidatorInstance = undefined;
         }
         
         // Clear prompts instance

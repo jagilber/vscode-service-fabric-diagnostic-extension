@@ -11,9 +11,11 @@ import { SfUtility, debugLevel } from '../sfUtility';
 import { registerCommandWithErrorHandling } from '../utils/CommandUtils';
 import { SfProjectService } from '../services/SfProjectService';
 import { SfDeployService } from '../services/SfDeployService';
+import { SfManifestValidator } from '../services/SfManifestValidator';
 import { SfApplicationsDataProvider } from '../treeview/SfApplicationsDataProvider';
 import { SfProjectNode } from '../treeview/nodes/applications/SfProjectNode';
 import { ProfileNode } from '../treeview/nodes/applications/ProfileNode';
+import { ManifestNode } from '../treeview/nodes/shared/ManifestNode';
 import { DeployOptions } from '../types/ProjectTypes';
 import { SfConfiguration } from '../sfConfiguration';
 import { SfExtSettings, sfExtSettingsList } from '../sfExtSettings';
@@ -24,6 +26,7 @@ export function registerProjectCommands(
     projectService: SfProjectService,
     deployService: SfDeployService,
     applicationsProvider: SfApplicationsDataProvider,
+    manifestValidator?: SfManifestValidator,
 ): void {
 
     // -----------------------------------------------------------------------
@@ -452,17 +455,121 @@ export function registerProjectCommands(
     );
 
     // -----------------------------------------------------------------------
-    // sfApplications.openManifest — open a manifest file from context
+    // sfApplications.openProjectInCode — open project folder in VS Code
     // -----------------------------------------------------------------------
     registerCommandWithErrorHandling(
         context,
-        'sfApplications.openManifest',
+        'sfApplications.openProjectInCode',
         async (node?: SfProjectNode) => {
-            if (node?.project?.manifestPath) {
-                await vscode.commands.executeCommand('vscode.open', vscode.Uri.file(node.project.manifestPath));
+            if (node?.project?.projectDir) {
+                const folderUri = vscode.Uri.file(node.project.projectDir);
+                await vscode.commands.executeCommand('vscode.openFolder', folderUri, { forceNewWindow: true });
             }
         },
-        'open manifest',
+        'open project in code',
+    );
+
+    // -----------------------------------------------------------------------
+    // sfApplications.validateManifest — validate manifest XML against XSD
+    // -----------------------------------------------------------------------
+    registerCommandWithErrorHandling(
+        context,
+        'sfApplications.validateManifest',
+        async (node?: SfProjectNode | ManifestNode) => {
+            if (!manifestValidator) {
+                vscode.window.showWarningMessage('Manifest validator is not available.');
+                return;
+            }
+
+            // If invoked on a ManifestNode, validate that single file
+            if (node instanceof ManifestNode) {
+                const valid = await manifestValidator.validateFile(node.manifestPath);
+                if (valid) {
+                    vscode.window.showInformationMessage(`${node.label}: valid`);
+                } else {
+                    vscode.window.showWarningMessage(`${node.label}: validation errors found. See Problems panel.`);
+                }
+                return;
+            }
+
+            // If invoked on a SfProjectNode, validate all manifests in the project
+            if (node instanceof SfProjectNode && node.project) {
+                const svcPaths = node.project.services
+                    .map(s => s.serviceManifestPath)
+                    .filter((p): p is string => !!p);
+
+                const errorCount = await manifestValidator.validateProject(
+                    node.project.manifestPath,
+                    svcPaths,
+                );
+
+                const totalFiles = 1 + svcPaths.length;
+                if (errorCount === 0) {
+                    vscode.window.showInformationMessage(
+                        `${node.project.appTypeName}: all ${totalFiles} manifest(s) valid`,
+                    );
+                } else {
+                    vscode.window.showWarningMessage(
+                        `${node.project.appTypeName}: ${errorCount} of ${totalFiles} manifest(s) have errors. See Problems panel.`,
+                    );
+                }
+                return;
+            }
+
+            // If no node, try to validate the active editor file
+            const activeEditor = vscode.window.activeTextEditor;
+            if (activeEditor) {
+                const fileName = path.basename(activeEditor.document.fileName);
+                if (fileName.toLowerCase().endsWith('manifest.xml')) {
+                    const valid = await manifestValidator.validateFile(activeEditor.document.fileName);
+                    if (valid) {
+                        vscode.window.showInformationMessage(`${fileName}: valid`);
+                    } else {
+                        vscode.window.showWarningMessage(`${fileName}: validation errors found. See Problems panel.`);
+                    }
+                    return;
+                }
+            }
+
+            // Fallback: pick a project to validate
+            const projects = await projectService.discoverProjects();
+            if (projects.length === 0) {
+                vscode.window.showWarningMessage('No .sfproj projects found in workspace.');
+                return;
+            }
+
+            const picked = await vscode.window.showQuickPick(
+                projects.map(p => ({
+                    label: p.appTypeName,
+                    description: `v${p.appTypeVersion}`,
+                    detail: p.sfprojPath,
+                    project: p,
+                })),
+                { placeHolder: 'Select project to validate' },
+            );
+            if (!picked) { return; }
+
+            const svcPaths = picked.project.services
+                .map(s => s.serviceManifestPath)
+                .filter((p): p is string => !!p);
+
+            const errorCount = await manifestValidator.validateProject(
+                picked.project.manifestPath,
+                svcPaths,
+            );
+
+            const totalFiles = 1 + svcPaths.length;
+            if (errorCount === 0) {
+                vscode.window.showInformationMessage(
+                    `${picked.label}: all ${totalFiles} manifest(s) valid`,
+                );
+            } else {
+                vscode.window.showWarningMessage(
+                    `${picked.label}: ${errorCount} of ${totalFiles} manifest(s) have errors. See Problems panel.`,
+                );
+            }
+        },
+        'validate manifest',
     );
 
     // -----------------------------------------------------------------------

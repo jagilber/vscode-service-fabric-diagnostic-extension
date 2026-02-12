@@ -35,6 +35,22 @@ Primary focus on making extension accessible to:
 - Cluster operators without development background
 - Teams wanting quick evaluation without source builds
 
+## [1.0.3] - 2026-02-11
+
+### Added
+- **Manifest Validator** — New `Validate Manifest` command validates ApplicationManifest.xml and
+  ServiceManifest.xml files against the official Service Fabric XSD schema using `xmllint-wasm`.
+  Errors appear in the VS Code Problems panel with line/column positions. Available from the
+  SFA tree view context menu or command palette.
+- **Open Project in Code** — Replaced `Open Application Manifest` with `Open Project in Code`
+  command that opens the SF application project folder in a new VS Code window.
+
+### Fixed
+- **ServiceManifest.xml not visible in SFA tree** — Service Fabric VS templates use a `Pkg` suffix
+  in `ServiceManifestName` (e.g., `VotingDataPkg`) but the source project directory omits it
+  (e.g., `VotingData`). `findServiceManifestPath` now strips the `Pkg` suffix as a fallback and
+  also checks `ApplicationPackageRoot/{name}/ServiceManifest.xml` for built packages.
+
 ## [Unreleased]
 
 ### Fixed - REST API Deployment Pipeline

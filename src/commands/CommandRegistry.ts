@@ -29,6 +29,7 @@ import { registerReportCommands } from './ReportCommands';
 import { registerProjectCommands } from './ProjectCommands';
 import { SfProjectService } from '../services/SfProjectService';
 import { SfDeployService } from '../services/SfDeployService';
+import { SfManifestValidator } from '../services/SfManifestValidator';
 import { SfApplicationsDataProvider } from '../treeview/SfApplicationsDataProvider';
 
 // ---------------------------------------------------------------------------
@@ -102,9 +103,10 @@ export const COMMAND_MANIFEST: Record<string, CommandMeta> = {
     'sfApplications.removeFromCluster':            { friendlyName: 'remove from cluster',  category: 'project',  requiresCluster: true },
     'sfApplications.upgradeApplication':           { friendlyName: 'upgrade application',  category: 'project',  requiresCluster: true },
     'sfApplications.deployWithProfile':            { friendlyName: 'deploy with profile',  category: 'project',  requiresCluster: true },
-    'sfApplications.openManifest':                 { friendlyName: 'open manifest',        category: 'project',  requiresCluster: false },
+    'sfApplications.openProjectInCode':            { friendlyName: 'open project in code', category: 'project',  requiresCluster: false },
     'sfApplications.addExternalProject':           { friendlyName: 'add external project', category: 'project',  requiresCluster: false },
     'sfApplications.removeExternalProject':        { friendlyName: 'remove external project', category: 'project', requiresCluster: false },
+    'sfApplications.validateManifest':             { friendlyName: 'validate manifest',    category: 'project',  requiresCluster: false },
 };
 
 // ---------------------------------------------------------------------------
@@ -124,6 +126,7 @@ export class CommandRegistry {
         projectService?: SfProjectService,
         deployService?: SfDeployService,
         applicationsProvider?: SfApplicationsDataProvider,
+        manifestValidator?: SfManifestValidator,
     ): void {
         SfUtility.outputLog('CommandRegistry: registering all commands...', null, debugLevel.info);
 
@@ -144,7 +147,7 @@ export class CommandRegistry {
 
         // 6. Project commands (SF Applications view — build, deploy, refresh)
         if (projectService && deployService && applicationsProvider) {
-            registerProjectCommands(context, sfMgr, projectService, deployService, applicationsProvider);
+            registerProjectCommands(context, sfMgr, projectService, deployService, applicationsProvider, manifestValidator);
         }
 
         SfUtility.outputLog('CommandRegistry: all commands registered', null, debugLevel.info);

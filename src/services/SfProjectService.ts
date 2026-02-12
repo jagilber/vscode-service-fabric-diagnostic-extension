@@ -590,15 +590,34 @@ export class SfProjectService implements vscode.Disposable {
     /**
      * Try to find ServiceManifest.xml for a given service manifest name.
      * Searches common project layouts:
-     * - {projectDir}/../{ServiceManifestName}/PackageRoot/ServiceManifest.xml
-     * - {projectDir}/{ServiceManifestName}/PackageRoot/ServiceManifest.xml  
+     * - {projectDir}/../{ServiceManifestName}/PackageRoot/ServiceManifest.xml  (sibling project)
+     * - {projectDir}/{ServiceManifestName}/PackageRoot/ServiceManifest.xml     (sub-project)
+     * - {projectDir}/../{ServiceManifestName}/ServiceManifest.xml             (flat layout)
+     * - ApplicationPackageRoot/{ServiceManifestName}/ServiceManifest.xml      (built package)
+     * Plus variants with "Pkg" suffix stripped (VS templates use "VotingDataPkg"
+     * as ServiceManifestName but the source project directory is "VotingData").
      */
     private findServiceManifestPath(projectDir: string, serviceManifestName: string): string | null {
-        const candidates = [
-            path.join(projectDir, '..', serviceManifestName, 'PackageRoot', 'ServiceManifest.xml'),
-            path.join(projectDir, serviceManifestName, 'PackageRoot', 'ServiceManifest.xml'),
-            path.join(projectDir, '..', serviceManifestName, 'ServiceManifest.xml'),
-        ];
+        const names = [serviceManifestName];
+        // SF templates append "Pkg" suffix to ServiceManifestName but the project
+        // directory omits it (e.g. ServiceManifestName="VotingDataPkg" → dir "VotingData")
+        const stripped = serviceManifestName.replace(/Pkg$/i, '');
+        if (stripped !== serviceManifestName) {
+            names.push(stripped);
+        }
+
+        const candidates: string[] = [];
+        for (const name of names) {
+            candidates.push(
+                path.join(projectDir, '..', name, 'PackageRoot', 'ServiceManifest.xml'),
+                path.join(projectDir, name, 'PackageRoot', 'ServiceManifest.xml'),
+                path.join(projectDir, '..', name, 'ServiceManifest.xml'),
+            );
+        }
+        // Also check inside ApplicationPackageRoot (present after msbuild /t:Package)
+        candidates.push(
+            path.join(projectDir, 'ApplicationPackageRoot', serviceManifestName, 'ServiceManifest.xml'),
+        );
 
         for (const candidate of candidates) {
             if (fs.existsSync(candidate)) {
