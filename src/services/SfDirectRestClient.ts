@@ -31,6 +31,7 @@
  * @verified 2026-02-03
  */
 import * as crypto from 'crypto';
+import * as fs from 'fs';
 import * as https from 'https';
 import * as http from 'http';
 import * as tls from 'tls';
@@ -672,6 +673,110 @@ export class SfDirectRestClient {
                 SfUtility.outputLog(`SfDirectRestClient.uploadToImageStoreChunked: failed to delete session ${sessionId}`, cleanupErr, debugLevel.warn);
             }
             throw err;
+        }
+    }
+
+    /**
+     * Upload a file from disk to Image Store, reading chunks from disk to avoid loading entire file into memory.
+     * Small files (<=CHUNK_UPLOAD_THRESHOLD) are read entirely and uploaded in a single PUT.
+     * Large files use session-based chunked upload reading only one chunk at a time from disk.
+     * 
+     * @param contentPath Image Store relative path (e.g. "AppType/ServicePkg/Code.zip")
+     * @param localFilePath Absolute path to the local file on disk
+     * @param fileSize File size in bytes (from fs.statSync). If not provided, will be read from disk.
+     */
+    async uploadFileToImageStore(contentPath: string, localFilePath: string, fileSize?: number): Promise<void> {
+        const stat = fileSize ?? fs.statSync(localFilePath).size;
+        SfUtility.outputLog(`SfDirectRestClient.uploadFileToImageStore: path=${contentPath} file=${localFilePath} size=${stat} bytes`, null, debugLevel.info);
+        const encodedPath = contentPath.split('/').map(s => encodeURIComponent(s)).join('/');
+
+        if (stat <= SfDirectRestClient.CHUNK_UPLOAD_THRESHOLD) {
+            // Small file: read entirely and single-shot upload
+            const content = fs.readFileSync(localFilePath);
+            const uploadTimeout = Math.max(this.timeout, 120000);
+            await this.makeRequest<void>(
+                'PUT',
+                `/ImageStore/${encodedPath}`,
+                content,
+                undefined,
+                { 'Content-Type': 'application/octet-stream' },
+                uploadTimeout,
+            );
+        } else {
+            // Large file: stream chunks from disk
+            await this.uploadFileToImageStoreChunked(encodedPath, localFilePath, stat);
+        }
+        SfUtility.outputLog(`SfDirectRestClient.uploadFileToImageStore: complete ${contentPath}`, null, debugLevel.info);
+    }
+
+    /**
+     * Upload a large file from disk using session-based chunked upload.
+     * Reads only one 4MB chunk at a time from disk, keeping memory usage constant
+     * regardless of file size (supports 1GB+ files).
+     */
+    private async uploadFileToImageStoreChunked(encodedPath: string, localFilePath: string, totalSize: number): Promise<void> {
+        const chunkSize = SfDirectRestClient.UPLOAD_CHUNK_SIZE;
+        const totalChunks = Math.ceil(totalSize / chunkSize);
+        const sessionId = crypto.randomUUID();
+        const chunkTimeout = 120000;
+
+        SfUtility.outputLog(`SfDirectRestClient.uploadFileToImageStoreChunked: sessionId=${sessionId} file=${localFilePath} ${totalChunks} chunks of up to ${chunkSize} bytes, total=${totalSize}`, null, debugLevel.info);
+
+        const fd = fs.openSync(localFilePath, 'r');
+        try {
+            const chunkBuffer = Buffer.alloc(chunkSize);
+
+            for (let i = 0; i < totalChunks; i++) {
+                const start = i * chunkSize;
+                const expectedBytes = Math.min(chunkSize, totalSize - start);
+                const bytesRead = fs.readSync(fd, chunkBuffer as unknown as Uint8Array, 0, expectedBytes, start);
+
+                if (bytesRead !== expectedBytes) {
+                    throw new Error(`Short read: expected ${expectedBytes} bytes at offset ${start}, got ${bytesRead}`);
+                }
+
+                // Slice to exact size for the last chunk (which may be smaller than chunkSize)
+                const chunk = bytesRead < chunkSize ? chunkBuffer.subarray(0, bytesRead) : chunkBuffer;
+                const end = start + bytesRead;
+
+                SfUtility.outputLog(`SfDirectRestClient.uploadFileToImageStoreChunked: chunk ${i + 1}/${totalChunks} bytes ${start}-${end - 1}/${totalSize}`, null, debugLevel.info);
+
+                await this.makeRequest<void>(
+                    'PUT',
+                    `/ImageStore/${encodedPath}/$/UploadChunk?session-id=${sessionId}`,
+                    chunk,
+                    undefined,
+                    {
+                        'Content-Type': 'application/octet-stream',
+                        'Content-Range': `bytes ${start}-${end - 1}/${totalSize}`,
+                    },
+                    chunkTimeout,
+                );
+            }
+
+            // Commit the upload session
+            SfUtility.outputLog(`SfDirectRestClient.uploadFileToImageStoreChunked: committing session ${sessionId}`, null, debugLevel.info);
+            await this.makeRequest<void>(
+                'POST',
+                `/ImageStore/$/CommitUploadSession?session-id=${sessionId}`,
+                undefined,
+                undefined,
+                undefined,
+                chunkTimeout,
+            );
+        } catch (err) {
+            SfUtility.outputLog(`SfDirectRestClient.uploadFileToImageStoreChunked: error, deleting session ${sessionId}`, err, debugLevel.error);
+            try {
+                await this.makeRequest<void>(
+                    'DELETE',
+                    `/ImageStore/$/DeleteUploadSession?session-id=${sessionId}`,
+                );
+            } catch (cleanupErr) {
+                SfUtility.outputLog(`SfDirectRestClient.uploadFileToImageStoreChunked: failed to delete session ${sessionId}`, cleanupErr, debugLevel.warn);
+            }
+            throw err;
+        } finally {
+            fs.closeSync(fd);
         }
     }
 

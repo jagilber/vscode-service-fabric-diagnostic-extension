@@ -1312,8 +1312,66 @@ export class SfRest implements IHttpOptionsProvider {
     }
 
     /**
+     * Upload a file from disk to Image Store, streaming chunks to avoid loading entire file into memory.
+     * Supports files of any size (1GB+) by reading only 4MB at a time from disk.
+     */
+    public async uploadFileToImageStore(contentPath: string, localFilePath: string, fileSize: number): Promise<void> {
+        try {
+            const imageStoreConn = await this.getImageStoreConnectionString();
+            SfUtility.outputLog(`sfRest:uploadFileToImageStore: ${contentPath} (${fileSize} bytes) file=${localFilePath} imageStore=${imageStoreConn}`, null, debugLevel.info);
+
+            if (imageStoreConn.startsWith('file:')) {
+                // File-based image store (dev clusters) — copy directly to disk
+                const fs = await import('fs');
+                const path = await import('path');
+                const basePath = imageStoreConn.substring('file:'.length);
+                const destPath = path.join(basePath, ...contentPath.split('/'));
+                await fs.promises.mkdir(path.dirname(destPath), { recursive: true });
+                await fs.promises.copyFile(localFilePath, destPath);
+            } else if (this.useDirectRest && this.directClient) {
+                const maxRetries = 2;
+                for (let attempt = 0; attempt <= maxRetries; attempt++) {
+                    try {
+                        await this.directClient.uploadFileToImageStore(contentPath, localFilePath, fileSize);
+                        break;
+                    } catch (uploadErr: any) {
+                        let code = '';
+                        let msg = '';
+                        let err = uploadErr;
+                        while (err) {
+                            if (!code && err.code) { code = err.code; }
+                            if (!msg && err.message) { msg = err.message; }
+                            err = err.cause || err.context?.cause;
+                        }
+                        const isTransient = code === 'ERR_SSL_BAD_DECRYPT' || code === 'ECONNRESET' || code === 'EPIPE' || code === 'EPROTO'
+                            || msg.includes('BAD_DECRYPT');
+                        if (isTransient && attempt < maxRetries) {
+                            SfUtility.outputLog(`⚠️ Transient SSL/network error uploading ${contentPath} (attempt ${attempt + 1}/${maxRetries + 1}): ${code || msg}`, uploadErr, debugLevel.warn);
+                            await new Promise(r => setTimeout(r, 2000 * (attempt + 1)));
+                            continue;
+                        }
+                        throw uploadErr;
+                    }
+                }
+            } else {
+                // Fallback: read entire file for legacy path (non-direct REST)
+                const fs = await import('fs');
+                const content = fs.readFileSync(localFilePath);
+                await this.directImageStoreUpload(contentPath, content);
+            }
+
+            SfUtility.outputLog('sfRest:uploadFileToImageStore:complete', null, debugLevel.info);
+        } catch (error) {
+            const errMsg = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+            SfUtility.outputLog(`Failed to upload file to image store: ${contentPath} - ${errMsg}`, error, debugLevel.error);
+            throw new NetworkError(`Failed to upload file to image store: ${contentPath}`, { cause: error });
+        }
+    }
+
+    /**
      * Upload an entire application package directory to the Image Store.
      * Recursively uploads all files under the given local directory.
+     * Uses streaming file reads to avoid loading entire files into memory (supports 1GB+ packages).
      */
     public async uploadApplicationPackage(
         localPackagePath: string,
@@ -1326,8 +1384,8 @@ export class SfRest implements IHttpOptionsProvider {
             const fs = await import('fs');
             const path = await import('path');
             
-            // Collect all files recursively
-            const allFiles: string[] = [];
+            // Collect all files recursively with sizes
+            const allFiles: { path: string; size: number }[] = [];
             const collectFiles = (dir: string): void => {
                 const entries = fs.readdirSync(dir, { withFileTypes: true });
                 for (const entry of entries) {
@@ -1335,22 +1393,23 @@ export class SfRest implements IHttpOptionsProvider {
                     if (entry.isDirectory()) {
                         collectFiles(full);
                     } else {
-                        allFiles.push(full);
+                        const stat = fs.statSync(full);
+                        allFiles.push({ path: full, size: stat.size });
                     }
                 }
             };
             collectFiles(localPackagePath);
             
-            SfUtility.outputLog(`sfRest:uploadApplicationPackage: uploading ${allFiles.length} file(s)`, null, debugLevel.info);
+            const totalBytes = allFiles.reduce((sum, f) => sum + f.size, 0);
+            SfUtility.outputLog(`sfRest:uploadApplicationPackage: uploading ${allFiles.length} file(s), total ${totalBytes} bytes`, null, debugLevel.info);
             
             for (let i = 0; i < allFiles.length; i++) {
                 const file = allFiles[i];
-                const relativePath = path.relative(localPackagePath, file).replace(/\\/g, '/');
+                const relativePath = path.relative(localPackagePath, file.path).replace(/\\/g, '/');
                 const imageStorePath = `${imageStoreRelativePath}/${relativePath}`;
-                const content = fs.readFileSync(file);
                 
                 progress?.(relativePath, i + 1, allFiles.length);
-                await this.uploadToImageStore(imageStorePath, content);
+                await this.uploadFileToImageStore(imageStorePath, file.path, file.size);
             }
             
             SfUtility.outputLog('sfRest:uploadApplicationPackage:complete', null, debugLevel.info);
