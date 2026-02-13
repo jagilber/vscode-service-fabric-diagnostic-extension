@@ -8,6 +8,7 @@ import { SfMgr } from '../sfMgr';
 import { SfUtility, debugLevel } from '../sfUtility';
 import { ItemTypes, ServiceKinds } from '../constants/ItemTypes';
 import { registerCommandWithErrorHandling, withProgress, confirmWithTypedText } from '../utils/CommandUtils';
+import { DeployTracker } from '../services/DeployTracker';
 
 export function registerResourceCommands(
     context: vscode.ExtensionContext,
@@ -168,14 +169,28 @@ export function registerResourceCommands(
             }
 
             SfUtility.outputLog('ResourceCommands.deleteApplication: user confirmed, proceeding with delete', null, debugLevel.info);
+
+            const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
+            const tracker = new DeployTracker(workspaceRoot, 'remove', applicationName, '', applicationName);
+            tracker.startPhase('Delete Application');
+
             await withProgress('Deleting Application', async () => {
                 const sfConfig = sfMgr.getCurrentSfConfig();
                 SfUtility.outputLog(`ResourceCommands.deleteApplication: cluster=${sfConfig.getClusterEndpoint()}`, null, debugLevel.info);
                 const sfRest = sfConfig.getSfRest();
                 
                 SfUtility.outputLog(`ResourceCommands.deleteApplication: calling sfRest.deleteApplication(${applicationId})`, null, debugLevel.info);
-                await sfRest.deleteApplication(applicationId);
+                try {
+                    await sfRest.deleteApplication(applicationId);
+                    tracker.completePhase('Delete Application');
+                } catch (err) {
+                    tracker.failPhase('Delete Application', err instanceof Error ? err.message : String(err));
+                    tracker.finishOperation(false, err instanceof Error ? err.message : String(err));
+                    throw err;
+                }
                 SfUtility.outputLog(`ResourceCommands.deleteApplication: delete completed successfully for ${applicationId}`, null, debugLevel.info);
+                tracker.skipPhase('Unprovision Type', 'Delete only');
+                tracker.finishOperation(true, `Deleted ${applicationName}`);
 
                 vscode.window.showInformationMessage(`Application ${applicationName} deleted successfully`);
                 
@@ -218,6 +233,12 @@ export function registerResourceCommands(
             }
 
             SfUtility.outputLog('ResourceCommands.unprovisionApplicationType: user confirmed, proceeding with unprovision', null, debugLevel.info);
+
+            const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
+            const tracker = new DeployTracker(workspaceRoot, 'remove', typeName, typeVersion, `fabric:/${typeName}`);
+            tracker.skipPhase('Delete Application', 'Unprovision only');
+            tracker.startPhase('Unprovision Type');
+
             await withProgress('Unprovisioning Application Type', async () => {
                 const sfConfig = sfMgr.getCurrentSfConfig();
                 SfUtility.outputLog(`ResourceCommands.unprovisionApplicationType: cluster=${sfConfig.getClusterEndpoint()}`, null, debugLevel.info);
@@ -237,7 +258,15 @@ export function registerResourceCommands(
                 }
 
                 SfUtility.outputLog(`ResourceCommands.unprovisionApplicationType: calling sfRest.unprovisionApplicationType(${typeName}, ${typeVersion})`, null, debugLevel.info);
-                await sfRest.unprovisionApplicationType(typeName, typeVersion);
+                try {
+                    await sfRest.unprovisionApplicationType(typeName, typeVersion);
+                    tracker.completePhase('Unprovision Type');
+                    tracker.finishOperation(true, `Unprovisioned ${typeName}:${typeVersion}`);
+                } catch (err) {
+                    tracker.failPhase('Unprovision Type', err instanceof Error ? err.message : String(err));
+                    tracker.finishOperation(false, err instanceof Error ? err.message : String(err));
+                    throw err;
+                }
                 SfUtility.outputLog(`ResourceCommands.unprovisionApplicationType: unprovision completed successfully for ${typeName}:${typeVersion}`, null, debugLevel.info);
 
                 vscode.window.showInformationMessage(`Application type ${typeName}:${typeVersion} unprovisioned successfully`);
