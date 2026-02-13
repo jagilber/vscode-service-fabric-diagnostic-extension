@@ -105,44 +105,44 @@ Describe "Cluster Operations Command Generation" -Tag 'Integration', 'ClusterOps
         
         BeforeAll {
             # Simulate what the extension generates
-            $script:GeneratedContent = @"
+            $script:GeneratedContent = @'
 # 🚀 Start Cluster Upgrade
 
-**Cluster:** \`mycluster.eastus.cloudapp.azure.com:19080\`
+**Cluster:** `mycluster.eastus.cloudapp.azure.com:19080`
 
 ## 🔨 PowerShell Commands
 
-\`\`\`powershell
+```powershell
 # Get current cluster version
 Get-ServiceFabricClusterManifest | Select-String "CodeVersion"
-\`\`\`
+```
 
-\`\`\`powershell
+```powershell
 # Start monitored upgrade
-`$targetVersion = "10.0.1949.9590"
+$targetVersion = "10.0.1949.9590"
 
-Start-ServiceFabricClusterUpgrade \`
-    -Code \`
-    -CodePackageVersion `$targetVersion \`
-    -Monitored \`
+Start-ServiceFabricClusterUpgrade `
+    -Code `
+    -CodePackageVersion $targetVersion `
+    -Monitored `
     -FailureAction Rollback
-\`\`\`
+```
 
 📚 **Reference:** [Start-ServiceFabricClusterUpgrade](https://learn.microsoft.com/powershell/module/servicefabric/start-servicefabricclusterupgrade)
 
 ## 🌐 REST API
 
-\`\`\`bash
-curl -k -X POST "https://mycluster.eastus.cloudapp.azure.com:19080/$/Upgrade?api-version=6.0" \\
-  --cert client.pem --key client.key \\
-  -H "Content-Type: application/json" \\
+```bash
+curl -k -X POST "https://mycluster.eastus.cloudapp.azure.com:19080/$/Upgrade?api-version=6.0" \
+  --cert client.pem --key client.key \
+  -H "Content-Type: application/json" \
   -d '{
     "CodeVersion": "10.0.1949.9590",
     "UpgradeKind": "Rolling",
     "RollingUpgradeMode": "Monitored"
   }'
-\`\`\`
-"@
+```
+'@
         }
         
         It "Should generate valid PowerShell syntax" {

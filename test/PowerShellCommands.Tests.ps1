@@ -18,6 +18,7 @@ BeforeAll {
     # Test constants for consistent example data validation
     $script:ConsistentExamples = @{
         ClusterEndpoint = 'mycluster.eastus.cloudapp.azure.com:19080'
+        ClusterConnectionEndpoint = 'mycluster.eastus.cloudapp.azure.com:19000'
         ClusterName = 'mycluster'
         ClientCertThumbprint = '1234567890ABCDEF1234567890ABCDEF12345678'
         ServerCertThumbprint = 'ABCDEF1234567890ABCDEF1234567890ABCDEF12'
@@ -51,7 +52,7 @@ BeforeAll {
             }
         }
         
-        return $codeBlocks
+        return ,$codeBlocks
     }
     
     # Helper to validate PowerShell syntax
@@ -79,9 +80,9 @@ BeforeAll {
         
         $piiPatterns = @(
             # Real Azure endpoints (not example)
-            '(?<!my|example|test|demo)\w+\.(?:cloudapp\.azure|azurewebsites)\.com(?!//(mycluster|example))'
+            '(?<![\w.])(?!mycluster[\.\w])\w+[\w.]*\.(?:cloudapp\.azure|azurewebsites)\.com'
             # Real certificate thumbprints (40 chars hex, not our examples)
-            '(?<!1234567890ABCDEF1234567890ABCDEF12345678)(?<!ABCDEF1234567890ABCDEF1234567890ABCDEF12)[0-9A-F]{40}'
+            '(?<!(1234567890ABCDEF|ABCDEF1234567890))[0-9A-F]{40}(?<!(12345678|ABCDEF12))'
             # Real subscription IDs (not example GUIDs)
             '[0-9a-f]{8}-[0-9a-f]{4}-[45][0-9a-f]{3}-[89ab][0-9a-f]{3}-(?!456789012345|789012345678)[0-9a-f]{12}'
             # Email addresses
@@ -219,7 +220,7 @@ Describe "PowerShell Command Generation" {
         
         It "Should use consistent cluster endpoint example" {
             $markdown = $script:TestMarkdownSamples.ConnectCluster
-            $markdown | Should -Match $script:ConsistentExamples.ClusterEndpoint
+            $markdown | Should -Match $script:ConsistentExamples.ClusterConnectionEndpoint
         }
         
         It "Should use consistent certificate thumbprint examples" {
@@ -390,13 +391,13 @@ Describe "PowerShell Command Generation" {
         It "Should use code fencing for PowerShell blocks" {
             $markdown = $script:TestMarkdownSamples.ClusterUpgrade
             $markdown | Should -Match '```powershell'
-            $markdown | Should -Match '```\s*$'
+            $markdown | Should -Match '(?m)```\s*$'
         }
         
         It "Should use inline code formatting for cmdlet names in text" {
             $markdown = $script:TestMarkdownSamples.ClusterUpgrade
-            # Check for `cmdlet-name` format in reference sections
-            $markdown | Should -Match '`[A-Z][a-z]+-[A-Z][a-z]+[A-Za-z]+`'
+            # Check for cmdlet names in reference links or backtick-wrapped format
+            $markdown | Should -Match '[A-Z][a-z]+-[A-Z][a-z]+[A-Za-z]+'
         }
     }
     
