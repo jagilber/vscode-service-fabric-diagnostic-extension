@@ -35,6 +35,17 @@ Primary focus on making extension accessible to:
 - Cluster operators without development background
 - Teams wanting quick evaluation without source builds
 
+## [1.0.5] - 2026-02-13
+
+### Added
+- **DeployTracker** — New `DeployTracker` class dynamically updates
+  `docs/architecture/deploy-upgrade-phases.md` with a live status table during deploy,
+  upgrade, and remove operations. Each phase shows ⬜ pending, 🔄 in-progress, ✅ done,
+  or ❌ failed with timestamps and durations.
+- **SfDeployService integration** — `deployToCluster()`, `upgradeApplication()`, and
+  `removeFromCluster()` now write live progress to the deploy phases markdown file via
+  `DeployTracker`, providing a persistent phase-by-phase audit trail.
+
 ## [1.0.4] - 2026-02-13
 
 ### Added
