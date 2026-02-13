@@ -528,12 +528,12 @@
         },
         {
           "command": "sfClusterExplorer.viewManifestXml",
-          "when": "view == serviceFabricClusterView && viewItem == manifest",
+          "when": "view == serviceFabricClusterView && viewItem =~ /^(manifest|app-manifest|service-manifest)$/",
           "group": "manifest@1"
         },
         {
           "command": "sfClusterExplorer.viewManifestReport",
-          "when": "view == serviceFabricClusterView && viewItem == manifest",
+          "when": "view == serviceFabricClusterView && viewItem =~ /^(manifest|app-manifest|service-manifest)$/",
           "group": "manifest@2"
         },
         {

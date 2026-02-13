@@ -81,13 +81,7 @@ export function registerReportCommands(
         context,
         'sfClusterExplorer.viewManifestXml',
         async (item: any) => {
-            const endpoint = item?.clusterEndpoint;
-            if (!endpoint) { throw new Error('No cluster endpoint'); }
-            const sfConfig = sfMgr.getSfConfig(endpoint);
-            if (!sfConfig) { throw new Error(`No configuration for ${endpoint}`); }
-            const sfRest = sfConfig.getSfRest();
-            const manifestResp = await sfRest.getClusterManifest();
-            const xml = (manifestResp as any).manifest || JSON.stringify(manifestResp, null, 2);
+            const { xml } = await fetchManifestXml(sfMgr, item);
             const doc = await vscode.workspace.openTextDocument({ content: xml, language: 'xml' });
             await vscode.window.showTextDocument(doc, { preview: false });
         },
@@ -98,15 +92,10 @@ export function registerReportCommands(
         context,
         'sfClusterExplorer.viewManifestReport',
         async (item: any) => {
-            const endpoint = item?.clusterEndpoint;
-            if (!endpoint) { throw new Error('No cluster endpoint'); }
-            const sfConfig = sfMgr.getSfConfig(endpoint);
-            if (!sfConfig) { throw new Error(`No configuration for ${endpoint}`); }
-            const sfRest = sfConfig.getSfRest();
-            const manifestResp = await sfRest.getClusterManifest();
-            const xml = (manifestResp as any).manifest || '';
+            const { xml, title } = await fetchManifestXml(sfMgr, item);
+            const endpoint = item?.clusterEndpoint || '';
             const lines: string[] = [
-                `# Cluster Manifest Report`,
+                `# ${title}`,
                 ``,
                 `**Cluster:** ${endpoint}`,
                 `**Generated:** ${new Date().toISOString()}`,
@@ -121,4 +110,45 @@ export function registerReportCommands(
         },
         'view manifest report',
     );
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Resolve the right manifest XML based on the tree item's contextValue. */
+async function fetchManifestXml(
+    sfMgr: SfMgr,
+    item: any,
+): Promise<{ xml: string; title: string }> {
+    const endpoint = item?.clusterEndpoint;
+    if (!endpoint) { throw new Error('No cluster endpoint'); }
+    const sfConfig = sfMgr.getSfConfig(endpoint);
+    if (!sfConfig) { throw new Error(`No configuration for ${endpoint}`); }
+    const sfRest = sfConfig.getSfRest();
+
+    // Determine manifest type from the item's contextValue or itemType
+    const ctx = item?.contextValue || item?.itemType || '';
+
+    if (ctx.startsWith('app-manifest') || ctx === 'app-manifest') {
+        const appId = item?.applicationId;
+        if (!appId) { throw new Error('No application ID available'); }
+        const resp = await sfRest.getApplicationManifest(appId);
+        const xml = resp?.manifest || JSON.stringify(resp, null, 2);
+        return { xml, title: 'Application Manifest Report' };
+    }
+
+    if (ctx.startsWith('service-manifest') || ctx.startsWith('svc-manifest')) {
+        const appId = item?.applicationId;
+        const svcId = item?.serviceId;
+        if (!appId || !svcId) { throw new Error('No application/service ID available'); }
+        const resp = await sfRest.getServiceManifest(svcId, appId);
+        const xml = resp?.manifest || JSON.stringify(resp, null, 2);
+        return { xml, title: 'Service Manifest Report' };
+    }
+
+    // Default: cluster manifest
+    const resp = await sfRest.getClusterManifest();
+    const xml = (resp as any).manifest || JSON.stringify(resp, null, 2);
+    return { xml, title: 'Cluster Manifest Report' };
 }

@@ -38,6 +38,13 @@ Primary focus on making extension accessible to:
 ## [1.0.6] - 2026-02-14
 
 ### Added
+- **Metrics report with Mermaid charts** — Clicking the "metrics" node in the cluster
+  treeview opens a formatted markdown report with interactive Mermaid charts: capacity
+  utilization bar chart, cluster load distribution, balance pie chart, node load spread
+  (min vs max), capacity violation flowchart, and per-metric pie charts.
+- **View Manifest XML/Report for application and service manifests** — The "View Manifest
+  XML" and "View Manifest Report" context menu options are now available on application
+  manifest and service manifest treeview items, not just the cluster manifest.
 - **Remove All Projects** command in Service Fabric Applications view to clear all
   tracked projects at once.
 - **Essentials markdown report on click** — Clicking "Essentials" in the cluster tree
