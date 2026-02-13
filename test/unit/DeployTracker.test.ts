@@ -32,14 +32,13 @@ describe('DeployTracker', () => {
         expect(content).toContain('fabric:/Voting');
     });
 
-    test('constructor calls openTextDocument and showTextDocument', () => {
+    test('constructor calls executeCommand to show markdown preview', () => {
         new DeployTracker(tmpDir, 'deploy', 'VotingType', '1.0.0', 'fabric:/Voting');
 
-        expect(vscode.workspace.openTextDocument).toHaveBeenCalledWith(
+        expect(vscode.commands.executeCommand).toHaveBeenCalledWith(
+            'markdown.showPreview',
             expect.objectContaining({ fsPath: mdPath })
         );
-        // showTextDocument may be called async - check it was at least invoked
-        // (constructor fires it as fire-and-forget)
     });
 
     test('deploy creates 6 phases', () => {

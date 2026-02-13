@@ -43,6 +43,7 @@ describe('ResourceCommands', () => {
 
         mockSfMgr = {
             getCurrentSfConfig: jest.fn().mockReturnValue({
+                getClusterEndpoint: jest.fn().mockReturnValue('http://localhost:19080'),
                 getSfRest: jest.fn().mockReturnValue(mockSfRest)
             })
         };

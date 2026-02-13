@@ -148,27 +148,21 @@ describe('SfUtility', () => {
     describe('showError', () => {
         test('should call vscode.window.showErrorMessage', () => {
             SfUtility.showError('Test error');
-            expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
-                JSON.stringify('Test error', null, 4)
-            );
+            expect(vscode.window.showErrorMessage).toHaveBeenCalledWith('Test error');
         });
     });
 
     describe('showInformation', () => {
         test('should call vscode.window.showInformationMessage', () => {
             SfUtility.showInformation('Test info');
-            expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(
-                JSON.stringify('Test info', null, 4)
-            );
+            expect(vscode.window.showInformationMessage).toHaveBeenCalledWith('Test info');
         });
     });
 
     describe('showWarning', () => {
         test('should call vscode.window.showWarningMessage', () => {
             SfUtility.showWarning('Test warning');
-            expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(
-                JSON.stringify('Test warning', null, 4)
-            );
+            expect(vscode.window.showWarningMessage).toHaveBeenCalledWith('Test warning');
         });
     });
 

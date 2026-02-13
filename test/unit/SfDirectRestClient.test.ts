@@ -292,7 +292,8 @@ describe('SfDirectRestClient', () => {
             });
 
             await client.disableNode('Node0', 'Pause');
-            expect(mockReq.write).toHaveBeenCalled();
+            // makeRequest sends non-binary body via req.end(bodyStr)
+            expect(mockReq.end).toHaveBeenCalled();
         });
 
         test('removeNodeState should POST', async () => {

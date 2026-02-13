@@ -70,14 +70,15 @@ describe('ReportCommands', () => {
         registerReportCommands(mockContext, mockSfMgr);
     });
 
-    test('should register all 7 report commands', () => {
+    test('should register all 8 report commands', () => {
         expect(registeredHandlers['sfClusterExplorer.generateEventsReport']).toBeDefined();
         expect(registeredHandlers['sfClusterExplorer.generateHealthReport']).toBeDefined();
         expect(registeredHandlers['sfClusterExplorer.generateMetricsReport']).toBeDefined();
         expect(registeredHandlers['sfClusterExplorer.generateCommandsReference']).toBeDefined();
-        expect(registeredHandlers['sfClusterExplorer.generateEssentialsReport']).toBeDefined();
         expect(registeredHandlers['sfClusterExplorer.generateRepairTasksReport']).toBeDefined();
         expect(registeredHandlers['sfClusterExplorer.exportSnapshot']).toBeDefined();
+        expect(registeredHandlers['sfClusterExplorer.viewManifestXml']).toBeDefined();
+        expect(registeredHandlers['sfClusterExplorer.viewManifestReport']).toBeDefined();
     });
 
     describe('generateEventsReport', () => {
@@ -198,57 +199,6 @@ describe('ReportCommands', () => {
                 clusterEndpoint: 'http://localhost:19080'
             });
             expect(mockSfRest.getClusterLoadInformation).toHaveBeenCalled();
-        });
-    });
-
-    describe('generateEssentialsReport', () => {
-        test('should warn for invalid item type', async () => {
-            await registeredHandlers['sfClusterExplorer.generateEssentialsReport']({ itemType: 'node' });
-        });
-
-        test('should generate essentials report', async () => {
-            await registeredHandlers['sfClusterExplorer.generateEssentialsReport']({
-                itemType: 'essentials',
-                clusterEndpoint: 'http://localhost:19080'
-            });
-            expect(mockSfRest.getClusterHealth).toHaveBeenCalled();
-            expect(mockSfRest.getClusterVersion).toHaveBeenCalled();
-        });
-
-        test('should generate essentials report with full data', async () => {
-            mockSfRest.getClusterHealth.mockResolvedValue({
-                aggregatedHealthState: 'Ok',
-                nodeHealthStates: [
-                    { name: 'Node0', aggregatedHealthState: 'Ok', nodeStatus: 'Up' },
-                    { name: 'Node1', aggregatedHealthState: 'Ok', nodeStatus: 'Up' },
-                ],
-                applicationHealthStates: [
-                    { name: 'fabric:/System', aggregatedHealthState: 'Ok' },
-                    { name: 'fabric:/App1', aggregatedHealthState: 'Ok' },
-                ],
-                unhealthyEvaluations: [],
-                healthEvents: [
-                    { healthState: 'Error', sourceId: 'System.FM' },
-                    { healthState: 'Warning', sourceId: 'System.FM' },
-                    { healthState: 'Ok', sourceId: 'System.FM' },
-                ],
-                healthStatistics: {
-                    healthStateCountList: [
-                        { entityKind: 'Node', healthStateCount: { okCount: 2, warningCount: 0, errorCount: 0 } },
-                    ]
-                },
-            });
-            mockSfRest.getClusterVersion.mockResolvedValue({ version: '9.1.0.0' });
-            mockSfRest.getNodes.mockResolvedValue([
-                { name: 'Node0', type: 'Primary', upgradeDomain: 'UD0', faultDomain: 'fd:/0' },
-                { name: 'Node1', type: 'Secondary', upgradeDomain: 'UD1', faultDomain: 'fd:/1' },
-            ]);
-            await registeredHandlers['sfClusterExplorer.generateEssentialsReport']({
-                itemType: 'essentials',
-                clusterEndpoint: 'http://localhost:19080'
-            });
-            expect(mockSfRest.getClusterHealth).toHaveBeenCalled();
-            expect(mockSfRest.getClusterVersion).toHaveBeenCalled();
         });
     });
 

@@ -58,8 +58,8 @@ describe('ClusterCommands', () => {
         registerClusterCommands(mockContext, mockSfMgr, mockSfPrompts);
     });
 
-    test('should register all 9 cluster commands', () => {
-        expect(vscode.commands.registerCommand).toHaveBeenCalledTimes(9);
+    test('should register all 11 cluster commands', () => {
+        expect(vscode.commands.registerCommand).toHaveBeenCalledTimes(11);
     });
 
     test('sfGetClusters should call sfMgr.getClusters', async () => {

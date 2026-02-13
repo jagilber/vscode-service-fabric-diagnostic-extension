@@ -87,9 +87,9 @@ describe('SF Application Tree Nodes', () => {
             expect(node.id).toBe('sfProject:C:\\Projects\\MyApp\\MyApp.sfproj');
         });
 
-        test('should be expanded by default', () => {
+        test('should be collapsed by default', () => {
             const node = new SfProjectNode(mockProject);
-            expect(node.collapsibleState).toBe(vscode.TreeItemCollapsibleState.Expanded);
+            expect(node.collapsibleState).toBe(vscode.TreeItemCollapsibleState.Collapsed);
         });
 
         test('should return children: manifest + services + params + profiles groups', () => {

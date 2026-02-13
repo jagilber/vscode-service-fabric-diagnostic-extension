@@ -126,23 +126,16 @@ flowchart LR
 
 <!-- LIVE_DEPLOY_STATUS_START -->
 
-## 🔄 Live Remove Status
+## ✅ Live Remove Status
 
 **MyAppType** v1.0.0 → `fabric:/MyAppType`  
-Started: 09:55:17 | Elapsed: 9ms
+Started: 14:09:05 | Elapsed: 9ms
 
 | Phase | Status | Duration | Detail |
 |-------|--------|----------|--------|
 | Delete Application | ⏭️ skipped |  | Unprovision only |
-| Unprovision Type | 🔄 in-progress | 1ms... |  |
+| Unprovision Type | ✅ done | 3ms |  |
+
+> Unprovisioned MyAppType:1.0.0
 
 <!-- LIVE_DEPLOY_STATUS_END -->
-
-
-
-
-
-
-
-
-

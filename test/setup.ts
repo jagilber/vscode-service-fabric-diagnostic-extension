@@ -4,6 +4,8 @@
 
 // Load environment variables from .env file
 import * as dotenv from 'dotenv';
+import * as os from 'os';
+import * as path from 'path';
 dotenv.config();
 
 // Increase timeout for integration tests
@@ -76,6 +78,10 @@ jest.mock('vscode', () => ({
         onDidOpenTextDocument: jest.fn(),
         onDidCloseTextDocument: jest.fn(),
         onDidSaveTextDocument: jest.fn(),
+        asRelativePath: jest.fn((pathOrUri: any, _includeWorkspaceFolder?: boolean) => {
+            const p = typeof pathOrUri === 'string' ? pathOrUri : pathOrUri?.fsPath || pathOrUri?.path || String(pathOrUri);
+            return p;
+        }),
         findFiles: jest.fn().mockResolvedValue([]),
         createFileSystemWatcher: jest.fn(() => ({
             onDidCreate: jest.fn(),
@@ -167,9 +173,9 @@ jest.mock('vscode', () => ({
     },
     ExtensionContext: class ExtensionContext {
         subscriptions: any[] = [];
-        globalStorageUri = { fsPath: '/mock/storage' };
-        extensionUri = { fsPath: '/mock/extension' };
-        extensionPath = '/mock/extension';
+        globalStorageUri = { fsPath: path.join(os.tmpdir(), 'sf-ext-test-storage') };
+        extensionUri = { fsPath: path.join(os.tmpdir(), 'sf-ext-test-extension') };
+        extensionPath = path.join(os.tmpdir(), 'sf-ext-test-extension');
         globalState = { get: jest.fn(), update: jest.fn(), keys: jest.fn().mockReturnValue([]) };
         workspaceState = { get: jest.fn(), update: jest.fn(), keys: jest.fn().mockReturnValue([]) };
         secrets = { get: jest.fn(), store: jest.fn(), delete: jest.fn() };
