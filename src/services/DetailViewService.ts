@@ -18,6 +18,7 @@ import { ClusterMapView } from '../views/ClusterMapView';
 import { UpgradeTracker } from './UpgradeTracker';
 import { openMarkdownPreview } from './reports/ReportUtils';
 import { generateEssentialsReport } from './reports/EssentialsReportGenerator';
+import { generateMetricsReport } from './reports/MetricsReportGenerator';
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -426,6 +427,12 @@ export class DetailViewService {
         if (normalisedItemType === 'essentials') {
             SfUtility.outputLog('Opening essentials report markdown', null, debugLevel.info);
             await generateEssentialsReport(this.extensionContext, sfMgr, item);
+            return;
+        }
+
+        if (normalisedItemType === 'metrics' || normalisedItemType === 'metrics-group') {
+            SfUtility.outputLog('Opening metrics report markdown', null, debugLevel.info);
+            await generateMetricsReport(this.extensionContext, sfMgr, item);
             return;
         }
 
