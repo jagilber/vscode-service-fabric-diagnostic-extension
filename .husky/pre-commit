@@ -23,7 +23,8 @@ STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -v '\.env\
 
 if [ -n "$STAGED_FILES" ]; then
     # Check for hardcoded certificate thumbprints (except in allowed files)
-    if echo "$STAGED_FILES" | grep -v -E '(\.env\.example|SECURITY\.md|TEST_EXECUTION_REPORT\.md|test-results/|test/|\.test\.ts)' | xargs git diff --cached | grep -iE '[0-9A-F]{40}' > /dev/null; then
+    FILTERED=$(echo "$STAGED_FILES" | grep -v -E '(\.env\.example|SECURITY\.md|TEST_EXECUTION_REPORT\.md|test-results/|test/|\.test\.ts)')
+    if [ -n "$FILTERED" ] && echo "$FILTERED" | xargs git diff --cached | grep -iE '[0-9A-F]{40}' > /dev/null; then
         echo "⚠️  WARNING: Potential certificate thumbprint detected!"
         echo "   Found 40-character hex string that looks like a thumbprint."
         echo "   Allowed in: .env.example, SECURITY.md, test files"
@@ -37,7 +38,8 @@ if [ -n "$STAGED_FILES" ]; then
     fi
 
     # Check for real cluster URLs (except in allowed files)
-    if echo "$STAGED_FILES" | grep -v -E '(\.env\.example|SECURITY\.md|README\.md|TEST_EXECUTION_REPORT\.md|test-results/|test/|scripts/)' | xargs git diff --cached | grep -iE 'https?://[a-z0-9-]+\.(centralus|eastus|westus|northeurope|westeurope)\.cloudapp\.azure\.com' > /dev/null; then
+    FILTERED_URL=$(echo "$STAGED_FILES" | grep -v -E '(\.env\.example|SECURITY\.md|README\.md|TEST_EXECUTION_REPORT\.md|test-results/|test/|scripts/)')
+    if [ -n "$FILTERED_URL" ] && echo "$FILTERED_URL" | xargs git diff --cached | grep -iE 'https?://[a-z0-9-]+\.(centralus|eastus|westus|northeurope|westeurope)\.cloudapp\.azure\.com' > /dev/null; then
         echo "⚠️  WARNING: Real Azure cluster URL detected!"
         echo "   Found URL pointing to actual Azure infrastructure."
         echo "   Allowed in: .env.example, SECURITY.md, README.md, test files"
