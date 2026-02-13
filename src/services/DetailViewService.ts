@@ -16,6 +16,8 @@ import { SfMgr } from '../sfMgr';
 import { SfUtility, debugLevel } from '../sfUtility';
 import { ClusterMapView } from '../views/ClusterMapView';
 import { UpgradeTracker } from './UpgradeTracker';
+import { openMarkdownPreview } from './reports/ReportUtils';
+import { generateEssentialsReport } from './reports/EssentialsReportGenerator';
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -421,6 +423,12 @@ export class DetailViewService {
             return;
         }
 
+        if (normalisedItemType === 'essentials') {
+            SfUtility.outputLog('Opening essentials report markdown', null, debugLevel.info);
+            await generateEssentialsReport(this.extensionContext, sfMgr, item);
+            return;
+        }
+
         if (normalisedItemType === 'details') {
             SfUtility.outputLog('Opening upgrade UD tracker', null, debugLevel.info);
             // Dispose previous tracker if any
@@ -536,8 +544,7 @@ async function handleCommandGuide(sfRest: any, sfConfig: any, clusterEndpoint: s
 
     if (gen) {
         const markdown = await gen();
-        const doc = await vscode.workspace.openTextDocument({ content: markdown, language: 'markdown' });
-        await vscode.window.showTextDocument(doc, { preview: false });
+        await openMarkdownPreview(markdown);
     } else {
         SfUtility.outputLog(`Unknown command guide id: ${id}`, null, debugLevel.warn);
         const doc = await vscode.workspace.openTextDocument({

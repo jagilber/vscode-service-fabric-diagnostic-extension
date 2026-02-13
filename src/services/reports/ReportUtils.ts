@@ -7,6 +7,8 @@
 
 import * as vscode from 'vscode';
 import * as path from 'path';
+import * as os from 'os';
+import * as fs from 'fs';
 import { SfMgr } from '../../sfMgr';
 import { SfUtility, debugLevel } from '../../sfUtility';
 
@@ -18,6 +20,24 @@ export function resolveClusterEndpoint(item: any, sfMgr: SfMgr): string | undefi
         SfUtility.showWarning('No cluster endpoint available');
     }
     return endpoint;
+}
+
+/**
+ * Open markdown content in VS Code's preview mode.
+ * Writes to a temp file for clean single-tab preview.
+ */
+export async function openMarkdownPreview(content: string): Promise<void> {
+    const tmpFile = path.join(os.tmpdir(), `sf-report-${Date.now()}.md`);
+    fs.writeFileSync(tmpFile, content, 'utf8');
+    await openMarkdownFilePreview(tmpFile);
+}
+
+/**
+ * Open a file-backed markdown document in VS Code's preview mode.
+ */
+export async function openMarkdownFilePreview(filePath: string): Promise<void> {
+    const uri = vscode.Uri.file(filePath);
+    await vscode.commands.executeCommand('markdown.showPreview', uri);
 }
 
 // ── Health helpers ─────────────────────────────────────────────────────
@@ -160,9 +180,7 @@ export async function writeAndOpenReport(
     progress.report({ increment: 20, message: 'Opening report...' });
     SfUtility.outputLog(`Report saved to: ${filePath}`, null, debugLevel.info);
 
-    const doc = await vscode.workspace.openTextDocument(filePath);
-    await vscode.window.showTextDocument(doc, { preview: false });
-    await vscode.commands.executeCommand('markdown.showPreview', vscode.Uri.file(filePath));
+    await openMarkdownFilePreview(filePath);
     SfUtility.showInformation(`Report generated: ${fileName}`);
 }
 

@@ -5,7 +5,7 @@ import { SfMgr } from './sfMgr';
 import { SfPrompts } from './sfPrompts';
 import { SfUtility, debugLevel } from './sfUtility';
 import { ManagementWebviewProvider } from './views/ManagementWebviewProvider';
-import { CommandRegistry } from './commands/CommandRegistry';
+import { CommandRegistry, COMMAND_MANIFEST } from './commands/CommandRegistry';
 import { SfProjectService } from './services/SfProjectService';
 import { SfDeployService } from './services/SfDeployService';
 import { SfManifestValidator } from './services/SfManifestValidator';
@@ -167,26 +167,56 @@ export async function activate(context: vscode.ExtensionContext) {
                 })
             );
         } else {
-            // Manual start: only register the start command; defer everything else
-            console.log('[SF Extension] autoStart=false — deferring full initialization until explicitly started');
-            SfUtility.outputLog('autoStart=false — extension loaded but inactive. Run "Service Fabric: Start Extension" to activate.', null, debugLevel.info);
+            // Manual start: register lazy-init wrappers for ALL commands so any
+            // SF command can trigger full initialization (not just startExtension).
+            console.log('[SF Extension] autoStart=false — registering lazy-init command wrappers');
+            SfUtility.outputLog('autoStart=false — extension loaded but inactive. Any Service Fabric command will activate it.', null, debugLevel.info);
 
             let initialized = false;
-            context.subscriptions.push(
-                vscode.commands.registerCommand('sfClusterExplorer.startExtension', async () => {
-                    if (initialized) {
-                        vscode.window.showInformationMessage('Service Fabric Extension is already active.');
-                        return;
-                    }
+            let initPromise: Promise<void> | undefined;
+            const lazyDisposables: vscode.Disposable[] = [];
+
+            const ensureInitialized = async (): Promise<void> => {
+                if (initialized) { return; }
+                if (initPromise) { return initPromise; }
+                initPromise = (async () => {
                     initialized = true;
+                    // Dispose all lazy wrappers BEFORE registering real handlers
+                    // so VS Code doesn't throw "command already registered"
+                    for (const d of lazyDisposables) { d.dispose(); }
+                    lazyDisposables.length = 0;
 
                     await vscode.commands.executeCommand('setContext', 'serviceFabricActive', true);
                     await performFullInit();
-
                     SfUtility.outputLog('Service Fabric extension started via command', null, debugLevel.info);
                     vscode.window.showInformationMessage('Service Fabric Extension is now active.');
-                })
-            );
+                })();
+                return initPromise;
+            };
+
+            // Register startExtension explicitly
+            const startDisp = vscode.commands.registerCommand('sfClusterExplorer.startExtension', async () => {
+                if (initialized) {
+                    vscode.window.showInformationMessage('Service Fabric Extension is already active.');
+                    return;
+                }
+                await ensureInitialized();
+            });
+            lazyDisposables.push(startDisp);
+            context.subscriptions.push(startDisp);
+
+            // Register lazy-init wrappers for all other manifest commands.
+            // On first invocation: init the extension, then re-execute the command with args.
+            for (const commandId of Object.keys(COMMAND_MANIFEST)) {
+                if (commandId === 'sfClusterExplorer.startExtension') { continue; }
+                const disp = vscode.commands.registerCommand(commandId, async (...args: any[]) => {
+                    await ensureInitialized();
+                    // Re-execute — performFullInit() re-registered the real handler
+                    await vscode.commands.executeCommand(commandId, ...args);
+                });
+                lazyDisposables.push(disp);
+                context.subscriptions.push(disp);
+            }
         }
 
         SfUtility.outputLog('Service Fabric extension activated', null, debugLevel.info);

@@ -73,7 +73,8 @@ export class SfApplicationsDataProvider implements vscode.TreeDataProvider<SfApp
                 return [];
             }
 
-            return projects.map(p => new SfProjectNode(p));
+            const sorted = projects.slice().sort((a, b) => (a.appTypeName || '').localeCompare(b.appTypeName || ''));
+            return sorted.map(p => new SfProjectNode(p));
         } catch (err) {
             SfUtility.outputLog('SfApplicationsDataProvider: failed to discover projects', err, debugLevel.error);
             const errorItem = new vscode.TreeItem(

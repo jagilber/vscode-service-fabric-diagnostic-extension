@@ -35,6 +35,40 @@ Primary focus on making extension accessible to:
 - Cluster operators without development background
 - Teams wanting quick evaluation without source builds
 
+## [1.0.6] - 2026-02-14
+
+### Added
+- **Remove All Projects** command in Service Fabric Applications view to clear all
+  tracked projects at once.
+- **Essentials markdown report on click** — Clicking "Essentials" in the cluster tree
+  now opens a formatted markdown preview instead of requiring a context menu command.
+  Report includes a collapsed raw JSON section with the full cluster data.
+- **File-based markdown preview** — All markdown reports (essentials, deploy tracker,
+  upgrade tracker) now write to temp files and open via `markdown.showPreview` for
+  reliable single-tab rendering.
+
+### Changed
+- **SFA view sorted alphabetically** — Projects in Service Fabric Applications view
+  are now sorted by project name.
+- **SFA nodes collapsed by default** — Project nodes in the SFA view start collapsed
+  instead of expanded.
+- **SfProjectNode tooltip** — Shows workspace-relative path instead of absolute path.
+
+### Removed
+- **`Generate Cluster Essentials Report` command** — Replaced by automatic markdown
+  preview when clicking the Essentials tree item.
+
+### Fixed
+- **Essentials report wrong cluster** — `generateEssentialsReport` now uses
+  `sfMgr.getSfConfig(clusterEndpoint)` to target the correct cluster instead of
+  `getCurrentSfConfig()` which could return a stale endpoint.
+- **DeployTracker markdown opening in source view** — Now uses `openMarkdownFilePreview`
+  to open files in rendered markdown preview instead of raw text.
+- **DeployTracker trailing blank lines** — `flush()` accumulated extra newlines on
+  each write cycle; fixed with `trimEnd()` before rewriting content.
+- **UpgradeTracker markdown opening in source view** — Same fix as DeployTracker,
+  using shared `openMarkdownFilePreview` function.
+
 ## [1.0.5] - 2026-02-13
 
 ### Added

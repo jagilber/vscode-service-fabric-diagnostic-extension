@@ -10,7 +10,6 @@
  *   - generateHealthReport
  *   - generateMetricsReport
  *   - generateCommandsReference
- *   - generateEssentialsReport
  *   - generateRepairTasksReport
  *   - exportSnapshot
  */
@@ -23,10 +22,10 @@ import {
     generateHealthReport,
     generateMetricsReport,
     generateCommandsReference,
-    generateEssentialsReport,
     generateRepairTasksReport,
     exportSnapshot,
 } from '../services/reports';
+import { openMarkdownPreview } from '../services/reports/ReportUtils';
 
 // ===========================================================================
 // Public registration entry point
@@ -66,13 +65,6 @@ export function registerReportCommands(
 
     registerCommandWithErrorHandling(
         context,
-        'sfClusterExplorer.generateEssentialsReport',
-        async (item: any) => generateEssentialsReport(context, sfMgr, item),
-        'generate essentials report',
-    );
-
-    registerCommandWithErrorHandling(
-        context,
         'sfClusterExplorer.generateRepairTasksReport',
         async (item: any) => generateRepairTasksReport(context, sfMgr, item),
         'generate repair tasks report',
@@ -83,5 +75,50 @@ export function registerReportCommands(
         'sfClusterExplorer.exportSnapshot',
         async (item: any) => exportSnapshot(context, item),
         'export snapshot',
+    );
+
+    registerCommandWithErrorHandling(
+        context,
+        'sfClusterExplorer.viewManifestXml',
+        async (item: any) => {
+            const endpoint = item?.clusterEndpoint;
+            if (!endpoint) { throw new Error('No cluster endpoint'); }
+            const sfConfig = sfMgr.getSfConfig(endpoint);
+            if (!sfConfig) { throw new Error(`No configuration for ${endpoint}`); }
+            const sfRest = sfConfig.getSfRest();
+            const manifestResp = await sfRest.getClusterManifest();
+            const xml = (manifestResp as any).manifest || JSON.stringify(manifestResp, null, 2);
+            const doc = await vscode.workspace.openTextDocument({ content: xml, language: 'xml' });
+            await vscode.window.showTextDocument(doc, { preview: false });
+        },
+        'view manifest XML',
+    );
+
+    registerCommandWithErrorHandling(
+        context,
+        'sfClusterExplorer.viewManifestReport',
+        async (item: any) => {
+            const endpoint = item?.clusterEndpoint;
+            if (!endpoint) { throw new Error('No cluster endpoint'); }
+            const sfConfig = sfMgr.getSfConfig(endpoint);
+            if (!sfConfig) { throw new Error(`No configuration for ${endpoint}`); }
+            const sfRest = sfConfig.getSfRest();
+            const manifestResp = await sfRest.getClusterManifest();
+            const xml = (manifestResp as any).manifest || '';
+            const lines: string[] = [
+                `# Cluster Manifest Report`,
+                ``,
+                `**Cluster:** ${endpoint}`,
+                `**Generated:** ${new Date().toISOString()}`,
+                ``,
+                '## Raw Manifest',
+                '',
+                '```xml',
+                xml,
+                '```',
+            ];
+            await openMarkdownPreview(lines.join('\n'));
+        },
+        'view manifest report',
     );
 }

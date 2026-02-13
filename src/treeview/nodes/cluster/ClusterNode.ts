@@ -82,6 +82,8 @@ export class ClusterNode extends BaseTreeNode {
             );
         }
 
+        item.tooltip = this.buildTooltip(health);
+
         item.command = {
             command: 'sfClusterExplorer.showItemDetails',
             title: 'Show Details',
@@ -89,6 +91,19 @@ export class ClusterNode extends BaseTreeNode {
         };
 
         return item;
+    }
+
+    private buildTooltip(health: any): string {
+        const lines: string[] = [
+            `Cluster: ${this.clusterEndpoint}`,
+            `Health: ${health?.aggregatedHealthState || 'Unknown'}`,
+        ];
+        if (this.isActive) { lines.push('Status: Active'); }
+        const nodeStates: any[] | undefined = health?.nodeHealthStates;
+        if (nodeStates) { lines.push(`Nodes: ${nodeStates.length}`); }
+        const appStates: any[] | undefined = health?.applicationHealthStates;
+        if (appStates) { lines.push(`Applications: ${appStates.length}`); }
+        return lines.join('\n');
     }
 
     protected async fetchChildren(): Promise<ITreeNode[]> {
@@ -104,7 +119,7 @@ export class ClusterNode extends BaseTreeNode {
             new StaticItemNode(ctx, icon, 'cluster map', 'cluster-map', 'map', 'charts.blue'),
             new ImageStoreNode(ctx, icon, cache),
             new StaticItemNode(ctx, icon, 'health', 'health', 'heart', 'charts.green', 'health'),
-            new StaticItemNode(ctx, icon, 'manifest', 'manifest', 'file-code', 'charts.orange'),
+            new StaticItemNode(ctx, icon, 'manifest', 'manifest', 'file-code', 'charts.orange', 'manifest'),
             new StaticItemNode(ctx, icon, 'events', 'events', 'calendar', 'charts.purple', 'events'),
             new CommandsNode(ctx, icon, cache),
             new StaticItemNode(ctx, icon, 'repair tasks', 'repair-tasks', 'tools', 'charts.orange', 'repair-tasks'),

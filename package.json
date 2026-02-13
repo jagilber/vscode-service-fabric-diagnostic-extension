@@ -2,7 +2,7 @@
   "name": "vscode-service-fabric-diagnostic-extension",
   "displayName": "Service Fabric Diagnostic Extension",
   "description": "Manage and diagnose Azure Service Fabric clusters with visual tree view, health monitoring, and operational tools",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "publisher": "jagilber",
   "license": "MIT",
   "keywords": [
@@ -49,7 +49,6 @@
     "onCommand:sfClusterExplorer.generateMetricsReport",
     "onCommand:sfClusterExplorer.generateCommandsReference",
     "onCommand:sfClusterExplorer.generateRepairTasksReport",
-    "onCommand:sfClusterExplorer.generateEssentialsReport",
     "onCommand:sfClusterExplorer.removeClusterFromTree",
     "onCommand:sfClusterExplorer.setActiveCluster",
     "onCommand:sfClusterExplorer.restartReplica",
@@ -66,7 +65,8 @@
     "onCommand:sfApplications.openProjectInCode",
     "onCommand:sfApplications.addExternalProject",
     "onCommand:sfApplications.removeExternalProject",
-    "onCommand:sfApplications.validateManifest"
+    "onCommand:sfApplications.validateManifest",
+    "onCommand:sfApplications.removeAllProjects"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -119,11 +119,13 @@
       },
       {
         "command": "sfClusterExplorer.sfGetCluster",
-        "title": "service fabric: get cluster"
+        "title": "service fabric: get cluster",
+        "icon": "$(cloud-download)"
       },
       {
         "command": "sfClusterExplorer.sfSetClusterEndpoint",
-        "title": "service fabric: add cluster endpoint ('https://localhost:19080')"
+        "title": "service fabric: add cluster endpoint ('https://localhost:19080')",
+        "icon": "$(add)"
       },
       {
         "command": "sfClusterExplorer.sfRemoveClusterEndpoint",
@@ -179,11 +181,6 @@
         "icon": "$(tools)"
       },
       {
-        "command": "sfClusterExplorer.generateEssentialsReport",
-        "title": "Generate Cluster Essentials Report (Markdown)",
-        "icon": "$(info)"
-      },
-      {
         "command": "sfClusterExplorer.removeClusterFromTree",
         "title": "Remove Cluster from Tree",
         "icon": "$(trash)"
@@ -197,6 +194,11 @@
         "command": "sfClusterExplorer.openSfx",
         "title": "Open SFX",
         "icon": "$(link-external)"
+      },
+      {
+        "command": "sfClusterExplorer.toggleClusterRefresh",
+        "title": "Toggle Auto-Refresh",
+        "icon": "$(sync)"
       },
       {
         "command": "sfClusterExplorer.resetExtensionState",
@@ -278,6 +280,21 @@
         "command": "sfApplications.validateManifest",
         "title": "Validate Manifest",
         "icon": "$(check-all)"
+      },
+      {
+        "command": "sfApplications.removeAllProjects",
+        "title": "Remove All Projects",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "sfClusterExplorer.viewManifestXml",
+        "title": "View Manifest XML",
+        "icon": "$(file-code)"
+      },
+      {
+        "command": "sfClusterExplorer.viewManifestReport",
+        "title": "View Manifest Report",
+        "icon": "$(file-text)"
       }
     ],
     "menus": {
@@ -288,9 +305,19 @@
       ],
       "view/title": [
         {
+          "command": "sfClusterExplorer.sfSetClusterEndpoint",
+          "when": "view == serviceFabricClusterView",
+          "group": "navigation@1"
+        },
+        {
+          "command": "sfClusterExplorer.sfGetCluster",
+          "when": "view == serviceFabricClusterView",
+          "group": "navigation@2"
+        },
+        {
           "command": "sfClusterExplorer.showManagementView",
           "when": "view == serviceFabricClusterView",
-          "group": "navigation"
+          "group": "navigation@3"
         },
         {
           "command": "sfApplications.refresh",
@@ -299,6 +326,11 @@
         },
         {
           "command": "sfApplications.addExternalProject",
+          "when": "view == serviceFabricApplicationsView",
+          "group": "navigation"
+        },
+        {
+          "command": "sfApplications.removeAllProjects",
           "when": "view == serviceFabricApplicationsView",
           "group": "navigation"
         }
@@ -445,6 +477,11 @@
           "group": "cluster@2"
         },
         {
+          "command": "sfClusterExplorer.toggleClusterRefresh",
+          "when": "view == serviceFabricClusterView && viewItem == cluster",
+          "group": "cluster@3"
+        },
+        {
           "command": "sfClusterExplorer.generateHealthReport",
           "when": "view == serviceFabricClusterView && viewItem == health",
           "group": "reports@1"
@@ -490,9 +527,14 @@
           "group": "reports@1"
         },
         {
-          "command": "sfClusterExplorer.generateEssentialsReport",
-          "when": "view == serviceFabricClusterView && viewItem == essentials",
-          "group": "reports@1"
+          "command": "sfClusterExplorer.viewManifestXml",
+          "when": "view == serviceFabricClusterView && viewItem == manifest",
+          "group": "manifest@1"
+        },
+        {
+          "command": "sfClusterExplorer.viewManifestReport",
+          "when": "view == serviceFabricClusterView && viewItem == manifest",
+          "group": "manifest@2"
         },
         {
           "command": "sfClusterExplorer.restartReplica",

@@ -56,7 +56,7 @@ export class StaticItemNode implements ITreeNode {
         item.id = this.id;
         item.contextValue = this.contextValue;
         item.iconPath = this.icon;
-        item.resourceUri = this.ctx.resourceUri;
+        item.tooltip = `${this.label} — ${new URL(this.ctx.clusterEndpoint).hostname}`;
         item.command = {
             command: 'sfClusterExplorer.showItemDetails',
             title: 'Show Details',

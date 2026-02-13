@@ -47,7 +47,7 @@ export class NodesGroupNode extends BaseTreeNode {
         const item = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.Collapsed);
         item.id = this.id;
         item.iconPath = this.iconService.getHealthIcon(healthState, 'server');
-        item.resourceUri = this.ctx.resourceUri;
+        item.tooltip = this.buildTooltip(nodeCount, healthState);
         item.command = {
             command: 'sfClusterExplorer.showItemDetails',
             title: 'Show Details',
@@ -58,6 +58,15 @@ export class NodesGroupNode extends BaseTreeNode {
             }],
         };
         return item;
+    }
+
+    private buildTooltip(nodeCount: number | undefined, healthState: string | undefined): string {
+        const lines: string[] = [
+            `nodes — ${new URL(this.ctx.clusterEndpoint).hostname}`,
+            `Count: ${nodeCount !== undefined ? nodeCount : '...'}`,
+            `Health: ${healthState || 'Unknown'}`,
+        ];
+        return lines.join('\n');
     }
 
     protected async fetchChildren(): Promise<ITreeNode[]> {

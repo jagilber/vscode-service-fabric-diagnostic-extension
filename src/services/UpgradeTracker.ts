@@ -11,6 +11,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { SfUtility, debugLevel } from '../sfUtility';
+import { openMarkdownFilePreview } from './reports/ReportUtils';
 import { SfRest } from '../sfRest';
 import * as sfModels from '../sdk/servicefabric/servicefabric/src/models';
 
@@ -92,9 +93,7 @@ export class UpgradeTracker implements vscode.Disposable {
 
     private async openInEditor(): Promise<void> {
         try {
-            const uri = vscode.Uri.file(this.mdPath);
-            const doc = await vscode.workspace.openTextDocument(uri);
-            await vscode.window.showTextDocument(doc, vscode.ViewColumn.Beside, true);
+            await openMarkdownFilePreview(this.mdPath);
         } catch (err) {
             SfUtility.outputLog('UpgradeTracker.openInEditor: failed to open markdown', err, debugLevel.warn);
         }

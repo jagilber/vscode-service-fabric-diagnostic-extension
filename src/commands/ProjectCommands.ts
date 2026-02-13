@@ -690,6 +690,35 @@ export function registerProjectCommands(
         },
         'remove external project',
     );
+
+    // -----------------------------------------------------------------------
+    // sfApplications.removeAllProjects — remove all external projects at once
+    // -----------------------------------------------------------------------
+    registerCommandWithErrorHandling(
+        context,
+        'sfApplications.removeAllProjects',
+        async () => {
+            const externalPaths = projectService.getExternalProjectPaths();
+            if (externalPaths.length === 0) {
+                vscode.window.showInformationMessage('No external projects registered');
+                return;
+            }
+
+            const confirm = await vscode.window.showWarningMessage(
+                `Remove all ${externalPaths.length} external project(s) from the view?`,
+                { modal: true },
+                'Remove All',
+            );
+            if (confirm !== 'Remove All') { return; }
+
+            for (const p of externalPaths) {
+                await projectService.removeExternalProjectPath(p);
+            }
+            applicationsProvider.refresh();
+            vscode.window.showInformationMessage(`Removed ${externalPaths.length} external project(s)`);
+        },
+        'remove all projects',
+    );
 }
 
 /**

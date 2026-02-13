@@ -155,4 +155,29 @@ export function registerClusterCommands(
         },
         'reset extension state'
     );
+
+    // Toggle per-cluster auto-refresh (context menu on cluster node)
+    const REFRESH_DISABLED_KEY = 'sfClusterExplorer.refreshDisabledClusters';
+    registerCommandWithErrorHandling(
+        context,
+        'sfClusterExplorer.toggleClusterRefresh',
+        async (item: any) => {
+            if (!item || !item.clusterEndpoint) {
+                throw new Error('Cannot toggle refresh: invalid tree item');
+            }
+            const endpoint = item.clusterEndpoint;
+            const disabled = context.globalState.get<string[]>(REFRESH_DISABLED_KEY, []);
+            const idx = disabled.indexOf(endpoint);
+            if (idx >= 0) {
+                disabled.splice(idx, 1);
+                await context.globalState.update(REFRESH_DISABLED_KEY, disabled);
+                vscode.window.showInformationMessage(`Auto-refresh enabled for ${endpoint}`);
+            } else {
+                disabled.push(endpoint);
+                await context.globalState.update(REFRESH_DISABLED_KEY, disabled);
+                vscode.window.showInformationMessage(`Auto-refresh disabled for ${endpoint}`);
+            }
+        },
+        'toggle cluster refresh'
+    );
 }

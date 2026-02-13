@@ -68,6 +68,7 @@ export const COMMAND_MANIFEST: Record<string, CommandMeta> = {
     'sfClusterExplorer.setActiveCluster':         { friendlyName: 'set active cluster',    category: 'cluster',  requiresCluster: false },
     'sfClusterExplorer.resetExtensionState':      { friendlyName: 'reset extension state', category: 'cluster',  requiresCluster: false },
     'sfClusterExplorer.openSfx':                    { friendlyName: 'open SFX',              category: 'cluster',  requiresCluster: false },
+    'sfClusterExplorer.toggleClusterRefresh':        { friendlyName: 'toggle cluster refresh', category: 'cluster',  requiresCluster: false },
 
     // ---- View / UI commands ----
     'serviceFabricClusterView.refreshView':       { friendlyName: 'refresh view',          category: 'view',     requiresCluster: false },
@@ -83,9 +84,11 @@ export const COMMAND_MANIFEST: Record<string, CommandMeta> = {
     'sfClusterExplorer.generateHealthReport':     { friendlyName: 'health report',         category: 'report',   requiresCluster: true },
     'sfClusterExplorer.generateMetricsReport':    { friendlyName: 'metrics report',        category: 'report',   requiresCluster: true },
     'sfClusterExplorer.generateCommandsReference':{ friendlyName: 'commands reference',    category: 'report',   requiresCluster: true },
-    'sfClusterExplorer.generateEssentialsReport': { friendlyName: 'essentials report',     category: 'report',   requiresCluster: true },
+
     'sfClusterExplorer.generateRepairTasksReport':{ friendlyName: 'repair tasks report',   category: 'report',   requiresCluster: true },
     'sfClusterExplorer.exportSnapshot':           { friendlyName: 'export snapshot',       category: 'report',   requiresCluster: true },
+    'sfClusterExplorer.viewManifestXml':          { friendlyName: 'view manifest XML',     category: 'report',   requiresCluster: true },
+    'sfClusterExplorer.viewManifestReport':       { friendlyName: 'view manifest report',  category: 'report',   requiresCluster: true },
 
     // ---- Node commands ----
     'sfClusterExplorer.manageNodeFromContext':     { friendlyName: 'manage node',          category: 'node',     requiresCluster: true },
@@ -108,6 +111,7 @@ export const COMMAND_MANIFEST: Record<string, CommandMeta> = {
     'sfApplications.addExternalProject':           { friendlyName: 'add external project', category: 'project',  requiresCluster: false },
     'sfApplications.removeExternalProject':        { friendlyName: 'remove external project', category: 'project', requiresCluster: false },
     'sfApplications.validateManifest':             { friendlyName: 'validate manifest',    category: 'project',  requiresCluster: false },
+    'sfApplications.removeAllProjects':            { friendlyName: 'remove all projects',  category: 'project',  requiresCluster: false },
 };
 
 // ---------------------------------------------------------------------------

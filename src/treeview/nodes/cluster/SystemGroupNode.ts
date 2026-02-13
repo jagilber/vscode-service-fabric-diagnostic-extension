@@ -49,7 +49,7 @@ export class SystemGroupNode extends BaseTreeNode {
         const item = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.Collapsed);
         item.id = this.id;
         item.iconPath = this.iconService.getHealthIcon(healthState, 'gear');
-        item.resourceUri = this.ctx.resourceUri;
+        item.tooltip = `system services — ${new URL(this.ctx.clusterEndpoint).hostname}\nHealth: ${healthState || 'Unknown'}`;
         item.command = {
             command: 'sfClusterExplorer.showItemDetails',
             title: 'Show Details',

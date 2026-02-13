@@ -15,17 +15,18 @@ export class SfProjectNode extends vscode.TreeItem {
     readonly contextValue: string;
 
     constructor(public readonly project: SfProjectInfo) {
-        super(project.appTypeName || 'Unknown App', vscode.TreeItemCollapsibleState.Expanded);
+        super(project.appTypeName || 'Unknown App', vscode.TreeItemCollapsibleState.Collapsed);
         this.id = `sfProject:${project.sfprojPath}`;
         this.contextValue = project.isExternal ? 'sfProjectExternal' : 'sfProject';
 
         const versionLabel = `v${project.appTypeVersion}`;
         this.description = project.isExternal ? `${versionLabel} (external)` : versionLabel;
 
+        const relativePath = vscode.workspace.asRelativePath(project.sfprojPath, false);
         this.tooltip = new vscode.MarkdownString(
             `**${project.appTypeName}** v${project.appTypeVersion}\n\n` +
             `Services: ${project.services.length}\n\n` +
-            `Path: ${project.sfprojPath}` +
+            `Path: ${relativePath}` +
             (project.isExternal ? '\n\n_(external project)_' : '')
         );
         this.iconPath = project.isExternal

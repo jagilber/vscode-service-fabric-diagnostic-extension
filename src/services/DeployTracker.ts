@@ -12,6 +12,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { SfUtility, debugLevel } from '../sfUtility';
+import { openMarkdownFilePreview } from './reports/ReportUtils';
 
 export type PhaseStatus = 'pending' | 'in-progress' | 'done' | 'failed' | 'skipped';
 
@@ -65,12 +66,10 @@ export class DeployTracker {
         this.openInEditor();
     }
 
-    /** Open the markdown file in VS Code beside the active editor */
+    /** Open the markdown file in VS Code preview beside the active editor */
     private async openInEditor(): Promise<void> {
         try {
-            const uri = vscode.Uri.file(this.mdPath);
-            const doc = await vscode.workspace.openTextDocument(uri);
-            await vscode.window.showTextDocument(doc, vscode.ViewColumn.Beside, true);
+            await openMarkdownFilePreview(this.mdPath);
         } catch (err) {
             SfUtility.outputLog('DeployTracker.openInEditor: failed to open markdown file', err, debugLevel.warn);
         }
@@ -249,10 +248,10 @@ export class DeployTracker {
             const endIdx = content.indexOf(LIVE_SECTION_END);
 
             if (startIdx !== -1 && endIdx !== -1) {
-                content = content.substring(0, startIdx) + liveSection.trimStart() + content.substring(endIdx + LIVE_SECTION_END.length);
+                content = content.substring(0, startIdx).trimEnd() + '\n\n' + liveSection.trim() + '\n';
             } else {
                 // Strip trailing whitespace and append
-                content = content.trimEnd() + '\n' + liveSection;
+                content = content.trimEnd() + '\n\n' + liveSection.trim() + '\n';
             }
 
             fs.writeFileSync(this.mdPath, content, 'utf-8');

@@ -102,8 +102,23 @@ export class SfProjectService implements vscode.Disposable {
         }
 
         SfUtility.outputLog(`SfProjectService: discovered ${projects.length} project(s)`, null, debugLevel.info);
-        this.cachedProjects = projects;
-        return projects;
+
+        // Deduplicate by resolved sfprojPath (same project added via workspace scan + external path)
+        const seen = new Set<string>();
+        const dedupedProjects: SfProjectInfo[] = [];
+        for (const p of projects) {
+            const resolved = path.resolve(p.sfprojPath);
+            if (!seen.has(resolved)) {
+                seen.add(resolved);
+                dedupedProjects.push(p);
+            } else {
+                SfUtility.outputLog(`SfProjectService: dedup — skipping duplicate project: ${resolved}`, null, debugLevel.info);
+            }
+        }
+
+        SfUtility.outputLog(`SfProjectService: after dedup: ${dedupedProjects.length} unique project(s)`, null, debugLevel.info);
+        this.cachedProjects = dedupedProjects;
+        return dedupedProjects;
     }
 
     /** Force re-scan on next call to discoverProjects() */

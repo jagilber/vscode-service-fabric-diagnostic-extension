@@ -175,8 +175,18 @@ export class SfTreeDataProvider implements vscode.TreeDataProvider<ITreeNode> {
      */
     async refreshHealthOnly(): Promise<void> {
         SfUtility.outputLog('refreshHealthOnly: fetching health data (no tree invalidation)', null, debugLevel.info);
+        const disabledClusters = new Set(
+            this.extensionContext.globalState.get<string[]>('sfClusterExplorer.refreshDisabledClusters', [])
+        );
         const healthResults = await Promise.allSettled(
             this.roots.map(async root => {
+                if (disabledClusters.has(root.clusterEndpoint)) {
+                    SfUtility.outputLog(
+                        `Health refresh: skipping ${root.clusterEndpoint} (refresh disabled)`,
+                        null, debugLevel.info,
+                    );
+                    return;
+                }
                 await root.ctx.sfConfig.populateClusterHealth();
                 SfUtility.outputLog(
                     `Health refresh: cluster health updated for ${root.clusterEndpoint}`,
@@ -209,8 +219,19 @@ export class SfTreeDataProvider implements vscode.TreeDataProvider<ITreeNode> {
     async invalidateAll(): Promise<void> {
         SfUtility.outputLog('invalidateAll: FULL tree rebuild (cache clear + invalidate)', null, debugLevel.info);
         // Step 1: Fetch fresh cluster health BEFORE clearing cache.
+        // Skip clusters with per-cluster refresh disabled.
+        const disabledClusters = new Set(
+            this.extensionContext.globalState.get<string[]>('sfClusterExplorer.refreshDisabledClusters', [])
+        );
         const healthResults = await Promise.allSettled(
             this.roots.map(async root => {
+                if (disabledClusters.has(root.clusterEndpoint)) {
+                    SfUtility.outputLog(
+                        `Full refresh: skipping ${root.clusterEndpoint} (refresh disabled)`,
+                        null, debugLevel.info,
+                    );
+                    return;
+                }
                 await root.ctx.sfConfig.populateClusterHealth();
                 SfUtility.outputLog(
                     `Full refresh: cluster health updated for ${root.clusterEndpoint}`,
