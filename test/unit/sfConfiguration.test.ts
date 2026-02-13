@@ -3,6 +3,8 @@
  */
 
 import * as vscode from 'vscode';
+import * as os from 'os';
+import * as path from 'path';
 import { SfConfiguration } from '../../src/sfConfiguration';
 import * as mockData from '../fixtures/mockClusterData';
 
@@ -68,9 +70,9 @@ describe('SfConfiguration', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         mockContext = {
-            extensionPath: '/mock/path',
-            extensionUri: { fsPath: '/mock/extension' },
-            globalStorageUri: { fsPath: '/mock/storage' },
+            extensionPath: path.join(os.tmpdir(), 'sf-test-extension'),
+            extensionUri: { fsPath: path.join(os.tmpdir(), 'sf-test-extension') },
+            globalStorageUri: { fsPath: path.join(os.tmpdir(), 'sf-test-storage') },
             subscriptions: [],
             globalState: { get: jest.fn(), update: jest.fn(), keys: jest.fn().mockReturnValue([]) },
             workspaceState: { get: jest.fn(), update: jest.fn(), keys: jest.fn().mockReturnValue([]) },
