@@ -10,6 +10,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import * as vscode from 'vscode';
 import { SfUtility, debugLevel } from '../sfUtility';
 
 export type PhaseStatus = 'pending' | 'in-progress' | 'done' | 'failed' | 'skipped';
@@ -59,6 +60,18 @@ export class DeployTracker {
         this.operationStartedAt = Date.now();
         this.initPhases();
         this.flush();
+        this.openInEditor();
+    }
+
+    /** Open the markdown file in VS Code beside the active editor */
+    private async openInEditor(): Promise<void> {
+        try {
+            const uri = vscode.Uri.file(this.mdPath);
+            const doc = await vscode.workspace.openTextDocument(uri);
+            await vscode.window.showTextDocument(doc, vscode.ViewColumn.Beside, true);
+        } catch (err) {
+            SfUtility.outputLog('DeployTracker.openInEditor: failed to open markdown file', err, debugLevel.warn);
+        }
     }
 
     private initPhases(): void {
