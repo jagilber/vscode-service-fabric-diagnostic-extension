@@ -58,6 +58,8 @@ export class DeployTracker {
         this.typeVersion = typeVersion;
         this.appName = appName;
         this.operationStartedAt = Date.now();
+        SfUtility.outputLog(`DeployTracker: created for ${operationType} ${typeName} v${typeVersion} → ${appName}`, null, debugLevel.info);
+        SfUtility.outputLog(`DeployTracker: mdPath=${this.mdPath} workspaceRoot=${workspaceRoot}`, null, debugLevel.info);
         this.initPhases();
         this.flush();
         this.openInEditor();

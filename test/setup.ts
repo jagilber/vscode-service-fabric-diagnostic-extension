@@ -125,7 +125,7 @@ jest.mock('vscode', () => ({
     Position: class Position {
         constructor(public line: number, public character: number) {}
     },
-    ViewColumn: { One: 1, Two: 2, Three: 3 },
+    ViewColumn: { One: 1, Two: 2, Three: 3, Beside: -2 },
     DataTransfer: class DataTransfer {
         private items = new Map();
         get(mime: string) { return this.items.get(mime); }
