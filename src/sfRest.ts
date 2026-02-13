@@ -16,6 +16,12 @@ import { IHttpOptionsProvider } from './interfaces/IHttpOptionsProvider';
 import { SfDirectRestClient } from './services/SfDirectRestClient';
 import { getAllPaginated } from './infrastructure/PaginationHelper';
 
+/** Result from provisionApplicationType indicating whether a fresh provision occurred or type already existed */
+export interface ProvisionResult {
+    /** True if the type+version was already provisioned (409 handled) */
+    alreadyExists: boolean;
+}
+
 export class SfRest implements IHttpOptionsProvider {
     //https://www.npmjs.com/package/keytar
     private extensionContext: vscode.ExtensionContext | undefined;
@@ -55,6 +61,14 @@ export class SfRest implements IHttpOptionsProvider {
         this.extensionContext = context;
         SfUtility.outputLog("SFRest:constructor:context.extensionPath:" + context.extensionPath);
         this.sfApi = this.initializeClusterConnection();
+        
+        // Initialize direct REST client with default endpoint
+        this.directClient = new SfDirectRestClient({
+            endpoint: this.clusterHttpEndpoint,
+            apiVersion: this.clientApiVersion,
+            certificate: Array.isArray(this.certificate) ? this.certificate[0] : this.certificate,
+            key: this.key
+        });
     }
 
     public async azureConnect(secret: string | null = null): Promise<AzureAccount | null> {
@@ -1138,27 +1152,45 @@ export class SfRest implements IHttpOptionsProvider {
 
     public async deleteApplication(applicationId: string): Promise<void> {
         try {
-            SfUtility.outputLog(`sfRest:deleteApplication: ${applicationId}`, null, debugLevel.info);
-            await this.sfApi.deleteApplication(applicationId);
-            SfUtility.outputLog('sfRest:deleteApplication:complete', null, debugLevel.info);
-        } catch (error) {
-            SfUtility.outputLog(`Failed to delete application ${applicationId}`, error, debugLevel.error);
+            SfUtility.outputLog(`sfRest:deleteApplication: ${applicationId} via ${this.useDirectRest && this.directClient ? 'direct' : 'sdk'}`, null, debugLevel.info);
+            
+            if (this.useDirectRest && this.directClient) {
+                await this.directClient.deleteApplication(applicationId);
+            } else {
+                await this.sfApi.deleteApplication(applicationId);
+            }
+        } catch (error: any) {
             throw new NetworkError(`Failed to delete application ${applicationId}`, { cause: error });
         }
     }
 
     public async unprovisionApplicationType(applicationTypeName: string, applicationTypeVersion: string): Promise<void> {
         try {
-            SfUtility.outputLog(`sfRest:unprovisionApplicationType: ${applicationTypeName}:${applicationTypeVersion}`, null, debugLevel.info);
+            SfUtility.outputLog(`sfRest:unprovisionApplicationType: ${applicationTypeName}:${applicationTypeVersion} via ${this.useDirectRest && this.directClient ? 'direct' : 'sdk'}`, null, debugLevel.info);
             
-            const unprovisionInfo: sfModels.UnprovisionApplicationTypeDescriptionInfo = {
-                applicationTypeVersion: applicationTypeVersion
-            };
+            if (this.useDirectRest && this.directClient) {
+                await this.directClient.unprovisionApplicationType(applicationTypeName, applicationTypeVersion);
+            } else {
+                const unprovisionInfo: sfModels.UnprovisionApplicationTypeDescriptionInfo = {
+                    applicationTypeVersion: applicationTypeVersion
+                };
+                await this.sfApi.unprovisionApplicationType(applicationTypeName, unprovisionInfo);
+            }
             
-            await this.sfApi.unprovisionApplicationType(applicationTypeName, unprovisionInfo);
-            SfUtility.outputLog('sfRest:unprovisionApplicationType:complete', null, debugLevel.info);
-        } catch (error) {
-            SfUtility.outputLog(`Failed to unprovision application type ${applicationTypeName}:${applicationTypeVersion}`, error, debugLevel.error);
+            // Verify unprovision succeeded by checking type still exists
+            try {
+                const remainingTypes = await this.getApplicationTypeInfo(applicationTypeName);
+                const stillExists = remainingTypes.some((t: any) => {
+                    const ver = t.version || t.Version || t.applicationTypeVersion || t.ApplicationTypeVersion;
+                    return ver === applicationTypeVersion;
+                });
+                if (stillExists) {
+                    SfUtility.outputLog(`sfRest:unprovisionApplicationType: WARNING - type ${applicationTypeName}:${applicationTypeVersion} still appears in type list after unprovision`, null, debugLevel.warn);
+                }
+            } catch (verifyError) {
+                // Non-fatal: verification query failed but unprovision may have succeeded
+            }
+        } catch (error: any) {
             throw new NetworkError(`Failed to unprovision application type ${applicationTypeName}:${applicationTypeVersion}`, { cause: error });
         }
     }
@@ -1479,8 +1511,12 @@ export class SfRest implements IHttpOptionsProvider {
     /**
      * Provision an application type from the Image Store.
      * POST /ApplicationTypes/$/Provision?api-version=6.2
+     * 
+     * Returns a ProvisionResult indicating whether the type was freshly provisioned
+     * or already existed (409). The caller (SfDeployService) uses this to decide
+     * whether unprovision+reprovision is needed.
      */
-    public async provisionApplicationType(imageStorePath: string, isAsync: boolean = true, expectedTypeName?: string, expectedTypeVersion?: string): Promise<void> {
+    public async provisionApplicationType(imageStorePath: string, isAsync: boolean = true, expectedTypeName?: string, expectedTypeVersion?: string): Promise<ProvisionResult> {
         try {
             SfUtility.outputLog(`sfRest:provisionApplicationType: ${imageStorePath} (async=${isAsync})`, null, debugLevel.info);
             
@@ -1496,6 +1532,7 @@ export class SfRest implements IHttpOptionsProvider {
             }
             
             SfUtility.outputLog('sfRest:provisionApplicationType:complete', null, debugLevel.info);
+            return { alreadyExists: false };
         } catch (error: any) {
             if ((error?.statusCode === 409 || error?.cause?.statusCode === 409) && expectedTypeName && expectedTypeVersion) {
                 // 409 = type already exists — verify the correct version is provisioned and Available
@@ -1507,8 +1544,8 @@ export class SfRest implements IHttpOptionsProvider {
                     return ver === expectedTypeVersion && (status === 'Available' || status === '' || !status);
                 });
                 if (match) {
-                    SfUtility.outputLog(`sfRest:provisionApplicationType: verified ${expectedTypeName} v${expectedTypeVersion} is Available`, null, debugLevel.info);
-                    return;
+                    SfUtility.outputLog(`sfRest:provisionApplicationType: verified ${expectedTypeName} v${expectedTypeVersion} is Available (already existed)`, null, debugLevel.info);
+                    return { alreadyExists: true };
                 }
                 // Wrong version or not Available — fail
                 SfUtility.outputLog(`sfRest:provisionApplicationType: existing type does not match expected ${expectedTypeName} v${expectedTypeVersion}`, types, debugLevel.error);
@@ -1626,6 +1663,56 @@ export class SfRest implements IHttpOptionsProvider {
             }
         } catch (error) {
             SfUtility.outputLog(`Failed to get application type info for ${applicationTypeName}`, error, debugLevel.error);
+            return [];
+        }
+    }
+
+    /**
+     * Get the provisioned application manifest XML from the cluster for a given type+version.
+     * GET /ApplicationTypes/{typeName}/$/GetApplicationManifest?ApplicationTypeVersion={version}
+     * Returns the raw manifest XML string, or null if not found.
+     */
+    public async getProvisionedManifestXml(typeName: string, typeVersion: string): Promise<string | null> {
+        try {
+            SfUtility.outputLog(`sfRest:getProvisionedManifestXml: ${typeName} v${typeVersion}`, null, debugLevel.info);
+            let result: any;
+            if (this.useDirectRest && this.directClient) {
+                result = await this.directClient.getApplicationManifest(typeName, typeVersion);
+            } else {
+                result = await this.sfApi.getApplicationManifest(typeName, typeVersion);
+            }
+            const manifestXml = result?.Manifest || result?.manifest || null;
+            SfUtility.outputLog(`sfRest:getProvisionedManifestXml: got ${manifestXml ? manifestXml.length : 0} chars`, null, debugLevel.info);
+            return manifestXml;
+        } catch (error) {
+            SfUtility.outputLog(`sfRest:getProvisionedManifestXml: failed for ${typeName} v${typeVersion}`, error, debugLevel.warn);
+            return null;
+        }
+    }
+
+    /**
+     * Get all application instances of a given type+version.
+     * Filters the full application list by TypeName and TypeVersion.
+     */
+    public async getApplicationsByType(typeName: string, typeVersion: string): Promise<any[]> {
+        try {
+            SfUtility.outputLog(`sfRest:getApplicationsByType: ${typeName} v${typeVersion}`, null, debugLevel.info);
+            let apps: any[];
+            if (this.useDirectRest && this.directClient) {
+                const result = await this.directClient.getApplicationInfoList();
+                apps = result?.items || (Array.isArray(result) ? result : []);
+            } else {
+                apps = await this.getApplications();
+            }
+            const filtered = apps.filter((a: any) => {
+                const aType = a.TypeName || a.typeName;
+                const aVersion = a.TypeVersion || a.typeVersion;
+                return aType === typeName && aVersion === typeVersion;
+            });
+            SfUtility.outputLog(`sfRest:getApplicationsByType: found ${filtered.length} instance(s)`, null, debugLevel.info);
+            return filtered;
+        } catch (error) {
+            SfUtility.outputLog(`sfRest:getApplicationsByType: failed for ${typeName} v${typeVersion}`, error, debugLevel.warn);
             return [];
         }
     }

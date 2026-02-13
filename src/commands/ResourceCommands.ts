@@ -5,6 +5,7 @@
 
 import * as vscode from 'vscode';
 import { SfMgr } from '../sfMgr';
+import { SfUtility, debugLevel } from '../sfUtility';
 import { ItemTypes, ServiceKinds } from '../constants/ItemTypes';
 import { registerCommandWithErrorHandling, withProgress, confirmWithTypedText } from '../utils/CommandUtils';
 
@@ -142,6 +143,7 @@ export function registerResourceCommands(
         context,
         'sfClusterExplorer.deleteApplication',
         async (item: any) => {
+            SfUtility.outputLog(`ResourceCommands.deleteApplication: invoked with item=${JSON.stringify({ itemType: item?.itemType, itemId: item?.itemId, label: item?.label })}`, null, debugLevel.info);
             if (!item || item.itemType !== ItemTypes.APPLICATION) {
                 throw new Error('This command is only available for applications');
             }
@@ -152,6 +154,7 @@ export function registerResourceCommands(
 
             const applicationId = item.itemId;
             const applicationName = item.label || applicationId;
+            SfUtility.outputLog(`ResourceCommands.deleteApplication: applicationId=${applicationId} applicationName=${applicationName}`, null, debugLevel.info);
 
             // Require typed confirmation
             const confirmed = await confirmWithTypedText(
@@ -160,12 +163,19 @@ export function registerResourceCommands(
             );
 
             if (!confirmed) {
+                SfUtility.outputLog('ResourceCommands.deleteApplication: user cancelled confirmation', null, debugLevel.info);
                 return;
             }
 
+            SfUtility.outputLog('ResourceCommands.deleteApplication: user confirmed, proceeding with delete', null, debugLevel.info);
             await withProgress('Deleting Application', async () => {
-                const sfRest = sfMgr.getCurrentSfConfig().getSfRest();
+                const sfConfig = sfMgr.getCurrentSfConfig();
+                SfUtility.outputLog(`ResourceCommands.deleteApplication: cluster=${sfConfig.getClusterEndpoint()}`, null, debugLevel.info);
+                const sfRest = sfConfig.getSfRest();
+                
+                SfUtility.outputLog(`ResourceCommands.deleteApplication: calling sfRest.deleteApplication(${applicationId})`, null, debugLevel.info);
                 await sfRest.deleteApplication(applicationId);
+                SfUtility.outputLog(`ResourceCommands.deleteApplication: delete completed successfully for ${applicationId}`, null, debugLevel.info);
 
                 vscode.window.showInformationMessage(`Application ${applicationName} deleted successfully`);
                 
@@ -181,16 +191,20 @@ export function registerResourceCommands(
         context,
         'sfClusterExplorer.unprovisionApplicationType',
         async (item: any) => {
+            SfUtility.outputLog(`ResourceCommands.unprovisionApplicationType: invoked with item=${JSON.stringify({ itemType: item?.itemType, typeName: item?.typeName, typeVersion: item?.typeVersion, label: item?.label })}`, null, debugLevel.info);
             if (!item || item.itemType !== ItemTypes.APPLICATION_TYPE) {
+                SfUtility.outputLog(`ResourceCommands.unprovisionApplicationType: invalid itemType=${item?.itemType}, expected=${ItemTypes.APPLICATION_TYPE}`, null, debugLevel.error);
                 throw new Error('This command is only available for application types');
             }
 
             if (!item.typeName || !item.typeVersion) {
+                SfUtility.outputLog(`ResourceCommands.unprovisionApplicationType: missing typeName=${item?.typeName} or typeVersion=${item?.typeVersion}`, null, debugLevel.error);
                 throw new Error('Missing required application type information (typeName, typeVersion)');
             }
 
             const typeName = item.typeName;
             const typeVersion = item.typeVersion;
+            SfUtility.outputLog(`ResourceCommands.unprovisionApplicationType: typeName=${typeName} typeVersion=${typeVersion}`, null, debugLevel.info);
 
             // Require typed confirmation
             const confirmed = await confirmWithTypedText(
@@ -199,12 +213,32 @@ export function registerResourceCommands(
             );
 
             if (!confirmed) {
+                SfUtility.outputLog('ResourceCommands.unprovisionApplicationType: user cancelled confirmation', null, debugLevel.info);
                 return;
             }
 
+            SfUtility.outputLog('ResourceCommands.unprovisionApplicationType: user confirmed, proceeding with unprovision', null, debugLevel.info);
             await withProgress('Unprovisioning Application Type', async () => {
-                const sfRest = sfMgr.getCurrentSfConfig().getSfRest();
+                const sfConfig = sfMgr.getCurrentSfConfig();
+                SfUtility.outputLog(`ResourceCommands.unprovisionApplicationType: cluster=${sfConfig.getClusterEndpoint()}`, null, debugLevel.info);
+                const sfRest = sfConfig.getSfRest();
+
+                // Check for running instances before unprovision
+                SfUtility.outputLog(`ResourceCommands.unprovisionApplicationType: checking for running instances of ${typeName} v${typeVersion}`, null, debugLevel.info);
+                try {
+                    const runningApps = await sfRest.getApplicationsByType(typeName, typeVersion);
+                    SfUtility.outputLog(`ResourceCommands.unprovisionApplicationType: found ${runningApps.length} running instance(s)`, null, debugLevel.info);
+                    if (runningApps.length > 0) {
+                        const appNames = runningApps.map((a: any) => a.Name || a.name || a.Id || a.id).join(', ');
+                        SfUtility.outputLog(`ResourceCommands.unprovisionApplicationType: WARNING - running instances exist: ${appNames}`, null, debugLevel.warn);
+                    }
+                } catch (checkError) {
+                    SfUtility.outputLog('ResourceCommands.unprovisionApplicationType: failed to check running instances (proceeding anyway)', checkError, debugLevel.warn);
+                }
+
+                SfUtility.outputLog(`ResourceCommands.unprovisionApplicationType: calling sfRest.unprovisionApplicationType(${typeName}, ${typeVersion})`, null, debugLevel.info);
                 await sfRest.unprovisionApplicationType(typeName, typeVersion);
+                SfUtility.outputLog(`ResourceCommands.unprovisionApplicationType: unprovision completed successfully for ${typeName}:${typeVersion}`, null, debugLevel.info);
 
                 vscode.window.showInformationMessage(`Application type ${typeName}:${typeVersion} unprovisioned successfully`);
                 

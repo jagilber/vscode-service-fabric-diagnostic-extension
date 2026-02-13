@@ -14,7 +14,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { SfRest } from '../sfRest';
+import { SfRest, ProvisionResult } from '../sfRest';
 import { SfUtility, debugLevel } from '../sfUtility';
 import { SfConstants } from '../sfConstants';
 import {
@@ -25,6 +25,13 @@ import {
     PublishProfileInfo,
     UpgradeSettings,
 } from '../types/ProjectTypes';
+
+interface PreflightResult {
+    skipDeploy: boolean;
+    skipUpload: boolean;
+    needsUnprovision: boolean;
+    message?: string;
+}
 
 export class SfDeployService implements vscode.Disposable {
 
@@ -110,7 +117,17 @@ export class SfDeployService implements vscode.Disposable {
 
     /**
      * Deploy an application package to a cluster using the REST API.
-     * Steps: Upload → Provision (poll) → Cleanup Image Store → Create
+     * Steps: Upload, Provision (poll), Create
+     *
+     * Smart redeploy flow:
+     * 1. Pre-flight: validate local package, check cluster state
+     * 2. If type+version already provisioned and manifest differs:
+     *    - No instances: prompt unprovision+reprovision
+     *    - Instances exist: prompt delete and redeploy or cancel
+     * 3. If type+version provisioned and manifest matches:
+     *    - App instance exists: already deployed (skip)
+     *    - No instance: create only (skip upload/provision)
+     * 4. Fresh deploy: Upload, Provision, Wait, Create
      */
     async deployToCluster(
         sfRest: SfRest,
@@ -122,7 +139,17 @@ export class SfDeployService implements vscode.Disposable {
             SfUtility.outputLog(`SfDeployService.deployToCluster: package path does not exist: ${packagePath}`, null, debugLevel.error);
             throw new Error(`Application package not found: ${packagePath}`);
         }
-        SfUtility.outputLog(`SfDeployService.deployToCluster: package exists, starting withProgress`, null, debugLevel.info);
+
+        // Validate local package has ApplicationManifest.xml
+        const localManifestPath = path.join(packagePath, 'ApplicationManifest.xml');
+        if (!fs.existsSync(localManifestPath)) {
+            throw new Error(`ApplicationManifest.xml not found in package: ${packagePath}`);
+        }
+
+        // Filter parameters to only those declared in the local manifest
+        options.parameters = this.filterParameters(options.parameters, packagePath);
+
+        SfUtility.outputLog(`SfDeployService.deployToCluster: package validated, starting withProgress`, null, debugLevel.info);
 
         await vscode.window.withProgress(
             {
@@ -131,56 +158,76 @@ export class SfDeployService implements vscode.Disposable {
                 cancellable: false,
             },
             async (progress) => {
-                // Step 1: Upload to Image Store
-                SfUtility.outputLog('SfDeployService.deployToCluster: Step 1 - Upload to Image Store', null, debugLevel.info);
-                progress.report({ message: 'Uploading to Image Store...', increment: 0 });
-                const imageStorePath = options.typeName;
+                // Step 0: Pre-flight -- check if type+version is already provisioned
+                progress.report({ message: 'Checking cluster state...', increment: 0 });
+                const preflight = await this.preflightCheck(sfRest, options, packagePath);
 
-                await sfRest.uploadApplicationPackage(
-                    packagePath,
-                    imageStorePath,
-                    (fileName, current, total) => {
-                        const pct = Math.round((current / total) * 40);
-                        progress.report({
-                            message: `Uploading ${fileName} (${current}/${total})`,
-                            increment: pct > 0 ? 1 : 0,
-                        });
-                    },
-                );
-
-                // Step 2: Verify upload and provision application type
-                SfUtility.outputLog('SfDeployService.deployToCluster: Step 2 - Verify upload + Provision', null, debugLevel.info);
-                progress.report({ message: 'Verifying upload...', increment: 5 });
-                const verified = await sfRest.verifyImageStoreContent(imageStorePath);
-                if (!verified) {
-                    SfUtility.outputLog('SfDeployService.deployToCluster: WARNING - Image Store content verification failed, proceeding with provision anyway', null, debugLevel.warn);
+                if (preflight.skipDeploy) {
+                    SfUtility.outputLog('SfDeployService.deployToCluster: pre-flight says skip deploy', null, debugLevel.info);
+                    progress.report({ message: preflight.message || 'Already deployed', increment: 100 });
+                    return;
                 }
 
-                progress.report({ message: 'Provisioning application type...', increment: 35 });
-                await sfRest.provisionApplicationType(imageStorePath, true, options.typeName, options.typeVersion);
-
-                // Step 2b: Poll for provision completion
-                SfUtility.outputLog('SfDeployService.deployToCluster: Step 2b - Waiting for provision', null, debugLevel.info);
-                progress.report({ message: 'Waiting for provisioning to complete...', increment: 10 });
-                const provisioned = await sfRest.waitForProvision(
-                    options.typeName,
-                    options.typeVersion,
-                    SfConstants.getTimeoutMs(),
-                    3000,
-                );
-                if (!provisioned) {
-                    throw new Error(`Provisioning timed out for ${options.typeName} v${options.typeVersion}`);
+                if (preflight.needsUnprovision) {
+                    SfUtility.outputLog('SfDeployService.deployToCluster: unprovision needed (manifest changed)', null, debugLevel.info);
+                    progress.report({ message: 'Unprovisioning stale application type...', increment: 5 });
+                    await sfRest.unprovisionApplicationType(options.typeName, options.typeVersion);
+                    SfUtility.outputLog('SfDeployService.deployToCluster: unprovision complete', null, debugLevel.info);
                 }
 
-                // Step 3: Clean up image store (per MS best practice: after successful provision, before create)
-                // DISABLED: Skipping cleanup to avoid potential issues with image store state
-                SfUtility.outputLog('SfDeployService.deployToCluster: Step 3 - Cleanup image store (SKIPPED)', null, debugLevel.info);
-                progress.report({ message: 'Skipping Image Store cleanup...', increment: 10 });
-                // try {
-                //     await sfRest.deleteImageStoreContent(imageStorePath);
-                // } catch (cleanupErr) {
-                //     SfUtility.outputLog('SfDeployService: image store cleanup failed (non-fatal)', cleanupErr, debugLevel.warn);
-                // }
+                if (preflight.skipUpload) {
+                    // Type already provisioned with matching manifest -- just create instance
+                    SfUtility.outputLog('SfDeployService.deployToCluster: skipping upload/provision (manifest matches)', null, debugLevel.info);
+                    progress.report({ message: 'Type already provisioned, creating application...', increment: 80 });
+                } else {
+                    // Step 1: Upload to Image Store
+                    SfUtility.outputLog('SfDeployService.deployToCluster: Step 1 - Upload to Image Store', null, debugLevel.info);
+                    progress.report({ message: 'Uploading to Image Store...', increment: 0 });
+                    const imageStorePath = options.typeName;
+
+                    await sfRest.uploadApplicationPackage(
+                        packagePath,
+                        imageStorePath,
+                        (fileName, current, total) => {
+                            const pct = Math.round((current / total) * 40);
+                            progress.report({
+                                message: `Uploading ${fileName} (${current}/${total})`,
+                                increment: pct > 0 ? 1 : 0,
+                            });
+                        },
+                    );
+
+                    // Step 2: Verify upload and provision application type
+                    SfUtility.outputLog('SfDeployService.deployToCluster: Step 2 - Verify upload + Provision', null, debugLevel.info);
+                    progress.report({ message: 'Verifying upload...', increment: 5 });
+                    const verified = await sfRest.verifyImageStoreContent(imageStorePath);
+                    if (!verified) {
+                        SfUtility.outputLog('SfDeployService.deployToCluster: WARNING - Image Store content verification failed, proceeding with provision anyway', null, debugLevel.warn);
+                    }
+
+                    progress.report({ message: 'Provisioning application type...', increment: 35 });
+                    const provisionResult = await sfRest.provisionApplicationType(imageStorePath, true, options.typeName, options.typeVersion);
+
+                    if (provisionResult.alreadyExists) {
+                        SfUtility.outputLog('SfDeployService.deployToCluster: provision returned alreadyExists (expected after pre-flight)', null, debugLevel.info);
+                    }
+
+                    // Step 2b: Poll for provision completion
+                    SfUtility.outputLog('SfDeployService.deployToCluster: Step 2b - Waiting for provision', null, debugLevel.info);
+                    progress.report({ message: 'Waiting for provisioning to complete...', increment: 10 });
+                    const provisioned = await sfRest.waitForProvision(
+                        options.typeName,
+                        options.typeVersion,
+                        SfConstants.getTimeoutMs(),
+                        3000,
+                    );
+                    if (!provisioned) {
+                        throw new Error(`Provisioning timed out for ${options.typeName} v${options.typeVersion}`);
+                    }
+                }
+
+                // Step 3: Image Store cleanup -- SKIPPED (auto-grooms)
+                SfUtility.outputLog('SfDeployService.deployToCluster: Step 3 - Image Store cleanup (SKIPPED - auto-grooms)', null, debugLevel.info);
 
                 // Step 4: Create application instance
                 SfUtility.outputLog('SfDeployService.deployToCluster: Step 4 - Create application instance', null, debugLevel.info);
@@ -206,6 +253,173 @@ export class SfDeployService implements vscode.Disposable {
         );
     }
 
+    // ── Pre-flight Check ───────────────────────────────────────────────
+
+    private async preflightCheck(
+        sfRest: SfRest,
+        options: DeployOptions,
+        packagePath: string,
+    ): Promise<PreflightResult> {
+        try {
+            const types = await sfRest.getApplicationTypeInfo(options.typeName);
+            const existingType = types.find((t: any) => {
+                const ver = t.version || t.Version || t.applicationTypeVersion || t.ApplicationTypeVersion;
+                const status = t.status || t.Status || '';
+                return ver === options.typeVersion && (status === 'Available' || status === '' || !status);
+            });
+
+            if (!existingType) {
+                SfUtility.outputLog('SfDeployService.preflightCheck: type not provisioned, fresh deploy', null, debugLevel.info);
+                return { skipDeploy: false, skipUpload: false, needsUnprovision: false };
+            }
+
+            // Type exists -- compare manifests
+            SfUtility.outputLog('SfDeployService.preflightCheck: type already provisioned, comparing manifests', null, debugLevel.info);
+            const clusterManifestXml = await sfRest.getProvisionedManifestXml(options.typeName, options.typeVersion);
+            const localManifestPath = path.join(packagePath, 'ApplicationManifest.xml');
+            const localManifestXml = fs.readFileSync(localManifestPath, 'utf-8');
+
+            const manifestsMatch = this.compareManifests(localManifestXml, clusterManifestXml);
+
+            if (manifestsMatch) {
+                SfUtility.outputLog('SfDeployService.preflightCheck: manifests match', null, debugLevel.info);
+                const existingApps = await sfRest.getApplicationsByType(options.typeName, options.typeVersion);
+                const thisApp = existingApps.find((a: any) => {
+                    const name = a.Name || a.name || '';
+                    return name === options.appName;
+                });
+
+                if (thisApp) {
+                    SfUtility.outputLog('SfDeployService.preflightCheck: app already deployed', null, debugLevel.info);
+                    return {
+                        skipDeploy: true,
+                        skipUpload: true,
+                        needsUnprovision: false,
+                        message: `${options.appName} is already deployed with ${options.typeName} v${options.typeVersion}`,
+                    };
+                }
+
+                // Type provisioned with matching manifest but no app instance -- skip upload, just create
+                SfUtility.outputLog('SfDeployService.preflightCheck: type provisioned, no app instance -- skip upload', null, debugLevel.info);
+                return { skipDeploy: false, skipUpload: true, needsUnprovision: false };
+            }
+
+            // Manifests differ -- need unprovision+reprovision
+            SfUtility.outputLog('SfDeployService.preflightCheck: manifests DIFFER -- checking for running instances', null, debugLevel.info);
+            const runningApps = await sfRest.getApplicationsByType(options.typeName, options.typeVersion);
+
+            if (runningApps.length === 0) {
+                const choice = await vscode.window.showWarningMessage(
+                    `Application type ${options.typeName} v${options.typeVersion} is already provisioned but the manifest has changed. ` +
+                    `Unprovision the old type and reprovision with the updated package?`,
+                    { modal: true },
+                    'Unprovision & Reprovision',
+                    'Cancel',
+                );
+                if (choice !== 'Unprovision & Reprovision') {
+                    return { skipDeploy: true, skipUpload: true, needsUnprovision: false, message: 'Deploy cancelled by user' };
+                }
+                return { skipDeploy: false, skipUpload: false, needsUnprovision: true };
+            }
+
+            // Running instances with different manifest
+            const appNames = runningApps.map((a: any) => a.Name || a.name).join(', ');
+            const choice = await vscode.window.showWarningMessage(
+                `Application type ${options.typeName} v${options.typeVersion} has ${runningApps.length} running instance(s): ${appNames}. ` +
+                `The manifest has changed but the version has not. ` +
+                `Delete instances, unprovision, and redeploy? Or cancel and bump the version number for a safe upgrade.`,
+                { modal: true },
+                'Delete & Redeploy',
+                'Cancel',
+            );
+
+            if (choice === 'Delete & Redeploy') {
+                for (const app of runningApps) {
+                    const appId = (app.Id || app.id || (app.Name || app.name || '').replace('fabric:/', ''));
+                    SfUtility.outputLog(`SfDeployService.preflightCheck: deleting instance ${appId}`, null, debugLevel.info);
+                    await sfRest.deleteApplication(appId);
+                }
+                return { skipDeploy: false, skipUpload: false, needsUnprovision: true };
+            }
+
+            return { skipDeploy: true, skipUpload: true, needsUnprovision: false, message: 'Deploy cancelled by user' };
+        } catch (error) {
+            // Pre-flight is best-effort -- on failure, proceed with normal deploy
+            SfUtility.outputLog('SfDeployService.preflightCheck: error during pre-flight, proceeding with normal deploy', error, debugLevel.warn);
+            return { skipDeploy: false, skipUpload: false, needsUnprovision: false };
+        }
+    }
+
+    // ── Manifest Comparison ────────────────────────────────────────────
+
+    private compareManifests(localXml: string, clusterXml: string | null): boolean {
+        if (!clusterXml) {
+            SfUtility.outputLog('SfDeployService.compareManifests: no cluster manifest available, treating as different', null, debugLevel.info);
+            return false;
+        }
+        const normalize = (xml: string) => xml
+            .replace(/<!--[\s\S]*?-->/g, '')  // strip XML comments
+            .replace(/\r\n/g, '\n')           // normalize line endings
+            .replace(/^\s+$/gm, '')           // strip whitespace-only lines
+            .replace(/\n{2,}/g, '\n')         // collapse multiple blank lines
+            .trim();
+        const normalizedLocal = normalize(localXml);
+        const normalizedCluster = normalize(clusterXml);
+        const match = normalizedLocal === normalizedCluster;
+        SfUtility.outputLog(`SfDeployService.compareManifests: match=${match} (local=${normalizedLocal.length} chars, cluster=${normalizedCluster.length} chars)`, null, debugLevel.info);
+        return match;
+    }
+
+    // ── Parameter Filtering ────────────────────────────────────────────
+
+    private filterParameters(parameters: Record<string, string>, packagePath: string): Record<string, string> {
+        if (!parameters || Object.keys(parameters).length === 0) {
+            return parameters;
+        }
+
+        const localManifestPath = path.join(packagePath, 'ApplicationManifest.xml');
+        if (!fs.existsSync(localManifestPath)) {
+            return parameters;
+        }
+
+        try {
+            const xml = fs.readFileSync(localManifestPath, 'utf-8');
+            const declaredParams = new Set<string>();
+            const paramRegex = /<Parameter\s+Name="([^"]+)"/g;
+            let match;
+            while ((match = paramRegex.exec(xml)) !== null) {
+                declaredParams.add(match[1]);
+            }
+
+            if (declaredParams.size === 0) {
+                SfUtility.outputLog('SfDeployService.filterParameters: no parameters declared in manifest, passing all', null, debugLevel.info);
+                return parameters;
+            }
+
+            const filtered: Record<string, string> = {};
+            const removed: string[] = [];
+            for (const [key, value] of Object.entries(parameters)) {
+                if (declaredParams.has(key)) {
+                    filtered[key] = value;
+                } else {
+                    removed.push(key);
+                }
+            }
+
+            if (removed.length > 0) {
+                SfUtility.outputLog(`SfDeployService.filterParameters: removed ${removed.length} undeclared parameter(s): ${removed.join(', ')}`, null, debugLevel.warn);
+                vscode.window.showWarningMessage(
+                    `Filtered out ${removed.length} parameter(s) not declared in ApplicationManifest.xml: ${removed.join(', ')}`,
+                );
+            }
+
+            return filtered;
+        } catch (error) {
+            SfUtility.outputLog('SfDeployService.filterParameters: error reading manifest, passing all parameters', error, debugLevel.warn);
+            return parameters;
+        }
+    }
+
     // ── Remove from Cluster ────────────────────────────────────────────
 
     /**
@@ -226,19 +440,19 @@ export class SfDeployService implements vscode.Disposable {
             },
             async (progress) => {
                 // Step 1: Delete application instance
-                SfUtility.outputLog('SfDeployService.removeFromCluster: Step 1 - Delete application instance', null, debugLevel.info);
-                progress.report({ message: 'Deleting application...', increment: 0 });
                 const applicationId = appName.replace('fabric:/', '');
+                SfUtility.outputLog(`SfDeployService.removeFromCluster: Step 1 - Delete application ${applicationId}`, null, debugLevel.info);
+                progress.report({ message: 'Deleting application...', increment: 0 });
                 await sfRest.deleteApplication(applicationId);
 
                 // Step 2: Unprovision application type
-                SfUtility.outputLog('SfDeployService.removeFromCluster: Step 2 - Unprovision application type', null, debugLevel.info);
+                SfUtility.outputLog(`SfDeployService.removeFromCluster: Step 2 - Unprovision ${typeName}:${typeVersion}`, null, debugLevel.info);
                 progress.report({ message: 'Unprovisioning application type...', increment: 50 });
                 await sfRest.unprovisionApplicationType(typeName, typeVersion);
 
                 progress.report({ message: 'Remove complete!', increment: 50 });
                 SfUtility.outputLog(
-                    `SfDeployService: removed ${appName} (${typeName} v${typeVersion})`,
+                    `SfDeployService.removeFromCluster: COMPLETE - removed ${appName} (${typeName} v${typeVersion})`,
                     null,
                     debugLevel.info,
                 );

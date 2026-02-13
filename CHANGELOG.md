@@ -35,6 +35,33 @@ Primary focus on making extension accessible to:
 - Cluster operators without development background
 - Teams wanting quick evaluation without source builds
 
+## [1.0.4] - 2026-02-13
+
+### Added
+- **SfApiResponse base class** — Centralized response parsing and logging for all REST API calls.
+  Both `SfDirectRestClient` and `SfRestClient` now route responses through `SfApiResponse` for
+  consistent error detection, timing, and structured logging.
+- **Deploy/Upgrade phase diagram** — New `docs/architecture/deploy-upgrade-phases.md` with Mermaid
+  flowcharts documenting the full deploy lifecycle: pre-flight check, upload, provision, create,
+  rolling upgrade, and remove flows.
+- **Mock server 5c-silver profile** — Complete mock profile captured from a real 5-node Silver
+  durability cluster with VotingType and sf_ps1Type applications. 47 fixture files covering
+  all treeview drill-down levels (nodes, applications, services, partitions, replicas, manifests).
+
+### Fixed
+- **DirectClient not initialized** — `SfRest` constructor now initializes `directClient` with
+  the default endpoint, preventing null reference errors on first use.
+- **Null output channel guard** — `SfUtility.outputLog()` now safely handles null channel,
+  preventing crashes when logging before channel initialization.
+- **Mock server pagination format** — Mock server now wraps array responses in
+  `{ContinuationToken, Items}` pagination envelope matching the real SF REST API.
+- **Mock server route ordering** — System services route moved before parameterized services
+  route to prevent `/Applications/System` being matched by the wildcard pattern.
+- **Mock server query parameter handling** — Resolvers now receive path-only (no query params)
+  for regex matching, fixing 404s when API calls include `?api-version=` parameters.
+- **Mock server service ID separator** — Partition/replica resolvers now handle both `~` and `/`
+  service ID separators, matching the SF REST API convention.
+
 ## [1.0.3] - 2026-02-11
 
 ### Added

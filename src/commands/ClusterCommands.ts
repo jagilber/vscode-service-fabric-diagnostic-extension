@@ -102,6 +102,25 @@ export function registerClusterCommands(
         'set active cluster'
     );
     
+    // Open Service Fabric Explorer (SFX) in browser
+    registerCommandWithErrorHandling(
+        context,
+        'sfClusterExplorer.openSfx',
+        async (item: any) => {
+            if (!item || !item.clusterEndpoint) {
+                throw new Error('Cannot open SFX: invalid tree item');
+            }
+            const sfxUrl = `${item.clusterEndpoint}/Explorer/index.html`;
+            const browser = vscode.workspace.getConfiguration('sfClusterExplorer').get<string>('sfxBrowser', 'simple');
+            if (browser === 'external') {
+                await vscode.env.openExternal(vscode.Uri.parse(sfxUrl));
+            } else {
+                await vscode.commands.executeCommand('simpleBrowser.show', sfxUrl);
+            }
+        },
+        'open SFX'
+    );
+
     // Execute custom REST call
     registerCommandWithErrorHandling(
         context,

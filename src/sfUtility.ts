@@ -123,6 +123,15 @@ export class SfUtility {
         }
 
         try {
+            // Ensure channel exists (may not be initialized in test environments)
+            if (!this.channel) {
+                this.createDebugLogChannel();
+            }
+            if (!this.channel) {
+                console.log(`[SF Extension] ${message}`);
+                return;
+            }
+
             // Check if this is a LogOutputChannel (with specialized logging methods) or regular OutputChannel
             const isLogChannel = typeof (this.channel as any).debug === 'function';
             

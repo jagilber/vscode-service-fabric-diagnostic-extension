@@ -67,6 +67,7 @@ export const COMMAND_MANIFEST: Record<string, CommandMeta> = {
     'sfClusterExplorer.removeClusterFromTree':    { friendlyName: 'remove from tree',      category: 'cluster',  requiresCluster: false },
     'sfClusterExplorer.setActiveCluster':         { friendlyName: 'set active cluster',    category: 'cluster',  requiresCluster: false },
     'sfClusterExplorer.resetExtensionState':      { friendlyName: 'reset extension state', category: 'cluster',  requiresCluster: false },
+    'sfClusterExplorer.openSfx':                    { friendlyName: 'open SFX',              category: 'cluster',  requiresCluster: false },
 
     // ---- View / UI commands ----
     'serviceFabricClusterView.refreshView':       { friendlyName: 'refresh view',          category: 'view',     requiresCluster: false },

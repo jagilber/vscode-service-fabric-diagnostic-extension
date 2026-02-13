@@ -38,6 +38,7 @@ import * as tls from 'tls';
 import * as url from 'url';
 import { SfUtility, debugLevel } from '../sfUtility';
 import { HttpError, NetworkError } from '../models/Errors';
+import { SfApiResponse } from '../models/SfApiResponse';
 import { PiiObfuscation } from '../utils/PiiObfuscation';
 import { SfConstants } from '../sfConstants';
 
@@ -208,6 +209,7 @@ export class SfDirectRestClient {
         const logUrl = `${parsedUrl.protocol}//${options.hostname}:${options.port}${fullPath}`;
         const obfuscatedUrl = `${parsedUrl.protocol}//${PiiObfuscation.generic(options.hostname || '')}:${options.port}${path.includes('?') ? path.substring(0, path.indexOf('?')) : path}?api-version=${requestApiVersion}`;
         SfUtility.outputLog(`🌐 ${method} ${obfuscatedUrl}`, null, debugLevel.info);
+        const startTime = Date.now();
 
         return new Promise<T>((resolve, reject) => {
             const requestModule = isHttps ? https : http;
@@ -229,10 +231,12 @@ export class SfDirectRestClient {
                     requestCompleted = true;
                     
                     const responseBody = chunks.length > 0 ? Buffer.concat(chunks as any).toString('utf-8') : '';
-                    
-                    SfUtility.outputLog(`📥 Response: ${res.statusCode}`, null, debugLevel.info);
+                    const durationMs = Date.now() - startTime;
 
                     if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+                        // Log success via base response class
+                        SfApiResponse.fromDirectSuccess(method, path, res.statusCode, responseBody, durationMs, logUrl).log();
+
                         // Success - parse JSON if body exists
                         if (responseBody && res.statusCode !== 204) {
                             try {
@@ -247,6 +251,9 @@ export class SfDirectRestClient {
                             resolve(undefined as any);
                         }
                     } else {
+                        // Log error via base response class
+                        SfApiResponse.fromDirectError(method, path, res.statusCode || 0, res.statusMessage || '', responseBody, durationMs, logUrl).log();
+
                         // Error response
                         const error = new HttpError(
                             `HTTP ${res.statusCode}: ${res.statusMessage}`,
@@ -836,9 +843,7 @@ export class SfDirectRestClient {
      * POST /Applications/{applicationId}/$/Delete?api-version=6.0
      */
     async deleteApplication(applicationId: string): Promise<void> {
-        SfUtility.outputLog(`SfDirectRestClient.deleteApplication: id=${applicationId}`, null, debugLevel.info);
         await this.makeRequest<void>('POST', `/Applications/${applicationId}/$/Delete`);
-        SfUtility.outputLog('SfDirectRestClient.deleteApplication: complete', null, debugLevel.info);
     }
 
     /**
@@ -846,13 +851,11 @@ export class SfDirectRestClient {
      * POST /ApplicationTypes/{typeName}/$/Unprovision?api-version=6.0
      */
     async unprovisionApplicationType(applicationTypeName: string, applicationTypeVersion: string): Promise<void> {
-        SfUtility.outputLog(`SfDirectRestClient.unprovisionApplicationType: name=${applicationTypeName} v=${applicationTypeVersion}`, null, debugLevel.info);
         await this.makeRequest<void>(
             'POST',
             `/ApplicationTypes/${applicationTypeName}/$/Unprovision`,
             { ApplicationTypeVersion: applicationTypeVersion },
         );
-        SfUtility.outputLog('SfDirectRestClient.unprovisionApplicationType: complete', null, debugLevel.info);
     }
 
     /**
@@ -905,6 +908,7 @@ export class SfDirectRestClient {
         rollingUpgradeMode: string = 'Monitored',
         failureAction: string = 'Rollback',
     ): Promise<void> {
+        SfUtility.outputLog(`SfDirectRestClient.upgradeApplication: id=${applicationId} type=${typeName} targetVersion=${targetVersion} upgradeKind=${upgradeKind} mode=${rollingUpgradeMode} failureAction=${failureAction} params=${parameters ? Object.keys(parameters).length : 0}`, null, debugLevel.info);
         const body: any = {
             Name: applicationId,
             TargetApplicationTypeVersion: targetVersion,
@@ -917,6 +921,7 @@ export class SfDirectRestClient {
         if (parameters) {
             body.Parameters = Object.entries(parameters).map(([Key, Value]) => ({ Key, Value }));
         }
+        SfUtility.outputLog(`SfDirectRestClient.upgradeApplication: request body=${JSON.stringify(body)}`, null, debugLevel.debug);
         await this.makeRequest<void>('POST', `/Applications/${applicationId}/$/Upgrade`, body);
     }
 }

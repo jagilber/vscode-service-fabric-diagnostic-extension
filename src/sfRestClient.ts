@@ -7,6 +7,7 @@ import { SfUtility, debugLevel } from './sfUtility';
 import { IHttpOptionsProvider } from './interfaces/IHttpOptionsProvider';
 import { ClientRequest } from 'http';
 import { NetworkError, HttpError } from './models/Errors';
+import { SfApiResponse } from './models/SfApiResponse';
 
 
 
@@ -88,6 +89,7 @@ export class SfRestClient {
             ? httpOptions.protocol.replace(':', '') 
             : (httpOptions.port === 80 ? 'http' : 'https');
         SfUtility.outputLog(`invokeRequestWithFullResponse:${method} ${protocol}://${httpOptions.host}:${httpOptions.port}${httpOptions.path}`);
+        const startTime = Date.now();
         
         try {
             return await new Promise<{ statusCode: number, headers: Record<string, string | string[]>, body: string }>((resolve, reject) => {
@@ -113,7 +115,7 @@ export class SfRestClient {
 
                     response.on('end', () => {
                         const body = chunks.length > 0 ? Buffer.concat(chunks as any).toString('utf-8') : '';
-                        SfUtility.outputLog('Request completed', null, debugLevel.info);
+                        const durationMs = Date.now() - startTime;
                         
                         // Return full response with status, headers, and body
                         const fullResponse: any = {
@@ -123,9 +125,12 @@ export class SfRestClient {
                         };
                         
                         if (response.statusCode && response.statusCode >= 200 && response.statusCode < 400) {
-                            // Success or redirect codes (200-399) - including 204 No Content
+                            // Log success via base response class
+                            SfApiResponse.fromSdkResponse(method, httpOptions.path || '', response.statusCode, response.statusMessage || '', body, durationMs, true).log();
                             resolve(fullResponse);
                         } else {
+                            // Log error via base response class
+                            SfApiResponse.fromSdkResponse(method, httpOptions.path || '', response.statusCode || 0, response.statusMessage || '', body, durationMs, false).log();
                             const error = new HttpError(
                                 `HTTP ${response.statusCode}: ${response.statusMessage}`,
                                 { 

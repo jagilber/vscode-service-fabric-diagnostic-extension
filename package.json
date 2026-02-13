@@ -2,7 +2,7 @@
   "name": "vscode-service-fabric-diagnostic-extension",
   "displayName": "Service Fabric Diagnostic Extension",
   "description": "Manage and diagnose Azure Service Fabric clusters with visual tree view, health monitoring, and operational tools",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "publisher": "jagilber",
   "license": "MIT",
   "keywords": [
@@ -192,6 +192,11 @@
         "command": "sfClusterExplorer.setActiveCluster",
         "title": "Set as Active Cluster",
         "icon": "$(star-full)"
+      },
+      {
+        "command": "sfClusterExplorer.openSfx",
+        "title": "Open SFX",
+        "icon": "$(link-external)"
       },
       {
         "command": "sfClusterExplorer.resetExtensionState",
@@ -435,6 +440,11 @@
           "group": "cluster@1"
         },
         {
+          "command": "sfClusterExplorer.openSfx",
+          "when": "view == serviceFabricClusterView && viewItem == cluster",
+          "group": "cluster@2"
+        },
+        {
           "command": "sfClusterExplorer.generateHealthReport",
           "when": "view == serviceFabricClusterView && viewItem == health",
           "group": "reports@1"
@@ -561,6 +571,19 @@
             "default": 1200,
             "minimum": 10,
             "description": "Operation timeout in seconds for Service Fabric REST API calls (default: 1200 = 20 minutes, matches SF cluster default). Can also be set via SF_TIMEOUT_SEC environment variable."
+          },
+          "sfClusterExplorer.sfxBrowser": {
+            "type": "string",
+            "default": "simple",
+            "enum": [
+              "simple",
+              "external"
+            ],
+            "enumDescriptions": [
+              "Open SFX in VS Code Simple Browser tab",
+              "Open SFX in the default external browser"
+            ],
+            "description": "Where to open Service Fabric Explorer (SFX)"
           }
         }
       }
