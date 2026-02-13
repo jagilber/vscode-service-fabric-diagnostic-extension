@@ -38,6 +38,13 @@ Primary focus on making extension accessible to:
 ## [1.0.5] - 2026-02-13
 
 ### Added
+- **UpgradeTracker** — New `UpgradeTracker` class polls cluster upgrade progress and writes
+  a live UD walk dashboard to `docs/architecture/upgrade-ud-progress.md` with Mermaid diagrams:
+  - Color-coded UD progress flowchart (green=Completed, amber=InProgress, gray=Pending, red=Failed)
+  - Health check pipeline diagram showing Wait → Stable → Pass phases
+  - Per-node upgrade progress diagram with phase and duration
+  - Overview table with upgrade/UD durations, time-left-until-timeout, and last-polled timestamp
+  - Auto-stops polling when upgrade reaches Completed/Failed
 - **DeployTracker** — New `DeployTracker` class dynamically updates
   `docs/architecture/deploy-upgrade-phases.md` with a live status table during deploy,
   upgrade, and remove operations. Each phase shows ⬜ pending, 🔄 in-progress, ✅ done,
@@ -45,6 +52,11 @@ Primary focus on making extension accessible to:
 - **SfDeployService integration** — `deployToCluster()`, `upgradeApplication()`, and
   `removeFromCluster()` now write live progress to the deploy phases markdown file via
   `DeployTracker`, providing a persistent phase-by-phase audit trail.
+
+### Fixed
+- **Unprovision application type typeVersion undefined** — Context menu right-click passes the
+  tree node object directly, but `typeVersion` was only available in command arguments. Now
+  resolves from `item.typeVersion`, `item.typeInfo?.version`, or `item.command?.arguments`.
 
 ## [1.0.4] - 2026-02-13
 

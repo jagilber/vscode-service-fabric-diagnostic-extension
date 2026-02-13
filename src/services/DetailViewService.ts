@@ -15,6 +15,7 @@ import * as path from 'path';
 import { SfMgr } from '../sfMgr';
 import { SfUtility, debugLevel } from '../sfUtility';
 import { ClusterMapView } from '../views/ClusterMapView';
+import { UpgradeTracker } from './UpgradeTracker';
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -371,6 +372,8 @@ const HANDLER_REGISTRY: Record<string, DetailHandler> = {
 // ── Service class ──────────────────────────────────────────────────────
 
 export class DetailViewService {
+    private upgradeTracker: UpgradeTracker | undefined;
+
     constructor(private readonly extensionContext: vscode.ExtensionContext) {}
 
     /**
@@ -415,6 +418,17 @@ export class DetailViewService {
             SfUtility.outputLog('Opening cluster map webview', null, debugLevel.info);
             const clusterMapView = new ClusterMapView(this.extensionContext, sfRest, clusterEndpoint);
             await clusterMapView.show();
+            return;
+        }
+
+        if (normalisedItemType === 'details') {
+            SfUtility.outputLog('Opening upgrade UD tracker', null, debugLevel.info);
+            // Dispose previous tracker if any
+            this.upgradeTracker?.dispose();
+            const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
+            this.upgradeTracker = new UpgradeTracker(workspaceRoot, sfRest, clusterEndpoint);
+            this.extensionContext.subscriptions.push(this.upgradeTracker);
+            await this.upgradeTracker.start();
             return;
         }
 

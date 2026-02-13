@@ -206,19 +206,20 @@ export function registerResourceCommands(
         context,
         'sfClusterExplorer.unprovisionApplicationType',
         async (item: any) => {
-            SfUtility.outputLog(`ResourceCommands.unprovisionApplicationType: invoked with item=${JSON.stringify({ itemType: item?.itemType, typeName: item?.typeName, typeVersion: item?.typeVersion, label: item?.label })}`, null, debugLevel.info);
+            SfUtility.outputLog(`ResourceCommands.unprovisionApplicationType: invoked with item=${JSON.stringify({ itemType: item?.itemType, typeName: item?.typeName, typeVersion: item?.typeVersion, typeInfoVersion: item?.typeInfo?.version, label: item?.label })}`, null, debugLevel.info);
             if (!item || item.itemType !== ItemTypes.APPLICATION_TYPE) {
                 SfUtility.outputLog(`ResourceCommands.unprovisionApplicationType: invalid itemType=${item?.itemType}, expected=${ItemTypes.APPLICATION_TYPE}`, null, debugLevel.error);
                 throw new Error('This command is only available for application types');
             }
 
-            if (!item.typeName || !item.typeVersion) {
-                SfUtility.outputLog(`ResourceCommands.unprovisionApplicationType: missing typeName=${item?.typeName} or typeVersion=${item?.typeVersion}`, null, debugLevel.error);
+            // Resolve from direct property, typeInfo (tree node), or command arguments
+            const typeName = item.typeName || item.command?.arguments?.[0]?.typeName;
+            const typeVersion = item.typeVersion || item.typeInfo?.version || item.command?.arguments?.[0]?.typeVersion;
+
+            if (!typeName || !typeVersion) {
+                SfUtility.outputLog(`ResourceCommands.unprovisionApplicationType: missing typeName=${typeName} or typeVersion=${typeVersion}`, null, debugLevel.error);
                 throw new Error('Missing required application type information (typeName, typeVersion)');
             }
-
-            const typeName = item.typeName;
-            const typeVersion = item.typeVersion;
             SfUtility.outputLog(`ResourceCommands.unprovisionApplicationType: typeName=${typeName} typeVersion=${typeVersion}`, null, debugLevel.info);
 
             // Require typed confirmation
