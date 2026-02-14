@@ -1489,9 +1489,13 @@ export class SfRest implements IHttpOptionsProvider {
         try {
             const content = await this.getImageStoreContent(imageStorePath);
             if (!content) {
-                SfUtility.outputLog(`sfRest:verifyImageStoreContent: no content at ${imageStorePath}`, null, debugLevel.warn);
+                SfUtility.outputLog(`sfRest:verifyImageStoreContent: no content returned for ${imageStorePath}`, null, debugLevel.warn);
                 return false;
             }
+            // Log raw response keys to diagnose format mismatches
+            const keys = Object.keys(content);
+            SfUtility.outputLog(`sfRest:verifyImageStoreContent: response keys=[${keys.join(', ')}]`, null, debugLevel.info);
+
             const files = content?.StoreFiles || content?.storeFiles || [];
             const folders = content?.StoreFolders || content?.storeFolders || [];
             SfUtility.outputLog(`sfRest:verifyImageStoreContent: ${imageStorePath} → ${files.length} files, ${folders.length} folders`, null, debugLevel.info);
@@ -1501,9 +1505,13 @@ export class SfRest implements IHttpOptionsProvider {
             for (const d of folders) {
                 SfUtility.outputLog(`  folder: ${d?.StoreRelativePath || d?.storeRelativePath || JSON.stringify(d)}`, null, debugLevel.info);
             }
+            if (files.length === 0 && folders.length === 0 && keys.length > 0) {
+                SfUtility.outputLog(`sfRest:verifyImageStoreContent: unexpected response structure: ${JSON.stringify(content).substring(0, 500)}`, null, debugLevel.warn);
+            }
             return files.length > 0 || folders.length > 0;
-        } catch (error) {
-            SfUtility.outputLog(`sfRest:verifyImageStoreContent: error verifying ${imageStorePath}`, error, debugLevel.warn);
+        } catch (error: any) {
+            const statusCode = error?.status || error?.statusCode || '';
+            SfUtility.outputLog(`sfRest:verifyImageStoreContent: error verifying ${imageStorePath} (HTTP ${statusCode}): ${error?.message || error}`, error, debugLevel.warn);
             return false;
         }
     }

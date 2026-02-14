@@ -44,6 +44,8 @@ export class RefreshManager {
         }
 
         this.debounceTimer = setTimeout(() => {
+            const target = this.pendingFullRefresh ? 'undefined (full tree)' : `node:${(node as any)?.id || 'unknown'}`;
+            SfUtility.outputLog(`[TREE] RefreshManager.fire: ${target}`, null, debugLevel.info);
             this.emitter.fire(this.pendingFullRefresh ? undefined : node as any);
             this.debounceTimer = undefined;
             this.pendingFullRefresh = false;

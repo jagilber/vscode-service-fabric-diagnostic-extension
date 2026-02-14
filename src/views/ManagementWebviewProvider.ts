@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { SfUtility, debugLevel } from '../sfUtility';
 import { SfMgr } from '../sfMgr';
 import { ManagementMessage, ApplicationInfo, NodeInfo } from '../types';
+import { SfExtSettings, sfExtSettingsList } from '../sfExtSettings';
 
 /**
  * WebView provider for Service Fabric management operations
@@ -100,6 +101,18 @@ export class ManagementWebviewProvider implements vscode.WebviewViewProvider {
 
             case 'restoreBackup':
                 await this._handleRestoreBackup(message.data);
+                break;
+
+            case 'browseTemplates':
+                await this._handleBrowseTemplates();
+                break;
+
+            case 'deployTemplate':
+                await this._handleDeployTemplate(message.data);
+                break;
+
+            case 'openTemplateSettings':
+                await this._handleOpenTemplateSettings();
                 break;
 
             default:
@@ -500,6 +513,57 @@ export class ManagementWebviewProvider implements vscode.WebviewViewProvider {
         vscode.window.showInformationMessage('Backup restore not yet implemented');
     }
 
+    // ==================== ARM TEMPLATE DEPLOYMENT ====================
+
+    private async _handleBrowseTemplates(): Promise<void> {
+        const repos: Array<{ name: string; url: string; branch?: string; description?: string }> =
+            SfExtSettings.getSetting(sfExtSettingsList.templateRepositories) || [];
+
+        if (repos.length === 0) {
+            const openSettings = await vscode.window.showWarningMessage(
+                'No template repositories configured. Add repositories in settings.',
+                'Open Settings'
+            );
+            if (openSettings) {
+                await this._handleOpenTemplateSettings();
+            }
+            return;
+        }
+
+        const repoItems = repos.map(r => ({
+            label: r.name,
+            description: r.branch ? `branch: ${r.branch}` : '',
+            detail: r.description || r.url,
+            url: r.url,
+            branch: r.branch
+        }));
+
+        const selected = await vscode.window.showQuickPick(repoItems, {
+            placeHolder: 'Select a template repository to browse',
+            title: 'Service Fabric Template Repositories'
+        });
+
+        if (!selected) {
+            return;
+        }
+
+        // Open the repo in VS Code's Simple Browser
+        const branchPath = selected.branch ? `/tree/${selected.branch}` : '';
+        const repoUrl = `${selected.url}${branchPath}`;
+        await vscode.commands.executeCommand('simpleBrowser.api.open', repoUrl);
+    }
+
+    private async _handleDeployTemplate(_data: unknown): Promise<void> {
+        vscode.window.showInformationMessage('ARM template deployment will be available in a future release');
+    }
+
+    private async _handleOpenTemplateSettings(): Promise<void> {
+        await vscode.commands.executeCommand(
+            'workbench.action.openSettings',
+            'sfClusterExplorer.templateRepositories'
+        );
+    }
+
     // ==================== HELPER METHODS ====================
 
     private async _getApplicationList(): Promise<string[]> {
@@ -540,104 +604,264 @@ export class ManagementWebviewProvider implements vscode.WebviewViewProvider {
             <style>
                 * {
                     box-sizing: border-box;
+                    margin: 0;
+                    padding: 0;
                 }
                 
                 body { 
-                    padding: 10px; 
+                    padding: 0; 
                     font-family: var(--vscode-font-family);
                     font-size: var(--vscode-font-size);
                     color: var(--vscode-foreground);
-                    background-color: var(--vscode-editor-background);
+                    background-color: transparent;
+                }
+
+                .panel-header {
+                    padding: 12px 16px;
+                    border-bottom: 1px solid var(--vscode-panel-border);
+                    background: var(--vscode-sideBar-background);
+                }
+
+                .panel-header h2 {
+                    font-size: 11px;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    letter-spacing: 1px;
+                    color: var(--vscode-sideBarSectionHeader-foreground);
                     margin: 0;
                 }
 
-                h2 {
-                    font-size: 16px;
-                    font-weight: 600;
-                    margin: 0 0 15px 0;
+                .cluster-badge {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 6px;
+                    margin-top: 8px;
+                    padding: 4px 10px;
+                    background: var(--vscode-badge-background);
+                    color: var(--vscode-badge-foreground);
+                    border-radius: 10px;
+                    font-size: 11px;
+                    font-weight: 500;
+                    max-width: 100%;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                }
+
+                .cluster-badge .dot {
+                    width: 6px;
+                    height: 6px;
+                    border-radius: 50%;
+                    background: #3fb950;
+                    flex-shrink: 0;
+                }
+
+                .sections {
+                    padding: 4px 0;
+                }
+
+                .section {
+                    border-bottom: 1px solid var(--vscode-panel-border);
+                }
+
+                .section:last-child {
+                    border-bottom: none;
+                }
+
+                .section-header {
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                    padding: 8px 16px;
+                    cursor: pointer;
+                    user-select: none;
+                    font-size: 11px;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                    color: var(--vscode-sideBarSectionHeader-foreground);
+                    background: var(--vscode-sideBarSectionHeader-background);
+                }
+
+                .section-header:hover {
+                    background: var(--vscode-list-hoverBackground);
+                }
+
+                .section-header .chevron {
+                    font-size: 10px;
+                    transition: transform 0.15s ease;
+                    flex-shrink: 0;
+                }
+
+                .section-header .chevron.collapsed {
+                    transform: rotate(-90deg);
+                }
+
+                .section-header .icon {
+                    font-size: 14px;
+                    flex-shrink: 0;
+                }
+
+                .section-body {
+                    padding: 4px 8px 8px;
+                    overflow: hidden;
+                }
+
+                .section-body.collapsed {
+                    display: none;
+                }
+
+                .btn {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    width: 100%;
+                    border: none;
+                    padding: 6px 12px;
+                    margin: 1px 0;
+                    cursor: pointer;
+                    font-size: 12px;
+                    font-family: var(--vscode-font-family);
+                    border-radius: 4px;
+                    text-align: left;
+                    transition: background-color 0.1s;
+                    background: transparent;
                     color: var(--vscode-foreground);
                 }
 
-                h3 {
-                    font-size: 13px;
+                .btn:hover {
+                    background: var(--vscode-list-hoverBackground);
+                }
+
+                .btn:active {
+                    background: var(--vscode-list-activeSelectionBackground);
+                    color: var(--vscode-list-activeSelectionForeground);
+                }
+
+                .btn .btn-icon {
+                    font-size: 14px;
+                    width: 18px;
+                    text-align: center;
+                    flex-shrink: 0;
+                    opacity: 0.8;
+                }
+
+                .btn .btn-label {
+                    flex: 1;
+                }
+
+                .btn .btn-badge {
+                    font-size: 10px;
+                    padding: 1px 6px;
+                    border-radius: 8px;
+                    background: var(--vscode-badge-background);
+                    color: var(--vscode-badge-foreground);
                     font-weight: 600;
-                    margin: 0 0 10px 0;
-                    color: var(--vscode-descriptionForeground);
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
                 }
 
-                .cluster-info {
-                    padding: 8px;
-                    margin-bottom: 15px;
-                    background-color: var(--vscode-editor-inactiveSelectionBackground);
-                    border-radius: 3px;
-                    font-size: 12px;
+                .btn.destructive {
+                    color: var(--vscode-errorForeground);
                 }
 
-                .cluster-info strong {
-                    color: var(--vscode-textLink-foreground);
+                .btn.destructive:hover {
+                    background: rgba(255, 85, 85, 0.1);
                 }
-                
-                .action-group {
-                    margin: 0 0 20px 0;
-                    padding: 12px;
-                    border: 1px solid var(--vscode-panel-border);
-                    border-radius: 4px;
-                    background-color: var(--vscode-editor-background);
-                }
-                
-                .action-button {
-                    background-color: var(--vscode-button-background);
+
+                .btn.primary {
+                    background: var(--vscode-button-background);
                     color: var(--vscode-button-foreground);
-                    border: none;
-                    padding: 8px 12px;
                     margin: 4px 0;
-                    cursor: pointer;
-                    width: 100%;
-                    text-align: left;
-                    font-size: 13px;
-                    border-radius: 2px;
-                    transition: background-color 0.1s;
-                }
-                
-                .action-button:hover {
-                    background-color: var(--vscode-button-hoverBackground);
+                    padding: 8px 12px;
+                    font-weight: 500;
                 }
 
-                .action-button:active {
-                    background-color: var(--vscode-button-background);
-                    opacity: 0.9;
+                .btn.primary:hover {
+                    background: var(--vscode-button-hoverBackground);
                 }
 
-                .action-button.secondary {
-                    background-color: var(--vscode-button-secondaryBackground);
-                    color: var(--vscode-button-secondaryForeground);
-                }
-
-                .action-button.secondary:hover {
-                    background-color: var(--vscode-button-secondaryHoverBackground);
-                }
-
-                .action-button.destructive {
-                    background-color: var(--vscode-errorForeground);
-                    color: var(--vscode-button-foreground);
-                }
-
-                .action-button icon {
-                    margin-right: 6px;
+                .separator {
+                    height: 1px;
+                    background: var(--vscode-panel-border);
+                    margin: 4px 12px;
+                    opacity: 0.5;
                 }
 
                 .no-cluster {
-                    padding: 20px;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 32px 20px;
                     text-align: center;
                     color: var(--vscode-descriptionForeground);
+                    gap: 12px;
+                }
+
+                .no-cluster .icon-large {
+                    font-size: 32px;
+                    opacity: 0.4;
+                }
+
+                .no-cluster p {
+                    font-size: 12px;
+                    line-height: 1.5;
+                    margin: 0;
+                }
+
+                .template-repo-list {
+                    padding: 0 4px;
+                }
+
+                .template-repo-item {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    padding: 5px 8px;
+                    margin: 2px 0;
+                    border-radius: 4px;
+                    font-size: 11px;
+                    color: var(--vscode-descriptionForeground);
+                    cursor: pointer;
+                }
+
+                .template-repo-item:hover {
+                    background: var(--vscode-list-hoverBackground);
+                    color: var(--vscode-foreground);
+                }
+
+                .template-repo-item .repo-icon {
+                    font-size: 13px;
+                    flex-shrink: 0;
+                    opacity: 0.7;
+                }
+
+                .template-repo-item .repo-info {
+                    flex: 1;
+                    min-width: 0;
+                }
+
+                .template-repo-item .repo-name {
+                    font-weight: 500;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    color: var(--vscode-foreground);
+                    font-size: 12px;
+                }
+
+                .template-repo-item .repo-branch {
+                    font-size: 10px;
+                    color: var(--vscode-descriptionForeground);
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
                 }
             </style>
         </head>
         <body>
             <div id="content">
                 <div class="no-cluster">
+                    <div class="icon-large">&#9881;</div>
                     <p>Connect to a cluster to access management operations.</p>
                 </div>
             </div>
@@ -645,12 +869,25 @@ export class ManagementWebviewProvider implements vscode.WebviewViewProvider {
             <script nonce="${nonce}">
                 const vscode = acquireVsCodeApi();
                 let currentCluster = null;
+                const collapsedSections = {};
 
-                // Send ready message
                 vscode.postMessage({ command: 'ready' });
 
-                // Handle messages from extension
-                window.addEventListener('message', event => {
+                // Event delegation - handle all clicks from a single listener
+                document.addEventListener('click', function(e) {
+                    const target = e.target.closest('[data-action]');
+                    if (target) {
+                        const action = target.getAttribute('data-action');
+                        if (action === 'toggle') {
+                            toggleSection(target.getAttribute('data-section'));
+                        } else {
+                            vscode.postMessage({ command: action });
+                        }
+                        return;
+                    }
+                });
+
+                window.addEventListener('message', function(event) {
                     const message = event.data;
                     switch (message.command) {
                         case 'updateCluster':
@@ -663,110 +900,103 @@ export class ManagementWebviewProvider implements vscode.WebviewViewProvider {
                     }
                 });
 
+                function toggleSection(id) {
+                    collapsedSections[id] = !collapsedSections[id];
+                    const body = document.getElementById('body-' + id);
+                    const chevron = document.getElementById('chevron-' + id);
+                    if (body && chevron) {
+                        body.classList.toggle('collapsed', collapsedSections[id]);
+                        chevron.classList.toggle('collapsed', collapsedSections[id]);
+                    }
+                }
+
                 function renderContent() {
                     const content = document.getElementById('content');
                     
                     if (!currentCluster) {
-                        content.innerHTML = '<div class="no-cluster"><p>Connect to a cluster to access management operations.</p></div>';
+                        content.innerHTML =
+                            '<div class="no-cluster">' +
+                                '<div class="icon-large">&#9881;</div>' +
+                                '<p>Connect to a cluster to access<br>management operations.</p>' +
+                            '</div>' +
+                            renderTemplateSection();
                         return;
                     }
 
-                    content.innerHTML = \`
-                        <h2>Cluster Management</h2>
-                        
-                        <div class="cluster-info">
-                            <strong>Active Cluster:</strong> \${currentCluster}
-                        </div>
-
-                        <div class="action-group">
-                            <h3>📦 Application Lifecycle</h3>
-                            <button class="action-button" onclick="deployApp()">
-                                Deploy Application
-                            </button>
-                            <button class="action-button secondary" onclick="upgradeApp()">
-                                Upgrade Application
-                            </button>
-                            <button class="action-button destructive" onclick="removeApp()">
-                                Remove Application
-                            </button>
-                        </div>
-
-                        <div class="action-group">
-                            <h3>🖥️ Node Management</h3>
-                            <button class="action-button" onclick="deactivateNode()">
-                                Deactivate Node
-                            </button>
-                            <button class="action-button" onclick="activateNode()">
-                                Activate Node
-                            </button>
-                            <button class="action-button secondary" onclick="restartNode()">
-                                Restart Node
-                            </button>
-                            <button class="action-button destructive" onclick="removeNodeState()">
-                                Remove Node State
-                            </button>
-                        </div>
-
-                        <div class="action-group">
-                            <h3>⚙️ Cluster Operations</h3>
-                            <button class="action-button" onclick="upgradeCluster()">
-                                Upgrade Cluster
-                            </button>
-                            <button class="action-button" onclick="backupCluster()">
-                                Backup & Restore
-                            </button>
-                        </div>
-                    \`;
+                    content.innerHTML =
+                        '<div class="panel-header">' +
+                            '<h2>Cluster Management</h2>' +
+                            '<div class="cluster-badge">' +
+                                '<span class="dot"></span>' +
+                                escapeHtml(currentCluster) +
+                            '</div>' +
+                        '</div>' +
+                        '<div class="sections">' +
+                            renderSection('apps', '&#128230;', 'Application Lifecycle',
+                                btn('primary', 'deployApplication', '&#128640;', 'Deploy Application') +
+                                btn('', 'upgradeApplication', '&#8593;', 'Upgrade Application') +
+                                '<div class="separator"></div>' +
+                                btn('destructive', 'removeApplication', '&#128465;', 'Remove Application')
+                            ) +
+                            renderSection('nodes', '&#128421;', 'Node Management',
+                                btn('', 'deactivateNode', '&#9724;', 'Deactivate Node') +
+                                btn('', 'activateNode', '&#9654;', 'Activate Node') +
+                                btn('', 'restartNode', '&#128260;', 'Restart Node') +
+                                '<div class="separator"></div>' +
+                                btn('destructive', 'removeNodeState', '&#9888;', 'Remove Node State', 'DANGER')
+                            ) +
+                            renderSection('cluster', '&#9881;', 'Cluster Operations',
+                                btn('', 'upgradeCluster', '&#8593;', 'Upgrade Cluster') +
+                                btn('', 'backupCluster', '&#128190;', 'Backup &amp; Restore')
+                            ) +
+                            renderTemplateSection() +
+                        '</div>';
                 }
 
-                function deployApp() {
-                    vscode.postMessage({ command: 'deployApplication' });
+                function renderSection(id, icon, title, bodyHtml) {
+                    var isCollapsed = collapsedSections[id] || false;
+                    return '<div class="section">' +
+                        '<div class="section-header" data-action="toggle" data-section="' + id + '">' +
+                            '<span id="chevron-' + id + '" class="chevron' + (isCollapsed ? ' collapsed' : '') + '">&#9660;</span>' +
+                            '<span class="icon">' + icon + '</span>' +
+                            title +
+                        '</div>' +
+                        '<div id="body-' + id + '" class="section-body' + (isCollapsed ? ' collapsed' : '') + '">' +
+                            bodyHtml +
+                        '</div>' +
+                    '</div>';
                 }
 
-                function upgradeApp() {
-                    vscode.postMessage({ command: 'upgradeApplication' });
+                function btn(cls, action, icon, label, badge) {
+                    return '<button class="btn' + (cls ? ' ' + cls : '') + '" data-action="' + action + '">' +
+                        '<span class="btn-icon">' + icon + '</span>' +
+                        '<span class="btn-label">' + label + '</span>' +
+                        (badge ? '<span class="btn-badge">' + badge + '</span>' : '') +
+                    '</button>';
                 }
 
-                function removeApp() {
-                    vscode.postMessage({ command: 'removeApplication' });
+                function renderTemplateSection() {
+                    return renderSection('templates', '&#128196;', 'ARM Template Deployment',
+                        btn('primary', 'browseTemplates', '&#128269;', 'Browse Templates') +
+                        btn('', 'deployTemplate', '&#9729;', 'Deploy Template to Azure') +
+                        '<div class="separator"></div>' +
+                        btn('', 'openTemplateSettings', '&#9881;', 'Configure Repositories')
+                    );
                 }
 
-                function deactivateNode() {
-                    vscode.postMessage({ command: 'deactivateNode' });
-                }
-
-                function activateNode() {
-                    vscode.postMessage({ command: 'activateNode' });
-                }
-
-                function restartNode() {
-                    vscode.postMessage({ command: 'restartNode' });
-                }
-
-                function removeNodeState() {
-                    vscode.postMessage({ command: 'removeNodeState' });
-                }
-
-                function upgradeCluster() {
-                    vscode.postMessage({ command: 'upgradeCluster' });
-                }
-
-                function backupCluster() {
-                    vscode.postMessage({ command: 'backupCluster' });
+                function escapeHtml(str) {
+                    var div = document.createElement('div');
+                    div.appendChild(document.createTextNode(str));
+                    return div.innerHTML;
                 }
 
                 function showError(errorMessage) {
-                    const content = document.getElementById('content');
-                    const errorDiv = document.createElement('div');
-                    errorDiv.style.padding = '10px';
-                    errorDiv.style.marginTop = '10px';
-                    errorDiv.style.backgroundColor = 'var(--vscode-inputValidation-errorBackground)';
-                    errorDiv.style.border = '1px solid var(--vscode-inputValidation-errorBorder)';
-                    errorDiv.style.color = 'var(--vscode-errorForeground)';
+                    var content = document.getElementById('content');
+                    var errorDiv = document.createElement('div');
+                    errorDiv.style.cssText = 'padding:8px 12px;margin:8px;background:var(--vscode-inputValidation-errorBackground);border:1px solid var(--vscode-inputValidation-errorBorder);color:var(--vscode-errorForeground);border-radius:4px;font-size:12px;';
                     errorDiv.textContent = errorMessage;
                     content.appendChild(errorDiv);
-                    
-                    setTimeout(() => errorDiv.remove(), 5000);
+                    setTimeout(function() { errorDiv.remove(); }, 5000);
                 }
             </script>
         </body>

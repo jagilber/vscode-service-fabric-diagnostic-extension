@@ -45,7 +45,10 @@ describe('ClusterCommands', () => {
             getCurrentSfConfig: jest.fn().mockReturnValue({
                 getClusterEndpoint: jest.fn().mockReturnValue('http://localhost:19080'),
                 getClusterCertificate: jest.fn()
-            })
+            }),
+            sfClusterView: {
+                setClusterRefreshDisabled: jest.fn(),
+            }
         };
 
         mockSfPrompts = {
@@ -58,8 +61,8 @@ describe('ClusterCommands', () => {
         registerClusterCommands(mockContext, mockSfMgr, mockSfPrompts);
     });
 
-    test('should register all 11 cluster commands', () => {
-        expect(vscode.commands.registerCommand).toHaveBeenCalledTimes(11);
+    test('should register all 13 cluster commands', () => {
+        expect(vscode.commands.registerCommand).toHaveBeenCalledTimes(13);
     });
 
     test('sfGetClusters should call sfMgr.getClusters', async () => {
@@ -126,5 +129,150 @@ describe('ClusterCommands', () => {
         const handler = registeredHandlers['sfClusterExplorer.sfSetClusterRestCall'];
         await handler();
         expect(mockSfPrompts.promptForClusterRestCall).toHaveBeenCalledWith(mockSfMgr);
+    });
+
+    // ── Auto-refresh enable / disable / toggle ────────────────────────
+
+    describe('auto-refresh enable/disable', () => {
+        const endpoint = 'http://cluster:19080';
+        const item = { clusterEndpoint: endpoint };
+
+        test('enableClusterRefresh should remove endpoint from disabled list', async () => {
+            // Start with endpoint disabled
+            mockContext.globalState.get = jest.fn().mockReturnValue([endpoint]);
+            mockContext.globalState.update = jest.fn().mockResolvedValue(undefined);
+
+            const handler = registeredHandlers['sfClusterExplorer.enableClusterRefresh'];
+            await handler(item);
+
+            expect(mockContext.globalState.update).toHaveBeenCalledWith(
+                'sfClusterExplorer.refreshDisabledClusters',
+                [] // endpoint removed
+            );
+            expect(mockSfMgr.sfClusterView.setClusterRefreshDisabled).toHaveBeenCalledWith(endpoint, false);
+            expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(
+                expect.stringContaining('enabled')
+            );
+        });
+
+        test('enableClusterRefresh should be a no-op if already enabled', async () => {
+            // Endpoint is NOT in the disabled list
+            mockContext.globalState.get = jest.fn().mockReturnValue([]);
+            mockContext.globalState.update = jest.fn().mockResolvedValue(undefined);
+
+            const handler = registeredHandlers['sfClusterExplorer.enableClusterRefresh'];
+            await handler(item);
+
+            // globalState.update should NOT be called since nothing changed
+            expect(mockContext.globalState.update).not.toHaveBeenCalled();
+            expect(mockSfMgr.sfClusterView.setClusterRefreshDisabled).toHaveBeenCalledWith(endpoint, false);
+        });
+
+        test('disableClusterRefresh should add endpoint to disabled list', async () => {
+            // Start with nothing disabled
+            mockContext.globalState.get = jest.fn().mockReturnValue([]);
+            mockContext.globalState.update = jest.fn().mockResolvedValue(undefined);
+
+            const handler = registeredHandlers['sfClusterExplorer.disableClusterRefresh'];
+            await handler(item);
+
+            expect(mockContext.globalState.update).toHaveBeenCalledWith(
+                'sfClusterExplorer.refreshDisabledClusters',
+                [endpoint]
+            );
+            expect(mockSfMgr.sfClusterView.setClusterRefreshDisabled).toHaveBeenCalledWith(endpoint, true);
+            expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(
+                expect.stringContaining('disabled')
+            );
+        });
+
+        test('disableClusterRefresh should be a no-op if already disabled', async () => {
+            // Already disabled
+            mockContext.globalState.get = jest.fn().mockReturnValue([endpoint]);
+            mockContext.globalState.update = jest.fn().mockResolvedValue(undefined);
+
+            const handler = registeredHandlers['sfClusterExplorer.disableClusterRefresh'];
+            await handler(item);
+
+            // Should not add duplicate
+            expect(mockContext.globalState.update).not.toHaveBeenCalled();
+            expect(mockSfMgr.sfClusterView.setClusterRefreshDisabled).toHaveBeenCalledWith(endpoint, true);
+        });
+
+        test('disable then enable should restore original state', async () => {
+            // Step 1: Start enabled (empty disabled list)
+            let disabledList: string[] = [];
+            mockContext.globalState.get = jest.fn().mockImplementation(() => [...disabledList]);
+            mockContext.globalState.update = jest.fn().mockImplementation((_key, value) => {
+                disabledList = value;
+                return Promise.resolve();
+            });
+
+            // Disable
+            const disableHandler = registeredHandlers['sfClusterExplorer.disableClusterRefresh'];
+            await disableHandler(item);
+            expect(disabledList).toContain(endpoint);
+            expect(mockSfMgr.sfClusterView.setClusterRefreshDisabled).toHaveBeenCalledWith(endpoint, true);
+
+            // Enable again
+            mockSfMgr.sfClusterView.setClusterRefreshDisabled.mockClear();
+            mockContext.globalState.get = jest.fn().mockImplementation(() => [...disabledList]);
+            const enableHandler = registeredHandlers['sfClusterExplorer.enableClusterRefresh'];
+            await enableHandler(item);
+            expect(disabledList).not.toContain(endpoint);
+            expect(mockSfMgr.sfClusterView.setClusterRefreshDisabled).toHaveBeenCalledWith(endpoint, false);
+        });
+
+        test('toggleClusterRefresh should enable when disabled', async () => {
+            // Start with endpoint disabled
+            mockContext.globalState.get = jest.fn().mockReturnValue([endpoint]);
+
+            // Mock executeCommand to call the real handler
+            (vscode.commands.executeCommand as jest.Mock).mockImplementation(async (cmdId, ...args) => {
+                const handler = registeredHandlers[cmdId];
+                if (handler) { await handler(...args); }
+            });
+
+            const handler = registeredHandlers['sfClusterExplorer.toggleClusterRefresh'];
+            await handler(item);
+
+            expect(vscode.commands.executeCommand).toHaveBeenCalledWith(
+                'sfClusterExplorer.enableClusterRefresh',
+                item
+            );
+        });
+
+        test('toggleClusterRefresh should disable when enabled', async () => {
+            // Start with nothing disabled
+            mockContext.globalState.get = jest.fn().mockReturnValue([]);
+
+            (vscode.commands.executeCommand as jest.Mock).mockImplementation(async (cmdId, ...args) => {
+                const handler = registeredHandlers[cmdId];
+                if (handler) { await handler(...args); }
+            });
+
+            const handler = registeredHandlers['sfClusterExplorer.toggleClusterRefresh'];
+            await handler(item);
+
+            expect(vscode.commands.executeCommand).toHaveBeenCalledWith(
+                'sfClusterExplorer.disableClusterRefresh',
+                item
+            );
+        });
+
+        test('enableClusterRefresh should throw for invalid item', async () => {
+            const handler = registeredHandlers['sfClusterExplorer.enableClusterRefresh'];
+            await expect(handler(null)).rejects.toThrow('invalid tree item');
+        });
+
+        test('disableClusterRefresh should throw for invalid item', async () => {
+            const handler = registeredHandlers['sfClusterExplorer.disableClusterRefresh'];
+            await expect(handler(null)).rejects.toThrow('invalid tree item');
+        });
+
+        test('toggleClusterRefresh should throw for invalid item', async () => {
+            const handler = registeredHandlers['sfClusterExplorer.toggleClusterRefresh'];
+            await expect(handler(null)).rejects.toThrow('invalid tree item');
+        });
     });
 });

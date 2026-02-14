@@ -11,6 +11,27 @@ export class SfConstants {
     public static readonly SF_HTTP_GATEWAY_PORT = 19080;
     public static readonly SF_HTTP_GATEWAY_ENDPOINT = `http://localhost:${SfConstants.SF_HTTP_GATEWAY_PORT}`;
 
+    /** Default template repository URLs for ARM/Bicep template search */
+    public static readonly SF_TEMPLATE_REPOS_DEFAULT = [
+        {
+            name: 'Azure-Samples (Official)',
+            url: 'https://github.com/Azure-Samples/service-fabric-cluster-templates',
+            branch: 'master',
+            description: 'Official Azure-Samples SF cluster templates'
+        },
+        {
+            name: 'jagilber/service-fabric-cluster-templates',
+            url: 'https://github.com/jagilber/service-fabric-cluster-templates',
+            branch: 'standard-load-balancer',
+            description: 'Current working examples with standard load balancer'
+        }
+    ];
+
+    /** GitHub API base URL for raw content */
+    public static readonly GITHUB_RAW_BASE = 'https://raw.githubusercontent.com';
+    /** GitHub API base URL */
+    public static readonly GITHUB_API_BASE = 'https://api.github.com';
+
     /** Default SF operation timeout in seconds (matches SF cluster default) */
     public static readonly SF_DEFAULT_TIMEOUT_SEC = 1200;
 

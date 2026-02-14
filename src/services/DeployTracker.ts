@@ -9,6 +9,7 @@
  */
 
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { SfUtility, debugLevel } from '../sfUtility';
@@ -53,7 +54,7 @@ export class DeployTracker {
         typeVersion: string,
         appName: string,
     ) {
-        this.mdPath = path.join(workspaceRoot, 'docs', 'architecture', 'deploy-upgrade-phases.md');
+        this.mdPath = path.join(os.tmpdir(), 'sf-deploy-upgrade-phases.md');
         this.operationType = operationType;
         this.typeName = typeName;
         this.typeVersion = typeVersion;

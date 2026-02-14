@@ -2,7 +2,7 @@
   "name": "vscode-service-fabric-diagnostic-extension",
   "displayName": "Service Fabric Diagnostic Extension",
   "description": "Manage and diagnose Azure Service Fabric clusters with visual tree view, health monitoring, and operational tools",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "publisher": "jagilber",
   "license": "MIT",
   "keywords": [
@@ -199,6 +199,16 @@
         "command": "sfClusterExplorer.toggleClusterRefresh",
         "title": "Toggle Auto-Refresh",
         "icon": "$(sync)"
+      },
+      {
+        "command": "sfClusterExplorer.enableClusterRefresh",
+        "title": "Enable Auto-Refresh",
+        "icon": "$(sync)"
+      },
+      {
+        "command": "sfClusterExplorer.disableClusterRefresh",
+        "title": "Disable Auto-Refresh",
+        "icon": "$(sync-ignored)"
       },
       {
         "command": "sfClusterExplorer.resetExtensionState",
@@ -457,29 +467,34 @@
           "group": "reports@1"
         },
         {
-          "command": "sfClusterExplorer.generateHealthReport",
-          "when": "view == serviceFabricClusterView && viewItem == cluster",
-          "group": "reports@2"
-        },
-        {
           "command": "sfClusterExplorer.removeClusterFromTree",
-          "when": "view == serviceFabricClusterView && viewItem == cluster",
+          "when": "view == serviceFabricClusterView && viewItem =~ /^cluster/",
           "group": "remove@1"
         },
         {
           "command": "sfClusterExplorer.setActiveCluster",
-          "when": "view == serviceFabricClusterView && viewItem == cluster",
+          "when": "view == serviceFabricClusterView && viewItem =~ /^cluster/",
           "group": "cluster@1"
         },
         {
           "command": "sfClusterExplorer.openSfx",
-          "when": "view == serviceFabricClusterView && viewItem == cluster",
+          "when": "view == serviceFabricClusterView && viewItem =~ /^cluster/",
           "group": "cluster@2"
         },
         {
-          "command": "sfClusterExplorer.toggleClusterRefresh",
+          "command": "sfClusterExplorer.enableClusterRefresh",
+          "when": "view == serviceFabricClusterView && viewItem == cluster-norefresh",
+          "group": "cluster@3"
+        },
+        {
+          "command": "sfClusterExplorer.disableClusterRefresh",
           "when": "view == serviceFabricClusterView && viewItem == cluster",
           "group": "cluster@3"
+        },
+        {
+          "command": "sfClusterExplorer.refresh",
+          "when": "view == serviceFabricClusterView && viewItem =~ /^cluster/",
+          "group": "cluster@4"
         },
         {
           "command": "sfClusterExplorer.generateHealthReport",
@@ -626,17 +641,58 @@
               "Open SFX in the default external browser"
             ],
             "description": "Where to open Service Fabric Explorer (SFX)"
+          },
+          "sfClusterExplorer.templateRepositories": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Display name for the template repository"
+                },
+                "url": {
+                  "type": "string",
+                  "description": "Git repository URL (HTTPS)"
+                },
+                "branch": {
+                  "type": "string",
+                  "description": "Branch to use (default: main or master)"
+                },
+                "description": {
+                  "type": "string",
+                  "description": "Optional description of the repository"
+                }
+              },
+              "required": ["name", "url"]
+            },
+            "default": [
+              {
+                "name": "Azure-Samples (Official)",
+                "url": "https://github.com/Azure-Samples/service-fabric-cluster-templates",
+                "branch": "master",
+                "description": "Official Azure-Samples SF cluster templates"
+              },
+              {
+                "name": "jagilber/service-fabric-cluster-templates",
+                "url": "https://github.com/jagilber/service-fabric-cluster-templates",
+                "branch": "standard-load-balancer",
+                "description": "Current working examples with standard load balancer"
+              }
+            ],
+            "description": "Git repositories to search for Service Fabric ARM/Bicep deployment templates. Each entry requires a name and HTTPS URL. Optionally specify a branch (defaults to repo default branch)."
           }
         }
       }
     ]
   },
   "scripts": {
-    "vscode:prepublish": "npm run compile",
+    "clean": "node -e \"require('fs').rmSync('out',{recursive:true,force:true})\"",
+    "vscode:prepublish": "npm run clean && npm run compile",
     "compile": "tsc -p ./",
     "postcompile": "npm run validate:html",
     "watch": "tsc -watch -p ./",
-    "package": "vsce package --no-dependencies",
+    "package": "vsce package",
     "lint": "eslint \"src/**/*.ts\"",
     "test": "jest --coverage",
     "test:watch": "jest --watch",

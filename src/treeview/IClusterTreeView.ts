@@ -22,6 +22,9 @@ export interface IClusterTreeView {
     /** Restart the auto-refresh timer. */
     restartAutoRefresh(): void;
 
+    /** Update auto-refresh disabled state on a cluster node. */
+    setClusterRefreshDisabled(endpoint: string, disabled: boolean): void;
+
     /** Dispose of resources. */
     dispose(): void;
 

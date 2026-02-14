@@ -77,7 +77,7 @@ describe('Extension Command Registration', () => {
     test('context menu commands should have proper viewItem guards in package.json', () => {
         const contextCommands = [
             { cmd: 'sfClusterExplorer.generateEventsReport', viewItem: 'events' },
-            { cmd: 'sfClusterExplorer.generateHealthReport', viewItem: 'cluster' },
+            { cmd: 'sfClusterExplorer.generateHealthReport', viewItem: 'health' },
             { cmd: 'sfClusterExplorer.manageNodeFromContext', viewItem: 'node' },
             { cmd: 'sfClusterExplorer.restartReplica', viewItem: 'replica' },
             { cmd: 'sfClusterExplorer.deleteReplica', viewItem: 'replica' },

@@ -5,6 +5,52 @@ All notable changes to the Service Fabric Diagnostic Extension will be documente
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.7] - 2026-02-14
+
+### Fixed
+- **Unprovision Application Type fails with `FABRIC_E_APPLICATION_TYPE_IN_USE`** — The
+  unprovision command always failed when application instances existed because the running-instance
+  check returned 0 results. Root cause: `SfDirectRestClient` returned raw SF REST JSON with
+  PascalCase `Items` key, but callers accessed `result.items` (camelCase) — always `undefined`.
+  Fixed by normalizing all paged REST responses (`Items` → `items`) in `SfDirectRestClient`
+  via a new `unwrapPagedResponse()` helper. Affects `getNodeInfoList`, `getApplicationInfoList`,
+  `getApplicationTypeInfoList`, `getServiceInfoList`, `getPartitionInfoList`, and
+  `getReplicaInfoList`.
+- **Unprovision now offers to delete running instances** — When running application instances
+  are detected, the unprovision command now shows a modal dialog asking the user to delete them
+  first ("Delete & Unprovision") instead of silently proceeding and failing with a 409 error.
+- **Treeview stale state after auto-refresh** — Group nodes (Applications, Nodes, System)
+  retained stale `appCount`, `nodeCount`, and `healthState` across refresh cycles, causing
+  the treeview to show outdated counts and health icons. Fixed by overriding `invalidate()` in
+  each group node to clear cached counts before re-fetching.
+- **`ClusterNode.invalidate()` preserves group node instances** — `ClusterNode` now recursively
+  invalidates child group nodes without destroying them, preventing tree flicker and ensuring
+  VS Code's `getChildren()` triggers fresh `fetchChildren()` on the same group node objects.
+
+### Added
+- **Enable/Disable Auto-Refresh context menu** — Replaced the single "Toggle Auto-Refresh"
+  cluster context menu item with separate "Enable Auto-Refresh" and "Disable Auto-Refresh"
+  items. The correct item appears based on the cluster's current refresh state
+  (`cluster` vs `cluster-norefresh` context value).
+- **Manual Refresh context menu on cluster node** — Added "Refresh" to the cluster node
+  context menu so users can manually trigger a full tree refresh from the right-click menu.
+- **Comprehensive `[TREE]` diagnostic logging** — Added structured diagnostic logging to all
+  treeview operations: `getChildren`, `invalidate`, `fetchChildren`, `RefreshManager.fire`,
+  `SfTreeDataProvider`, and `SfTreeDataProviderAdapter`. Logged at `debug`/`info` levels for
+  tracing refresh flows without noise.
+- **Management panel redesign** — Refreshed the Management webview panel layout and styling.
+- **Treeview refresh documentation** — New `docs/TREEVIEW_REFRESH_FLOWS.md` documenting the
+  full refresh architecture: auto-refresh, manual refresh, deploy-triggered refresh, invalidation
+  cascade, and data flow diagrams.
+- **TreeRefreshFlows test suite** — 31 new unit tests covering refresh manager debounce, group
+  node invalidation, ClusterNode invalidation cascade, and full refresh flows.
+- **Template repositories setting** — New `sfClusterExplorer.templateRepositories` setting for
+  configuring custom SF application template sources.
+
+### Changed
+- **Health report moved to health node** — "Generate Health Report" context menu now appears on
+  the health tree item (not the cluster node), matching the essentials report pattern.
+
 ## [0.2.0] - Target: March 2026
 
 **Marketplace Launch Release** - Making Service Fabric management accessible to all operators and admins.

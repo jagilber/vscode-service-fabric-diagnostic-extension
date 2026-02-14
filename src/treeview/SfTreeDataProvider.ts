@@ -57,13 +57,16 @@ export class SfTreeDataProvider implements vscode.TreeDataProvider<ITreeNode> {
     // ── TreeDataProvider interface ──────────────────────────────────────
 
     getTreeItem(element: ITreeNode): vscode.TreeItem {
+        SfUtility.outputLog(`[TREE] SfTreeDataProvider.getTreeItem(${element.itemType}:${element.id})`, null, debugLevel.debug);
         return element.getTreeItem();
     }
 
     getChildren(element?: ITreeNode): Promise<ITreeNode[] | undefined> {
         if (!element) {
+            SfUtility.outputLog(`[TREE] SfTreeDataProvider.getChildren(ROOT): returning ${this.roots.length} cluster roots`, null, debugLevel.info);
             return Promise.resolve(this.roots);
         }
+        SfUtility.outputLog(`[TREE] SfTreeDataProvider.getChildren(${element.itemType}:${element.id}): isLoaded=${element.isLoaded}`, null, debugLevel.debug);
         return element.getChildren();
     }
 
@@ -94,6 +97,8 @@ export class SfTreeDataProvider implements vscode.TreeDataProvider<ITreeNode> {
         };
 
         const clusterNode = new ClusterNode(ctx, this.iconService, this.cache);
+        const disabledClusters = this.extensionContext.globalState.get<string[]>('sfClusterExplorer.refreshDisabledClusters', []);
+        clusterNode.setRefreshDisabled(disabledClusters.includes(endpoint));
         this.roots.push(clusterNode);
 
         this.updateViewVisibility();
@@ -149,6 +154,17 @@ export class SfTreeDataProvider implements vscode.TreeDataProvider<ITreeNode> {
     }
 
     /**
+     * Update auto-refresh disabled state on a cluster node and re-render it.
+     */
+    setClusterRefreshDisabled(endpoint: string, disabled: boolean): void {
+        const root = this.roots.find(r => r.clusterEndpoint === endpoint);
+        if (root) {
+            root.setRefreshDisabled(disabled);
+            this.refresh(root);
+        }
+    }
+
+    /**
      * Check if a cluster endpoint is in the tree.
      */
     hasCluster(endpoint: string): boolean {
@@ -156,10 +172,22 @@ export class SfTreeDataProvider implements vscode.TreeDataProvider<ITreeNode> {
     }
 
     /**
-     * Refresh the tree view (debounced).
+     * Refresh the tree view (debounced re-render only, no data invalidation).
+     * Used internally after data has already been updated.
      */
     refresh(node?: ITreeNode): void {
         this.refreshManager.refresh(node);
+    }
+
+    /**
+     * Full refresh: invalidate all cached data, fetch fresh from cluster, re-render.
+     * Used by manual "Refresh" command and after deploy/remove operations.
+     */
+    async fullRefresh(): Promise<void> {
+        SfUtility.outputLog('[TREE] fullRefresh: START (invalidateAll + refresh)', null, debugLevel.info);
+        await this.invalidateAll();
+        this.refresh();
+        SfUtility.outputLog('[TREE] fullRefresh: END (emitter.fire queued)', null, debugLevel.info);
     }
 
     /**
@@ -250,10 +278,12 @@ export class SfTreeDataProvider implements vscode.TreeDataProvider<ITreeNode> {
         }
 
         // Step 2: Clear cache and invalidate so getChildren() re-fetches with fresh data.
+        SfUtility.outputLog(`[TREE] invalidateAll: clearing cache (${this.cache.size} entries) and invalidating ${this.roots.length} roots`, null, debugLevel.info);
         this.cache.clear();
         for (const root of this.roots) {
             root.invalidate();
         }
+        SfUtility.outputLog('[TREE] invalidateAll: END — all caches cleared, all nodes invalidated', null, debugLevel.info);
     }
 
     /**

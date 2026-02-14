@@ -69,6 +69,8 @@ export const COMMAND_MANIFEST: Record<string, CommandMeta> = {
     'sfClusterExplorer.resetExtensionState':      { friendlyName: 'reset extension state', category: 'cluster',  requiresCluster: false },
     'sfClusterExplorer.openSfx':                    { friendlyName: 'open SFX',              category: 'cluster',  requiresCluster: false },
     'sfClusterExplorer.toggleClusterRefresh':        { friendlyName: 'toggle cluster refresh', category: 'cluster',  requiresCluster: false },
+    'sfClusterExplorer.enableClusterRefresh':        { friendlyName: 'enable cluster refresh', category: 'cluster',  requiresCluster: false },
+    'sfClusterExplorer.disableClusterRefresh':       { friendlyName: 'disable cluster refresh', category: 'cluster', requiresCluster: false },
 
     // ---- View / UI commands ----
     'serviceFabricClusterView.refreshView':       { friendlyName: 'refresh view',          category: 'view',     requiresCluster: false },

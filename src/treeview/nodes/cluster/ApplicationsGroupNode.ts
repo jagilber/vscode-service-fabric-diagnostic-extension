@@ -6,6 +6,7 @@ import { IconService } from '../../IconService';
 import { DataCache } from '../../DataCache';
 import { ApplicationTypeNode } from './ApplicationTypeNode';
 import * as sfModels from '../../../sdk/servicefabric/servicefabric/src/models';
+import { SfUtility, debugLevel } from '../../../sfUtility';
 
 /**
  * "applications (N)" group node. 
@@ -22,6 +23,14 @@ export class ApplicationsGroupNode extends BaseTreeNode {
     constructor(ctx: TreeNodeContext, iconService: IconService, cache: DataCache) {
         super(ctx, iconService, cache);
         this.id = `applications-group:${ctx.clusterEndpoint}`;
+    }
+
+    /** Clear stale counts so getTreeItem() falls back to fresh cluster health. */
+    invalidate(): void {
+        SfUtility.outputLog(`[TREE] ApplicationsGroupNode.invalidate: clearing appCount=${this.appCount}, healthState=${this.healthState}`, null, debugLevel.info);
+        this.appCount = undefined;
+        this.healthState = undefined;
+        super.invalidate();
     }
 
     getTreeItem(): vscode.TreeItem {
@@ -100,6 +109,7 @@ export class ApplicationsGroupNode extends BaseTreeNode {
 
         this.appCount = apps.length;
         this.healthState = IconService.worstHealthState(apps.map(a => a.healthState));
+        SfUtility.outputLog(`[TREE] ApplicationsGroupNode.fetchChildren: appCount=${this.appCount}, healthState=${this.healthState}, appNames=[${apps.map(a => a.name).join(', ')}]`, null, debugLevel.info);
 
         // Group applications by type
         const appsByType = new Map<string, sfModels.ApplicationInfo[]>();

@@ -361,6 +361,18 @@ export class SfDirectRestClient {
         });
     }
 
+    /**
+     * Normalize SF REST paged responses: the API returns { Items: [...] } (PascalCase)
+     * but callers expect { items: [...] } (camelCase). Also handles plain arrays.
+     */
+    private unwrapPagedResponse<T>(result: any): { items: T[] } {
+        if (Array.isArray(result)) {
+            return { items: result };
+        }
+        const items = result?.Items || result?.items || [];
+        return { items };
+    }
+
     // ==================== NODE APIs ====================
 
     async getNodeInfo(nodeName: string): Promise<SfNodeInfo> {
@@ -368,7 +380,8 @@ export class SfDirectRestClient {
     }
 
     async getNodeInfoList(): Promise<{ items: SfNodeInfo[] }> {
-        return this.makeRequest<{ items: SfNodeInfo[] }>('GET', '/Nodes');
+        const result = await this.makeRequest<any>('GET', '/Nodes');
+        return this.unwrapPagedResponse<SfNodeInfo>(result);
     }
 
     async enableNode(nodeName: string): Promise<void> {
@@ -414,7 +427,8 @@ export class SfDirectRestClient {
     // ==================== APPLICATION APIs ====================
 
     async getApplicationInfoList(): Promise<{ items: any[] }> {
-        return this.makeRequest<{ items: any[] }>('GET', '/Applications');
+        const result = await this.makeRequest<any>('GET', '/Applications');
+        return this.unwrapPagedResponse(result);
     }
 
     async getApplicationInfo(applicationId: string): Promise<any> {
@@ -426,7 +440,8 @@ export class SfDirectRestClient {
     }
 
     async getApplicationTypeInfoList(): Promise<{ items: any[] }> {
-        return this.makeRequest<{ items: any[] }>('GET', '/ApplicationTypes');
+        const result = await this.makeRequest<any>('GET', '/ApplicationTypes');
+        return this.unwrapPagedResponse(result);
     }
 
     async getApplicationManifest(applicationTypeName: string, applicationTypeVersion: string): Promise<any> {
@@ -436,7 +451,8 @@ export class SfDirectRestClient {
     // ==================== SERVICE APIs ====================
 
     async getServiceInfoList(applicationId: string): Promise<{ items: any[] }> {
-        return this.makeRequest<{ items: any[] }>('GET', `/Applications/${applicationId}/$/GetServices`);
+        const result = await this.makeRequest<any>('GET', `/Applications/${applicationId}/$/GetServices`);
+        return this.unwrapPagedResponse(result);
     }
 
     async getServiceInfo(applicationId: string, serviceId: string): Promise<any> {
@@ -458,11 +474,13 @@ export class SfDirectRestClient {
     // ==================== PARTITION & REPLICA APIs ====================
 
     async getPartitionInfoList(serviceId: string): Promise<{ items: any[] }> {
-        return this.makeRequest<{ items: any[] }>('GET', `/Services/${serviceId}/$/GetPartitions`);
+        const result = await this.makeRequest<any>('GET', `/Services/${serviceId}/$/GetPartitions`);
+        return this.unwrapPagedResponse(result);
     }
 
     async getReplicaInfoList(partitionId: string): Promise<{ items: any[] }> {
-        return this.makeRequest<{ items: any[] }>('GET', `/Partitions/${partitionId}/$/GetReplicas`);
+        const result = await this.makeRequest<any>('GET', `/Partitions/${partitionId}/$/GetReplicas`);
+        return this.unwrapPagedResponse(result);
     }
 
     async getPartitionHealth(partitionId: string): Promise<any> {

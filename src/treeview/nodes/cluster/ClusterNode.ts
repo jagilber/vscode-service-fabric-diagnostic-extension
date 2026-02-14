@@ -20,12 +20,16 @@ import { CommandsNode } from './CommandsNode';
  */
 export class ClusterNode extends BaseTreeNode {
     readonly id: string;
-    readonly contextValue = 'cluster';
     readonly itemType = 'cluster';
     readonly clusterEndpoint: string;
     readonly ctx: TreeNodeContext;
 
     private isActive = false;
+    private _refreshDisabled = false;
+
+    get contextValue(): string {
+        return this._refreshDisabled ? 'cluster-norefresh' : 'cluster';
+    }
 
     constructor(ctx: TreeNodeContext, iconService: IconService, cache: DataCache) {
         super(ctx, iconService, cache);
@@ -38,20 +42,29 @@ export class ClusterNode extends BaseTreeNode {
         this.isActive = active;
     }
 
+    setRefreshDisabled(disabled: boolean): void {
+        this._refreshDisabled = disabled;
+    }
+
     /**
      * Override: DON'T destroy and recreate group nodes on invalidation.
      * Instead, recursively invalidate children so they re-fetch fresh data
      * while preserving their local state (serviceCount, appCount, healthState).
      * This prevents "system (...)" / "applications (...)" flicker.
+     *
+     * IMPORTANT: _isLoaded stays true and children array is preserved so
+     * getChildren() returns the same group node instances. Each group node's
+     * own _isLoaded is set to false by its invalidate(), so VS Code's
+     * getChildren(groupNode) call will trigger a fresh fetchChildren().
      */
     invalidate(): void {
+        const childCount = this.children?.length ?? 0;
         if (this.children) {
             for (const child of this.children) {
                 child.invalidate();
             }
         }
-        // Mark self as loaded — children array is preserved (same group node instances)
-        // but each group node's _isLoaded is now false, so getChildren() re-fetches.
+        SfUtility.outputLog(`[TREE] ClusterNode.invalidate(${this.clusterEndpoint}): invalidated ${childCount} children, _isLoaded stays true (children preserved)`, null, debugLevel.info);
     }
 
     getTreeItem(): vscode.TreeItem {

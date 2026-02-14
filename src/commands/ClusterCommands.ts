@@ -156,8 +156,48 @@ export function registerClusterCommands(
         'reset extension state'
     );
 
-    // Toggle per-cluster auto-refresh (context menu on cluster node)
+    // Enable/disable per-cluster auto-refresh (context menu on cluster node)
     const REFRESH_DISABLED_KEY = 'sfClusterExplorer.refreshDisabledClusters';
+    registerCommandWithErrorHandling(
+        context,
+        'sfClusterExplorer.enableClusterRefresh',
+        async (item: any) => {
+            if (!item || !item.clusterEndpoint) {
+                throw new Error('Cannot enable refresh: invalid tree item');
+            }
+            const endpoint = item.clusterEndpoint;
+            const disabled = context.globalState.get<string[]>(REFRESH_DISABLED_KEY, []);
+            const idx = disabled.indexOf(endpoint);
+            if (idx >= 0) {
+                disabled.splice(idx, 1);
+                await context.globalState.update(REFRESH_DISABLED_KEY, disabled);
+            }
+            sfMgr.sfClusterView.setClusterRefreshDisabled(endpoint, false);
+            vscode.window.showInformationMessage(`Auto-refresh enabled for ${endpoint}`);
+        },
+        'enable cluster refresh'
+    );
+
+    registerCommandWithErrorHandling(
+        context,
+        'sfClusterExplorer.disableClusterRefresh',
+        async (item: any) => {
+            if (!item || !item.clusterEndpoint) {
+                throw new Error('Cannot disable refresh: invalid tree item');
+            }
+            const endpoint = item.clusterEndpoint;
+            const disabled = context.globalState.get<string[]>(REFRESH_DISABLED_KEY, []);
+            if (!disabled.includes(endpoint)) {
+                disabled.push(endpoint);
+                await context.globalState.update(REFRESH_DISABLED_KEY, disabled);
+            }
+            sfMgr.sfClusterView.setClusterRefreshDisabled(endpoint, true);
+            vscode.window.showInformationMessage(`Auto-refresh disabled for ${endpoint}`);
+        },
+        'disable cluster refresh'
+    );
+
+    // Keep toggle command for backward compat / command palette
     registerCommandWithErrorHandling(
         context,
         'sfClusterExplorer.toggleClusterRefresh',
@@ -167,15 +207,11 @@ export function registerClusterCommands(
             }
             const endpoint = item.clusterEndpoint;
             const disabled = context.globalState.get<string[]>(REFRESH_DISABLED_KEY, []);
-            const idx = disabled.indexOf(endpoint);
-            if (idx >= 0) {
-                disabled.splice(idx, 1);
-                await context.globalState.update(REFRESH_DISABLED_KEY, disabled);
-                vscode.window.showInformationMessage(`Auto-refresh enabled for ${endpoint}`);
+            const isDisabled = disabled.includes(endpoint);
+            if (isDisabled) {
+                await vscode.commands.executeCommand('sfClusterExplorer.enableClusterRefresh', item);
             } else {
-                disabled.push(endpoint);
-                await context.globalState.update(REFRESH_DISABLED_KEY, disabled);
-                vscode.window.showInformationMessage(`Auto-refresh disabled for ${endpoint}`);
+                await vscode.commands.executeCommand('sfClusterExplorer.disableClusterRefresh', item);
             }
         },
         'toggle cluster refresh'

@@ -3,6 +3,7 @@ import { ITreeNode } from './ITreeNode';
 import { TreeNodeContext } from './TreeNodeContext';
 import { IconService } from './IconService';
 import { DataCache } from './DataCache';
+import { SfUtility, debugLevel } from '../sfUtility';
 
 /**
  * Abstract base class for all tree nodes.
@@ -41,14 +42,17 @@ export abstract class BaseTreeNode implements ITreeNode {
      */
     async getChildren(): Promise<ITreeNode[] | undefined> {
         if (this._isLoaded) {
+            SfUtility.outputLog(`[TREE] getChildren(${this.itemType}:${this.id}): _isLoaded=true, returning ${this.children?.length ?? 0} cached children`, null, debugLevel.debug);
             return this.children;
         }
 
         // Dedup: if a fetch is in-flight, return the same promise
         if (this._fetchPromise) {
+            SfUtility.outputLog(`[TREE] getChildren(${this.itemType}:${this.id}): dedup — returning in-flight promise`, null, debugLevel.debug);
             return this._fetchPromise;
         }
 
+        SfUtility.outputLog(`[TREE] getChildren(${this.itemType}:${this.id}): _isLoaded=false, calling fetchChildren()`, null, debugLevel.info);
         this._fetchPromise = this._doFetch();
         try {
             return await this._fetchPromise;
@@ -78,10 +82,12 @@ export abstract class BaseTreeNode implements ITreeNode {
      * Invalidate cached children. Next getChildren() will re-fetch.
      */
     invalidate(): void {
+        const childCount = this.children?.length ?? 0;
         this.children?.forEach(c => c.dispose());
         this.children = undefined;
         this._isLoaded = false;
         this._fetchPromise = undefined;
+        SfUtility.outputLog(`[TREE] BaseTreeNode.invalidate(${this.itemType}:${this.id}): disposed ${childCount} children, _isLoaded=false`, null, debugLevel.info);
     }
 
     dispose(): void {

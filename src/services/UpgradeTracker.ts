@@ -8,6 +8,7 @@
  */
 
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { SfUtility, debugLevel } from '../sfUtility';
@@ -37,7 +38,7 @@ export class UpgradeTracker implements vscode.Disposable {
         private readonly sfRest: SfRest,
         private readonly clusterEndpoint: string,
     ) {
-        this.mdPath = path.join(workspaceRoot, 'docs', 'architecture', 'upgrade-ud-progress.md');
+        this.mdPath = path.join(os.tmpdir(), 'sf-upgrade-ud-progress.md');
         SfUtility.outputLog(`UpgradeTracker: created for ${clusterEndpoint}`, null, debugLevel.info);
     }
 

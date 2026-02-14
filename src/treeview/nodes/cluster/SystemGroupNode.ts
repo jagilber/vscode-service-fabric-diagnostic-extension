@@ -6,6 +6,7 @@ import { IconService } from '../../IconService';
 import { DataCache } from '../../DataCache';
 import { ServiceNode } from './ServiceNode';
 import * as sfModels from '../../../sdk/servicefabric/servicefabric/src/models';
+import { SfUtility, debugLevel } from '../../../sfUtility';
 
 /**
  * "system (N)" group node. Contains system services (fabric:/System).
@@ -22,6 +23,14 @@ export class SystemGroupNode extends BaseTreeNode {
     constructor(ctx: TreeNodeContext, iconService: IconService, cache: DataCache) {
         super(ctx, iconService, cache);
         this.id = `system-group:${ctx.clusterEndpoint}`;
+    }
+
+    /** Clear stale counts so getTreeItem() falls back to fresh cluster health. */
+    invalidate(): void {
+        SfUtility.outputLog(`[TREE] SystemGroupNode.invalidate: clearing serviceCount=${this.serviceCount}, healthState=${this.healthState}`, null, debugLevel.info);
+        this.serviceCount = undefined;
+        this.healthState = undefined;
+        super.invalidate();
     }
 
     getTreeItem(): vscode.TreeItem {

@@ -237,9 +237,6 @@ export function registerResourceCommands(
 
             const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
             const tracker = new DeployTracker(workspaceRoot, 'remove', typeName, typeVersion, `fabric:/${typeName}`);
-            tracker.skipPhase('Delete Application', 'Unprovision only');
-            tracker.startPhase('Unprovision Type');
-
             await withProgress('Unprovisioning Application Type', async () => {
                 const sfConfig = sfMgr.getCurrentSfConfig();
                 SfUtility.outputLog(`ResourceCommands.unprovisionApplicationType: cluster=${sfConfig.getClusterEndpoint()}`, null, debugLevel.info);
@@ -247,17 +244,46 @@ export function registerResourceCommands(
 
                 // Check for running instances before unprovision
                 SfUtility.outputLog(`ResourceCommands.unprovisionApplicationType: checking for running instances of ${typeName} v${typeVersion}`, null, debugLevel.info);
+                let runningApps: any[] = [];
                 try {
-                    const runningApps = await sfRest.getApplicationsByType(typeName, typeVersion);
+                    runningApps = await sfRest.getApplicationsByType(typeName, typeVersion);
                     SfUtility.outputLog(`ResourceCommands.unprovisionApplicationType: found ${runningApps.length} running instance(s)`, null, debugLevel.info);
-                    if (runningApps.length > 0) {
-                        const appNames = runningApps.map((a: any) => a.Name || a.name || a.Id || a.id).join(', ');
-                        SfUtility.outputLog(`ResourceCommands.unprovisionApplicationType: WARNING - running instances exist: ${appNames}`, null, debugLevel.warn);
-                    }
                 } catch (checkError) {
                     SfUtility.outputLog('ResourceCommands.unprovisionApplicationType: failed to check running instances (proceeding anyway)', checkError, debugLevel.warn);
                 }
 
+                // If running instances exist, ask user to delete them first
+                if (runningApps.length > 0) {
+                    const appNames = runningApps.map((a: any) => a.Name || a.name || a.Id || a.id).join(', ');
+                    SfUtility.outputLog(`ResourceCommands.unprovisionApplicationType: running instances exist: ${appNames}`, null, debugLevel.warn);
+                    const choice = await vscode.window.showWarningMessage(
+                        `Cannot unprovision ${typeName}:${typeVersion} — ${runningApps.length} running instance(s) found: ${appNames}. Delete them first?`,
+                        { modal: true },
+                        'Delete & Unprovision',
+                        'Cancel'
+                    );
+                    if (choice !== 'Delete & Unprovision') {
+                        SfUtility.outputLog('ResourceCommands.unprovisionApplicationType: user cancelled (running instances)', null, debugLevel.info);
+                        tracker.skipPhase('Delete Application', 'User cancelled');
+                        tracker.skipPhase('Unprovision Type', 'User cancelled');
+                        tracker.finishOperation(false, 'Cancelled — running instances exist');
+                        return;
+                    }
+
+                    // Delete running instances
+                    tracker.startPhase('Delete Application');
+                    for (const app of runningApps) {
+                        const appId = app.Id || app.id || app.Name?.replace('fabric:/', '') || app.name?.replace('fabric:/', '');
+                        SfUtility.outputLog(`ResourceCommands.unprovisionApplicationType: deleting application ${appId}`, null, debugLevel.info);
+                        await sfRest.deleteApplication(appId);
+                        SfUtility.outputLog(`ResourceCommands.unprovisionApplicationType: deleted application ${appId}`, null, debugLevel.info);
+                    }
+                    tracker.completePhase('Delete Application');
+                } else {
+                    tracker.skipPhase('Delete Application', 'No running instances');
+                }
+
+                tracker.startPhase('Unprovision Type');
                 SfUtility.outputLog(`ResourceCommands.unprovisionApplicationType: calling sfRest.unprovisionApplicationType(${typeName}, ${typeVersion})`, null, debugLevel.info);
                 try {
                     await sfRest.unprovisionApplicationType(typeName, typeVersion);

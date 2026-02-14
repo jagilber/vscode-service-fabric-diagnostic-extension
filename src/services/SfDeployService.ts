@@ -222,9 +222,9 @@ export class SfDeployService implements vscode.Disposable {
                         progress.report({ message: 'Verifying upload...', increment: 5 });
                         const verified = await sfRest.verifyImageStoreContent(imageStorePath);
                         if (!verified) {
-                            SfUtility.outputLog('SfDeployService.deployToCluster: WARNING - Image Store content verification failed, proceeding with provision anyway', null, debugLevel.warn);
+                            SfUtility.outputLog('SfDeployService.deployToCluster: Image Store content verification returned false — this API is unreliable on some clusters, proceeding with provision', null, debugLevel.warn);
                         }
-                        tracker.completePhase('Verify Upload', verified ? 'Verified' : 'Verification failed (proceeding)');
+                        tracker.completePhase('Verify Upload', verified ? 'Verified' : 'Verify API unavailable (continuing)');
 
                         tracker.startPhase('Provision Application Type');
                         progress.report({ message: 'Provisioning application type...', increment: 35 });

@@ -6,6 +6,7 @@ import { IconService } from '../../IconService';
 import { DataCache } from '../../DataCache';
 import { NodeNode } from './NodeNode';
 import * as sfModels from '../../../sdk/servicefabric/servicefabric/src/models';
+import { SfUtility, debugLevel } from '../../../sfUtility';
 
 /**
  * "nodes (N)" group node. Lazy-loads the list of cluster nodes on expansion.
@@ -21,6 +22,14 @@ export class NodesGroupNode extends BaseTreeNode {
     constructor(ctx: TreeNodeContext, iconService: IconService, cache: DataCache) {
         super(ctx, iconService, cache);
         this.id = `nodes-group:${ctx.clusterEndpoint}`;
+    }
+
+    /** Clear stale counts so getTreeItem() falls back to fresh cluster health. */
+    invalidate(): void {
+        SfUtility.outputLog(`[TREE] NodesGroupNode.invalidate: clearing nodeCount=${this.nodeCount}, healthState=${this.healthState}`, null, debugLevel.info);
+        this.nodeCount = undefined;
+        this.healthState = undefined;
+        super.invalidate();
     }
 
     getTreeItem(): vscode.TreeItem {

@@ -41,8 +41,8 @@ jobs:
       run: npm run lint
       continue-on-error: true
 
-    - name: Compile TypeScript
-      run: npm run compile
+    - name: Clean and compile TypeScript
+      run: npm run clean && npm run compile
 
     - name: Run tests
       run: npm run test:ci
@@ -57,6 +57,20 @@ jobs:
         echo "version=$VERSION" >> "$GITHUB_OUTPUT"
         echo "Extension version: $VERSION"
 
+    - name: Extract release notes from CHANGELOG
+      id: changelog
+      run: |
+        VERSION=${{ steps.version.outputs.version }}
+        # Extract the section for this version from CHANGELOG.md
+        # Matches from "## [VERSION]" until the next "## [" heading
+        NOTES=$(awk "/^## \\[${VERSION}\\]/{found=1; next} /^## \\[/{if(found) exit} found{print}" CHANGELOG.md)
+        if [ -z "$NOTES" ]; then
+          NOTES="No changelog entry found for v${VERSION}. See [CHANGELOG.md](CHANGELOG.md) for details."
+        fi
+        # Write to file to avoid delimiter issues with multiline content
+        echo "$NOTES" > release-notes.md
+        echo "Release notes extracted for v${VERSION}"
+
     - name: Upload VSIX artifact
       uses: actions/upload-artifact@v4
       with:
@@ -70,6 +84,7 @@ jobs:
       with:
         tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('v{0}', steps.version.outputs.version) }}
         name: v${{ steps.version.outputs.version }}
+        body_path: release-notes.md
         draft: false
         prerelease: false
         generate_release_notes: true

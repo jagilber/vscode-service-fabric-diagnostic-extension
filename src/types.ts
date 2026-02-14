@@ -52,12 +52,22 @@ export interface ClusterActionMessage extends WebViewMessage {
     };
 }
 
+export interface TemplateActionMessage extends WebViewMessage {
+    command: 'browseTemplates' | 'deployTemplate' | 'openTemplateSettings';
+    data?: {
+        repoUrl?: string;
+        repoBranch?: string;
+        templatePath?: string;
+    };
+}
+
 export type ManagementMessage = 
     | DeployApplicationMessage 
     | UpgradeApplicationMessage 
     | RemoveApplicationMessage 
     | NodeActionMessage 
     | ClusterActionMessage 
+    | TemplateActionMessage
     | WebViewMessage;
 
 /**

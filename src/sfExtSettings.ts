@@ -11,7 +11,8 @@ export const  enum sfExtSettingsList {
     autoReconnect = 'autoReconnect',
     deployMethod = 'deployMethod',
     timeoutSeconds = 'timeoutSeconds',
-    sfxBrowser = 'sfxBrowser'
+    sfxBrowser = 'sfxBrowser',
+    templateRepositories = 'templateRepositories'
 }
 
 export class SfExtSettings {

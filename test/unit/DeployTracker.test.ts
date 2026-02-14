@@ -6,18 +6,24 @@ import { DeployTracker } from '../../src/services/DeployTracker';
 
 describe('DeployTracker', () => {
     let tmpDir: string;
-    let mdDir: string;
     let mdPath: string;
 
     beforeEach(() => {
         tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'deploy-tracker-test-'));
-        mdDir = path.join(tmpDir, 'docs', 'architecture');
-        mdPath = path.join(mdDir, 'deploy-upgrade-phases.md');
+        // DeployTracker now writes to os.tmpdir()/sf-deploy-upgrade-phases.md
+        mdPath = path.join(os.tmpdir(), 'sf-deploy-upgrade-phases.md');
+        // Clean up any leftover file from previous test
+        if (fs.existsSync(mdPath)) {
+            fs.unlinkSync(mdPath);
+        }
         jest.clearAllMocks();
     });
 
     afterEach(() => {
         fs.rmSync(tmpDir, { recursive: true, force: true });
+        if (fs.existsSync(mdPath)) {
+            fs.unlinkSync(mdPath);
+        }
     });
 
     test('constructor creates md file with live status section', () => {
@@ -150,8 +156,7 @@ describe('DeployTracker', () => {
     });
 
     test('appends to existing file without clobbering', () => {
-        // Pre-create the file with existing content
-        fs.mkdirSync(mdDir, { recursive: true });
+        // Pre-create the file with existing content at the actual output path
         fs.writeFileSync(mdPath, '# Existing Content\n\nSome diagram here.\n');
 
         const tracker = new DeployTracker(tmpDir, 'remove', 'T', '1.0', 'A');

@@ -2,6 +2,7 @@ import { SfTreeDataProvider } from './SfTreeDataProvider';
 import { IClusterTreeView } from './IClusterTreeView';
 import { SfConfiguration } from '../sfConfiguration';
 import { SfRest } from '../sfRest';
+import { SfUtility, debugLevel } from '../sfUtility';
 
 /**
  * Adapter that wraps the new SfTreeDataProvider to conform to
@@ -14,7 +15,11 @@ export class SfTreeDataProviderAdapter implements IClusterTreeView {
     constructor(private readonly provider: SfTreeDataProvider) {}
 
     refresh(): void {
-        this.provider.refresh();
+        SfUtility.outputLog('[TREE] Adapter.refresh: triggering fullRefresh (invalidateAll + fire)', null, debugLevel.info);
+        this.provider.fullRefresh().catch(err => {
+            SfUtility.outputLog('[TREE] Adapter.refresh: fullRefresh FAILED, falling back to re-render', err, debugLevel.error);
+            this.provider.refresh();
+        });
     }
 
     hasClusterInTree(endpoint: string): boolean {
@@ -31,6 +36,10 @@ export class SfTreeDataProviderAdapter implements IClusterTreeView {
 
     restartAutoRefresh(): void {
         this.provider.restartAutoRefresh();
+    }
+
+    setClusterRefreshDisabled(endpoint: string, disabled: boolean): void {
+        this.provider.setClusterRefreshDisabled(endpoint, disabled);
     }
 
     dispose(): void {
