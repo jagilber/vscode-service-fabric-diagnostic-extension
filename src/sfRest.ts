@@ -757,21 +757,8 @@ export class SfRest implements IHttpOptionsProvider {
             SfUtility.outputLog(`sfRest:getImageStoreContent:path=${path || 'root'}`, null, debugLevel.info);
             
             if (this.useDirectRest && this.directClient) {
-                const raw = await this.directClient.getImageStoreContent(path || '');
-                // Normalize PascalCase REST response to camelCase expected by treeview nodes
-                const result = {
-                    storeFiles: (raw?.StoreFiles || []).map((f: any) => ({
-                        storeRelativePath: f.StoreRelativePath ?? f.storeRelativePath,
-                        fileSize: f.FileSize ?? f.fileSize,
-                        fileVersion: f.FileVersion ?? f.fileVersion,
-                        modifiedDate: f.ModifiedDate ?? f.modifiedDate,
-                        isReserved: f.IsReserved ?? f.isReserved,
-                    })),
-                    storeFolders: (raw?.StoreFolders || []).map((f: any) => ({
-                        storeRelativePath: f.StoreRelativePath ?? f.storeRelativePath,
-                    })),
-                };
-                SfUtility.outputLog(`sfRest:getImageStoreContent:files=${result.storeFiles.length}, folders=${result.storeFolders.length}`, null, debugLevel.info);
+                const result = await this.directClient.getImageStoreContent(path || '');
+                SfUtility.outputLog(`sfRest:getImageStoreContent:files=${result?.storeFiles?.length || 0}, folders=${result?.storeFolders?.length || 0}`, null, debugLevel.info);
                 return result;
             }
 
@@ -1234,12 +1221,11 @@ export class SfRest implements IHttpOptionsProvider {
                 ? await this.directClient.getNodeInfo(nodeName)
                 : await this.sfApi.getNodeInfo(nodeName);
                 
-            // Handle both PascalCase (Direct REST) and lowercase (SDK) property names
-            const nodeStatus = nodeInfo?.nodeStatus || (nodeInfo as any)?.NodeStatus || 'Unknown';
+            const nodeStatus = nodeInfo?.nodeStatus || 'Unknown';
             SfUtility.outputLog(`sfRest:activateNode: Current node status: ${nodeStatus}`, null, debugLevel.info);
             
             // Only activate if node is not already Up
-            if (nodeInfo && nodeStatus === 'Up' && !nodeInfo.nodeDeactivationInfo && !(nodeInfo as any).NodeDeactivationInfo) {
+            if (nodeInfo && nodeStatus === 'Up' && !nodeInfo.nodeDeactivationInfo) {
                 SfUtility.outputLog(`sfRest:activateNode: Node is already Up and not deactivated - skipping`, null, debugLevel.info);
                 return;
             }

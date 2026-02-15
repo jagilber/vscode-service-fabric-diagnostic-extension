@@ -51,43 +51,23 @@ export interface SfRestOptions {
 }
 
 export interface SfNodeInfo {
-    Name: string;
-    IpAddressOrFQDN: string;
-    Type: string;
-    CodeVersion: string;
-    ConfigVersion: string;
-    NodeStatus: string;
-    NodeUpTimeInSeconds: string;
-    HealthState: string;
-    IsSeedNode: boolean;
-    UpgradeDomain: string;
-    FaultDomain: string;
-    Id?: { Id: string };
-    InstanceId?: string;
-    NodeDeactivationInfo?: {
-        DeactivationIntent: string;
-        Status: string;
-        DeactivationTasks?: any[];
-        PendingSafetyChecks?: any[];
-    };
-    // Aliases for backward compatibility and easier access
-    name?: string;
-    ipAddressOrFQDN?: string;
-    type?: string;
-    codeVersion?: string;
-    configVersion?: string;
-    nodeStatus?: string;
-    nodeUpTimeInSeconds?: string;
-    healthState?: string;
-    isSeedNode?: boolean;
-    upgradeDomain?: string;
-    faultDomain?: string;
+    name: string;
+    ipAddressOrFqdn: string;
+    type: string;
+    codeVersion: string;
+    configVersion: string;
+    nodeStatus: string;
+    nodeUpTimeInSeconds: string;
+    healthState: string;
+    isSeedNode: boolean;
+    upgradeDomain: string;
+    faultDomain: string;
     id?: { id: string };
     instanceId?: string;
     nodeDeactivationInfo?: {
-        intent: string;
+        deactivationIntent: string;
         status: string;
-        tasks?: any[];
+        deactivationTasks?: any[];
         pendingSafetyChecks?: any[];
     };
 }
@@ -104,6 +84,42 @@ export interface SfClusterHealth {
 /**
  * Direct REST client - no Azure SDK wrapper
  */
+/**
+ * Recursively convert all object keys from PascalCase to camelCase.
+ * The SF REST API returns PascalCase (StoreFiles, HealthState, NodeName)
+ * but the Azure SDK and all treeview/consumer code expects camelCase
+ * (storeFiles, healthState, nodeName). Normalizing here in one place
+ * means no caller ever needs to handle the casing mismatch.
+ *
+ * Handles acronyms: IpAddressOrFQDN → ipAddressOrFqdn (matches SDK convention).
+ */
+function toCamelCaseKeys(obj: any): any {
+    if (obj === null || obj === undefined || typeof obj !== 'object') {
+        return obj;
+    }
+    if (Array.isArray(obj)) {
+        return obj.map(toCamelCaseKeys);
+    }
+    const result: Record<string, any> = {};
+    for (const key of Object.keys(obj)) {
+        const camelKey = key.replace(/[A-Z]+/g, (match, offset) => {
+            if (match.length === 1) {
+                return offset === 0 ? match.toLowerCase() : match;
+            }
+            // Acronym at start: lowercase all but keep last char if followed by lowercase
+            if (offset === 0) {
+                return match.length === key.length
+                    ? match.toLowerCase()
+                    : match.slice(0, -1).toLowerCase() + match.slice(-1);
+            }
+            // Acronym mid/end: keep first char, lowercase rest (FQDN → Fqdn)
+            return match[0] + match.slice(1).toLowerCase();
+        });
+        result[camelKey] = toCamelCaseKeys(obj[key]);
+    }
+    return result;
+}
+
 export class SfDirectRestClient {
     private endpoint: string;
     private apiVersion: string;
@@ -254,7 +270,7 @@ export class SfDirectRestClient {
                         if (responseBody && res.statusCode !== 204) {
                             try {
                                 const parsed = JSON.parse(responseBody);
-                                resolve(parsed as T);
+                                resolve(toCamelCaseKeys(parsed) as T);
                             } catch (e) {
                                 // Not JSON, return as string
                                 resolve(responseBody as any);
@@ -377,15 +393,14 @@ export class SfDirectRestClient {
     }
 
     /**
-     * Normalize SF REST paged responses: the API returns { Items: [...] } (PascalCase)
-     * but callers expect { items: [...] } (camelCase). Also handles plain arrays.
+     * Unwrap SF REST paged responses: the API returns { items: [...] } (already
+     * camelCase-normalized by makeRequest). Also handles plain arrays.
      */
     private unwrapPagedResponse<T>(result: any): { items: T[] } {
         if (Array.isArray(result)) {
             return { items: result };
         }
-        const items = result?.Items || result?.items || [];
-        return { items };
+        return { items: result?.items || [] };
     }
 
     // ==================== NODE APIs ====================
@@ -510,35 +525,8 @@ export class SfDirectRestClient {
 
     async getDeployedApplicationInfoList(nodeName: string): Promise<{ items: any[] }> {
         const response = await this.makeRequest<any>('GET', `/Nodes/${nodeName}/$/GetApplications`);
-        SfUtility.outputLog(`📦 RAW RESPONSE: ${JSON.stringify(response).substring(0, 500)}`, null, debugLevel.info);
-        SfUtility.outputLog(`📦 Response type: ${typeof response}, is array: ${Array.isArray(response)}`, null, debugLevel.info);
-        
-        let items: any[] = [];
-        
-        // Service Fabric returns a direct array, not { items: [] }
-        if (Array.isArray(response)) {
-            items = response;
-        } else if (response.Items) {
-            // Or it might return { Items: [] } (capitalized)
-            items = response.Items;
-        } else if (response.items) {
-            items = response.items;
-        }
-        
-        // Normalize PascalCase properties to lowercase for consistency
-        // The direct REST API returns Id/Name (PascalCase) but Azure SDK returns id/name (lowercase)
-        const normalizedItems = items.map((item: any) => ({
-            ...item,
-            id: item.id || item.Id,
-            name: item.name || item.Name,
-            typeName: item.typeName || item.TypeName,
-            typeVersion: item.typeVersion || item.TypeVersion,
-            status: item.status || item.Status,
-            healthState: item.healthState || item.HealthState
-        }));
-        
-        SfUtility.outputLog(`📦 Normalized ${normalizedItems.length} deployed apps`, null, debugLevel.info);
-        return { items: normalizedItems };
+        // Response is already camelCase-normalized by makeRequest()
+        return this.unwrapPagedResponse(response);
     }
 
     async getDeployedApplicationInfo(nodeName: string, applicationId: string): Promise<any> {
@@ -550,44 +538,15 @@ export class SfDirectRestClient {
     }
 
     async getDeployedServicePackageInfoList(nodeName: string, applicationId: string): Promise<any[]> {
-        const response = await this.makeRequest<any[]>('GET', `/Nodes/${nodeName}/$/GetApplications/${applicationId}/$/GetServicePackages`);
-        // Normalize PascalCase to lowercase
-        return response.map((item: any) => ({
-            ...item,
-            name: item.name || item.Name,
-            serviceManifestName: item.serviceManifestName || item.ServiceManifestName,
-            servicePackageActivationId: item.servicePackageActivationId || item.ServicePackageActivationId,
-            healthState: item.healthState || item.HealthState,
-            status: item.status || item.Status
-        }));
+        return this.makeRequest<any[]>('GET', `/Nodes/${nodeName}/$/GetApplications/${applicationId}/$/GetServicePackages`);
     }
 
     async getDeployedCodePackageInfoList(nodeName: string, applicationId: string, serviceManifestName: string): Promise<any[]> {
-        const response = await this.makeRequest<any[]>('GET', `/Nodes/${nodeName}/$/GetApplications/${applicationId}/$/GetCodePackages?ServiceManifestName=${serviceManifestName}`);
-        // Normalize PascalCase to lowercase
-        return response.map((item: any) => ({
-            ...item,
-            name: item.name || item.Name,
-            codePackageName: item.codePackageName || item.CodePackageName,
-            serviceManifestName: item.serviceManifestName || item.ServiceManifestName,
-            codePackageVersion: item.codePackageVersion || item.CodePackageVersion,
-            status: item.status || item.Status
-        }));
+        return this.makeRequest<any[]>('GET', `/Nodes/${nodeName}/$/GetApplications/${applicationId}/$/GetCodePackages?ServiceManifestName=${serviceManifestName}`);
     }
 
     async getDeployedServiceReplicaInfoList(nodeName: string, applicationId: string, serviceManifestName: string): Promise<any[]> {
-        const response = await this.makeRequest<any[]>('GET', `/Nodes/${nodeName}/$/GetApplications/${applicationId}/$/GetReplicas?ServiceManifestName=${serviceManifestName}`);
-        // Normalize PascalCase to lowercase
-        return response.map((item: any) => ({
-            ...item,
-            replicaId: item.replicaId || item.ReplicaId,
-            instanceId: item.instanceId || item.InstanceId,
-            serviceKind: item.serviceKind || item.ServiceKind,
-            serviceName: item.serviceName || item.ServiceName,
-            partitionId: item.partitionId || item.PartitionId,
-            replicaStatus: item.replicaStatus || item.ReplicaStatus,
-            replicaRole: item.replicaRole || item.ReplicaRole
-        }));
+        return this.makeRequest<any[]>('GET', `/Nodes/${nodeName}/$/GetApplications/${applicationId}/$/GetReplicas?ServiceManifestName=${serviceManifestName}`);
     }
 
     // ==================== EVENT STORE APIs ====================
@@ -902,7 +861,7 @@ export class SfDirectRestClient {
         SfUtility.outputLog(`SfDirectRestClient.getImageStoreContent: path=${contentPath}`, null, debugLevel.info);
         const encodedPath = contentPath.split('/').map(s => encodeURIComponent(s)).join('/');
         const result = await this.makeRequest<any>('GET', `/ImageStore/${encodedPath}`);
-        SfUtility.outputLog(`SfDirectRestClient.getImageStoreContent: files=${result?.StoreFiles?.length || 0} folders=${result?.StoreFolders?.length || 0}`, null, debugLevel.info);
+        SfUtility.outputLog(`SfDirectRestClient.getImageStoreContent: files=${result?.storeFiles?.length || 0} folders=${result?.storeFolders?.length || 0}`, null, debugLevel.info);
         return result;
     }
 
@@ -925,7 +884,7 @@ export class SfDirectRestClient {
         SfUtility.outputLog(`SfDirectRestClient.getApplicationType: name=${applicationTypeName}`, null, debugLevel.info);
         const result = await this.makeRequest<any>('GET', `/ApplicationTypes/${applicationTypeName}`);
         // SF REST returns { Items: [...], ContinuationToken: "" } — unwrap
-        const items = result?.Items || result?.items || (Array.isArray(result) ? result : []);
+        const items = result?.items || (Array.isArray(result) ? result : []);
         SfUtility.outputLog(`SfDirectRestClient.getApplicationType: returned ${items.length} type(s)`, null, debugLevel.info);
         return items;
     }

@@ -80,7 +80,7 @@ export async function generateHealthReport(
         if (errorNodes.length > 0) {
             markdown += `### 🔴 Nodes in Error State (${errorNodes.length})\n\n`;
             errorNodes.forEach((node: any) => {
-                markdown += `#### ${node.name}\n\n- **Status:** ${node.nodeStatus}\n- **Type:** ${node.type}\n- **IP:** ${node.ipAddressOrFQDN}\n- **Upgrade Domain:** ${node.upgradeDomain}\n- **Fault Domain:** ${node.faultDomain}\n\n`;
+                markdown += `#### ${node.name}\n\n- **Status:** ${node.nodeStatus}\n- **Type:** ${node.type}\n- **IP:** ${node.ipAddressOrFqdn}\n- **Upgrade Domain:** ${node.upgradeDomain}\n- **Fault Domain:** ${node.faultDomain}\n\n`;
             });
         }
 

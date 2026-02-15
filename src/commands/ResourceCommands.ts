@@ -255,7 +255,7 @@ export function registerResourceCommands(
 
                 // If running instances exist, ask user to delete them first
                 if (runningApps.length > 0) {
-                    const appNames = runningApps.map((a: any) => a.Name || a.name || a.Id || a.id).join(', ');
+                    const appNames = runningApps.map((a: any) => a.name || a.id).join(', ');
                     SfUtility.outputLog(`ResourceCommands.unprovisionApplicationType: running instances exist: ${appNames}`, null, debugLevel.warn);
                     const choice = await vscode.window.showWarningMessage(
                         `Cannot unprovision ${typeName}:${typeVersion} — ${runningApps.length} running instance(s) found: ${appNames}. Delete them first?`,
@@ -274,7 +274,7 @@ export function registerResourceCommands(
                     // Delete running instances
                     tracker.startPhase('Delete Application');
                     for (const app of runningApps) {
-                        const appId = app.Id || app.id || app.Name?.replace('fabric:/', '') || app.name?.replace('fabric:/', '');
+                        const appId = app.id || app.name?.replace('fabric:/', '');
                         SfUtility.outputLog(`ResourceCommands.unprovisionApplicationType: deleting application ${appId}`, null, debugLevel.info);
                         await sfRest.deleteApplication(appId);
                         SfUtility.outputLog(`ResourceCommands.unprovisionApplicationType: deleted application ${appId}`, null, debugLevel.info);
