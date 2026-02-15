@@ -757,8 +757,21 @@ export class SfRest implements IHttpOptionsProvider {
             SfUtility.outputLog(`sfRest:getImageStoreContent:path=${path || 'root'}`, null, debugLevel.info);
             
             if (this.useDirectRest && this.directClient) {
-                const result = await this.directClient.getImageStoreContent(path || '');
-                SfUtility.outputLog(`sfRest:getImageStoreContent:files=${result?.StoreFiles?.length || 0}, folders=${result?.StoreFolders?.length || 0}`, null, debugLevel.info);
+                const raw = await this.directClient.getImageStoreContent(path || '');
+                // Normalize PascalCase REST response to camelCase expected by treeview nodes
+                const result = {
+                    storeFiles: (raw?.StoreFiles || []).map((f: any) => ({
+                        storeRelativePath: f.StoreRelativePath ?? f.storeRelativePath,
+                        fileSize: f.FileSize ?? f.fileSize,
+                        fileVersion: f.FileVersion ?? f.fileVersion,
+                        modifiedDate: f.ModifiedDate ?? f.modifiedDate,
+                        isReserved: f.IsReserved ?? f.isReserved,
+                    })),
+                    storeFolders: (raw?.StoreFolders || []).map((f: any) => ({
+                        storeRelativePath: f.StoreRelativePath ?? f.storeRelativePath,
+                    })),
+                };
+                SfUtility.outputLog(`sfRest:getImageStoreContent:files=${result.storeFiles.length}, folders=${result.storeFolders.length}`, null, debugLevel.info);
                 return result;
             }
 
