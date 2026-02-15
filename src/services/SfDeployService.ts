@@ -35,8 +35,33 @@ interface PreflightResult {
 }
 
 export class SfDeployService implements vscode.Disposable {
+    // Track active deployments for cancellation support
+    private static activeDeployments = new Map<string, { tokenSource: vscode.CancellationTokenSource; appName: string; typeName: string }>();
 
     constructor() {}
+
+    /** Get active deployment info for an application (if any) */
+    static getActiveDeployment(appName: string): { appName: string; typeName: string } | undefined {
+        const entry = this.activeDeployments.get(appName);
+        return entry ? { appName: entry.appName, typeName: entry.typeName } : undefined;
+    }
+
+    /** Cancel active deployment for an application */
+    static cancelDeployment(appName: string): boolean {
+        const entry = this.activeDeployments.get(appName);
+        if (entry) {
+            SfUtility.outputLog(`SfDeployService.cancelDeployment: cancelling deployment for ${appName}`, null, debugLevel.info);
+            entry.tokenSource.cancel();
+            this.activeDeployments.delete(appName);
+            return true;
+        }
+        return false;
+    }
+
+    /** Get all active deployment app names */
+    static getActiveDeploymentNames(): string[] {
+        return Array.from(this.activeDeployments.keys());
+    }
 
     // ── Build / Package ────────────────────────────────────────────────
 
@@ -47,6 +72,7 @@ export class SfDeployService implements vscode.Disposable {
      */
     async buildProject(project: SfProjectInfo, method: DeployMethod = 'msbuild'): Promise<BuildResult> {
         const startTime = Date.now();
+        SfUtility.outputLog(`SfDeployService.buildProject: ENTERED - project=${project.appTypeName} method=${method} projectDir=${project.projectDir} sfprojPath=${project.sfprojPath}`, null, debugLevel.info);
 
         try {
             switch (method) {
@@ -55,6 +81,7 @@ export class SfDeployService implements vscode.Disposable {
                 case 'dotnet':
                     return await this.buildWithDotnet(project);
                 default:
+                    SfUtility.outputLog(`SfDeployService.buildProject: unsupported method '${method}'`, null, debugLevel.error);
                     return {
                         success: false,
                         errors: [`Build method '${method}' is not supported for building. Use 'msbuild' or 'dotnet'.`],
@@ -63,6 +90,7 @@ export class SfDeployService implements vscode.Disposable {
                     };
             }
         } catch (err) {
+            SfUtility.outputLog(`SfDeployService.buildProject: exception during build`, err, debugLevel.error);
             return {
                 success: false,
                 errors: [err instanceof Error ? err.message : String(err)],
@@ -72,38 +100,100 @@ export class SfDeployService implements vscode.Disposable {
         }
     }
 
+    /**
+     * Resolve the msbuild command to use.
+     * Tries standalone `msbuild` first, then `dotnet msbuild` (ships with .NET SDK).
+     * Returns the command prefix or undefined if neither is available.
+     */
+    private async resolveMsBuildCommand(): Promise<string | undefined> {
+        const { execSync } = require('child_process');
+        // Try standalone msbuild (VS / VS Build Tools)
+        try {
+            execSync('msbuild -version', { stdio: 'pipe', timeout: 10000 });
+            SfUtility.outputLog('resolveMsBuildCommand: standalone msbuild found', null, debugLevel.info);
+            return 'msbuild';
+        } catch {
+            SfUtility.outputLog('resolveMsBuildCommand: standalone msbuild not found, trying dotnet msbuild', null, debugLevel.info);
+        }
+        // Try dotnet msbuild (.NET SDK)
+        try {
+            execSync('dotnet msbuild -version', { stdio: 'pipe', timeout: 10000 });
+            SfUtility.outputLog('resolveMsBuildCommand: dotnet msbuild found', null, debugLevel.info);
+            return 'dotnet msbuild';
+        } catch {
+            SfUtility.outputLog('resolveMsBuildCommand: dotnet msbuild not found either', null, debugLevel.warn);
+        }
+        return undefined;
+    }
+
     private async buildWithMsBuild(project: SfProjectInfo): Promise<BuildResult> {
         const startTime = Date.now();
+
+        // Pre-flight: resolve msbuild command (standalone or dotnet msbuild)
+        const msbuildCmd = await this.resolveMsBuildCommand();
+        if (!msbuildCmd) {
+            const msg = 'Neither msbuild nor dotnet msbuild found. Install the .NET SDK or Visual Studio Build Tools.';
+            SfUtility.outputLog(`SfDeployService.buildWithMsBuild: ${msg}`, null, debugLevel.error);
+            const action = await vscode.window.showErrorMessage(
+                msg,
+                'Download .NET SDK',
+                'Download VS Build Tools',
+                'Change Setting',
+            );
+            if (action === 'Download .NET SDK') {
+                vscode.env.openExternal(vscode.Uri.parse('https://dotnet.microsoft.com/download'));
+            } else if (action === 'Download VS Build Tools') {
+                vscode.env.openExternal(vscode.Uri.parse('https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022'));
+            } else if (action === 'Change Setting') {
+                vscode.commands.executeCommand('workbench.action.openSettings', 'sfClusterExplorer.buildMethod');
+            }
+            return {
+                success: false,
+                errors: [msg],
+                warnings: [],
+                duration: Date.now() - startTime,
+            };
+        }
+
+        const cmd = `${msbuildCmd} "${project.sfprojPath}" /t:Package /p:Configuration=Debug`;
+        SfUtility.outputLog(`SfDeployService.buildWithMsBuild: launching terminal - cwd=${project.projectDir} cmd=${cmd}`, null, debugLevel.info);
+
         const terminal = vscode.window.createTerminal({
             name: `SF Build: ${project.appTypeName}`,
             cwd: project.projectDir,
         });
 
         terminal.show();
-        terminal.sendText(`msbuild "${project.sfprojPath}" /t:Package /p:Configuration=Debug`);
+        terminal.sendText(cmd);
 
         // Build is async via terminal — return optimistic result
         // User watches terminal for actual build output
         const pkgPath = path.join(project.projectDir, 'pkg', 'Debug');
+        SfUtility.outputLog(`SfDeployService.buildWithMsBuild: terminal launched, using '${msbuildCmd}', expected output=${pkgPath}, duration=${Date.now() - startTime}ms`, null, debugLevel.info);
 
         return {
             success: true, // Optimistic — terminal command was launched
             outputPath: pkgPath,
             errors: [],
-            warnings: ['Build launched in terminal. Check terminal for output.'],
+            warnings: [`Build launched in terminal using '${msbuildCmd}'. Check terminal for output.`],
             duration: Date.now() - startTime,
         };
     }
 
     private async buildWithDotnet(project: SfProjectInfo): Promise<BuildResult> {
         const startTime = Date.now();
+        const cmd = `dotnet build "${project.sfprojPath}" --configuration Debug`;
+        SfUtility.outputLog(`SfDeployService.buildWithDotnet: launching terminal - cwd=${project.projectDir} cmd=${cmd}`, null, debugLevel.info);
+
         const terminal = vscode.window.createTerminal({
             name: `SF Build: ${project.appTypeName}`,
             cwd: project.projectDir,
         });
 
         terminal.show();
-        terminal.sendText(`dotnet build "${project.sfprojPath}" --configuration Debug`);
+        terminal.sendText(cmd);
+
+        SfUtility.outputLog(`SfDeployService.buildWithDotnet: terminal launched, duration=${Date.now() - startTime}ms`, null, debugLevel.info);
 
         return {
             success: true,
@@ -153,18 +243,37 @@ export class SfDeployService implements vscode.Disposable {
         SfUtility.outputLog(`SfDeployService.deployToCluster: package validated, starting withProgress`, null, debugLevel.info);
 
         const tracker = this.createTracker('deploy', options.typeName, options.typeVersion, options.appName);
+        const tokenSource = new vscode.CancellationTokenSource();
+        SfDeployService.activeDeployments.set(options.appName, {
+            tokenSource,
+            appName: options.appName,
+            typeName: options.typeName,
+        });
 
         try {
             await vscode.window.withProgress(
                 {
                     location: vscode.ProgressLocation.Notification,
                     title: `Deploying ${options.typeName}`,
-                    cancellable: false,
+                    cancellable: true,
                 },
-                async (progress) => {
+                async (progress, token) => {
+                    // Wire up vscode cancellation token to our tokenSource
+                    token.onCancellationRequested(() => {
+                        SfUtility.outputLog(`SfDeployService.deployToCluster: user cancelled deployment via progress UI`, null, debugLevel.info);
+                        tokenSource.cancel();
+                    });
+
+                    // Check cancellation before each phase
+                    const checkCancellation = () => {
+                        if (tokenSource.token.isCancellationRequested) {
+                            throw new Error('Deployment cancelled by user');
+                        }
+                    };
                     // Step 0: Pre-flight -- check if type+version is already provisioned
                     tracker.startPhase('Pre-flight Check');
                     progress.report({ message: 'Checking cluster state...', increment: 0 });
+                    checkCancellation();
                     const preflight = await this.preflightCheck(sfRest, options, packagePath);
                     tracker.completePhase('Pre-flight Check', preflight.message);
 
@@ -183,10 +292,12 @@ export class SfDeployService implements vscode.Disposable {
                     if (preflight.needsUnprovision) {
                         SfUtility.outputLog('SfDeployService.deployToCluster: unprovision needed (manifest changed)', null, debugLevel.info);
                         progress.report({ message: 'Unprovisioning stale application type...', increment: 5 });
+                        checkCancellation();
                         await sfRest.unprovisionApplicationType(options.typeName, options.typeVersion);
                         SfUtility.outputLog('SfDeployService.deployToCluster: unprovision complete', null, debugLevel.info);
                     }
 
+                    checkCancellation();
                     if (preflight.skipUpload) {
                         // Type already provisioned with matching manifest -- just create instance
                         SfUtility.outputLog('SfDeployService.deployToCluster: skipping upload/provision (manifest matches)', null, debugLevel.info);
@@ -200,6 +311,7 @@ export class SfDeployService implements vscode.Disposable {
                         tracker.startPhase('Upload to Image Store');
                         SfUtility.outputLog('SfDeployService.deployToCluster: Step 1 - Upload to Image Store', null, debugLevel.info);
                         progress.report({ message: 'Uploading to Image Store...', increment: 0 });
+                        checkCancellation();
                         const imageStorePath = options.typeName;
 
                         await sfRest.uploadApplicationPackage(
@@ -220,6 +332,7 @@ export class SfDeployService implements vscode.Disposable {
                         tracker.startPhase('Verify Upload');
                         SfUtility.outputLog('SfDeployService.deployToCluster: Step 2 - Verify upload + Provision', null, debugLevel.info);
                         progress.report({ message: 'Verifying upload...', increment: 5 });
+                        checkCancellation();
                         const verified = await sfRest.verifyImageStoreContent(imageStorePath);
                         if (!verified) {
                             SfUtility.outputLog('SfDeployService.deployToCluster: Image Store content verification returned false — this API is unreliable on some clusters, proceeding with provision', null, debugLevel.warn);
@@ -228,6 +341,7 @@ export class SfDeployService implements vscode.Disposable {
 
                         tracker.startPhase('Provision Application Type');
                         progress.report({ message: 'Provisioning application type...', increment: 35 });
+                        checkCancellation();
                         const provisionResult = await sfRest.provisionApplicationType(imageStorePath, true, options.typeName, options.typeVersion);
 
                         if (provisionResult.alreadyExists) {
@@ -239,6 +353,7 @@ export class SfDeployService implements vscode.Disposable {
                         tracker.startPhase('Wait for Provision');
                         SfUtility.outputLog('SfDeployService.deployToCluster: Step 2b - Waiting for provision', null, debugLevel.info);
                         progress.report({ message: 'Waiting for provisioning to complete...', increment: 10 });
+                        checkCancellation();
                         const provisioned = await sfRest.waitForProvision(
                             options.typeName,
                             options.typeVersion,
@@ -259,6 +374,7 @@ export class SfDeployService implements vscode.Disposable {
                     tracker.startPhase('Create Application');
                     SfUtility.outputLog('SfDeployService.deployToCluster: Step 4 - Create application instance', null, debugLevel.info);
                     progress.report({ message: 'Creating application instance...', increment: 20 });
+                    checkCancellation();
                     await sfRest.createApplication(
                         options.appName,
                         options.typeName,
@@ -277,9 +393,19 @@ export class SfDeployService implements vscode.Disposable {
             );
 
             tracker.finishOperation(true, `Deployed ${options.appName}`);
+            SfDeployService.activeDeployments.delete(options.appName);
         } catch (err) {
+            const isCancelled = err instanceof Error && err.message.includes('cancelled');
             tracker.finishOperation(false, err instanceof Error ? err.message : String(err));
+            SfDeployService.activeDeployments.delete(options.appName);
+            tokenSource.dispose();
+            if (isCancelled) {
+                vscode.window.showWarningMessage(`Deployment cancelled for ${options.appName}`);
+                return; // Don't re-throw, just exit gracefully
+            }
             throw err;
+        } finally {
+            tokenSource.dispose();
         }
 
         vscode.window.showInformationMessage(

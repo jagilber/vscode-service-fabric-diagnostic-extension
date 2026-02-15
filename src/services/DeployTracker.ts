@@ -193,6 +193,9 @@ export class DeployTracker {
         if (operationDone === true || allDone) { overallIcon = '✅'; }
         if (operationDone === false || anyFailed) { overallIcon = '❌'; }
 
+        const inProgress = !operationDone && !allDone && !anyFailed;
+        const canCancel = inProgress && this.operationType === 'deploy';
+
         const lines: string[] = [
             '',
             LIVE_SECTION_START,
@@ -201,10 +204,19 @@ export class DeployTracker {
             '',
             `**${this.typeName}** v${this.typeVersion} → \`${this.appName}\`  `,
             `Started: ${this.formatTime(this.operationStartedAt)} | Elapsed: ${totalElapsed}`,
+        ];
+
+        // Add cancel button link if deployment is in progress
+        if (canCancel) {
+            const cancelCommand = `command:sfClusterExplorer.cancelDeployment?${encodeURIComponent(JSON.stringify([this.appName]))}`;
+            lines.push('', `[![Cancel](https://img.shields.io/badge/-Cancel%20Deployment-red?style=for-the-badge)](${cancelCommand})`);
+        }
+
+        lines.push(
             '',
             '| Phase | Status | Duration | Detail |',
             '|-------|--------|----------|--------|',
-        ];
+        );
 
         for (const p of this.phases) {
             const icon = STATUS_ICON[p.status];

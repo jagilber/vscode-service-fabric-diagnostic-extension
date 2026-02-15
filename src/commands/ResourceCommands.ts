@@ -9,6 +9,7 @@ import { SfUtility, debugLevel } from '../sfUtility';
 import { ItemTypes, ServiceKinds } from '../constants/ItemTypes';
 import { registerCommandWithErrorHandling, withProgress, confirmWithTypedText } from '../utils/CommandUtils';
 import { DeployTracker } from '../services/DeployTracker';
+import { SfDeployService } from '../services/SfDeployService';
 
 export function registerResourceCommands(
     context: vscode.ExtensionContext,

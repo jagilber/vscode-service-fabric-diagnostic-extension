@@ -101,6 +101,7 @@ export const COMMAND_MANIFEST: Record<string, CommandMeta> = {
     'sfClusterExplorer.deleteService':             { friendlyName: 'delete service',       category: 'resource', requiresCluster: true },
     'sfClusterExplorer.deleteApplication':         { friendlyName: 'delete application',   category: 'resource', requiresCluster: true },
     'sfClusterExplorer.unprovisionApplicationType':{ friendlyName: 'unprovision app type', category: 'resource', requiresCluster: true },
+    'sfClusterExplorer.cancelDeployment':          { friendlyName: 'cancel deployment',    category: 'resource', requiresCluster: false },
 
     // ---- Project commands (SF Applications view) ----
     'sfApplications.refresh':                      { friendlyName: 'refresh projects',     category: 'project',  requiresCluster: false },

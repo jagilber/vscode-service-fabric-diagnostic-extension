@@ -608,6 +608,21 @@
             "default": true,
             "description": "Automatically reconnect to previously connected clusters when VS Code starts"
           },
+          "sfClusterExplorer.buildMethod": {
+            "type": "string",
+            "default": "msbuild",
+            "enum": [
+              "msbuild",
+              "dotnet",
+              "ask"
+            ],
+            "enumDescriptions": [
+              "Use MSBuild (msbuild /t:Package) — produces valid SF package layout (recommended for deploy)",
+              "Use dotnet CLI (dotnet build) — compiles only, does NOT produce SF package structure",
+              "Prompt to choose each time"
+            ],
+            "description": "Default build method for Service Fabric application projects"
+          },
           "sfClusterExplorer.deployMethod": {
             "type": "string",
             "default": "rest",
