@@ -184,13 +184,16 @@ export class SfDirectRestClient {
             rejectUnauthorized: false
         };
 
-        // Use dedicated HTTPS agent to bypass VS Code's proxy-patched globalAgent
+        // Use dedicated HTTPS agent to bypass VS Code's proxy-patched globalAgent.
+        // The agent already carries cert/key — do NOT duplicate them on the request
+        // options, because Node.js https.Agent.getName() includes options.cert/key in
+        // the connection pool key.  If the same cert is on both agent and options,
+        // getName() computes a key that includes the cert string twice, creating a
+        // different pool key than expected and defeating connection reuse.
         if (isHttps && this.httpsAgent) {
             options.agent = this.httpsAgent;
-        }
-
-        // Add certificate auth if provided (also needed when agent doesn't carry certs)
-        if (this.certificate && this.key) {
+        } else if (this.certificate && this.key) {
+            // Fallback: no agent available, set cert/key on request directly
             options.cert = this.certificate;
             options.key = this.key;
         }
@@ -205,7 +208,11 @@ export class SfDirectRestClient {
         // confirms the client cert, sends "100 Continue", and THEN the body is sent.
         if (isBinaryBody) {
             options.headers!['Content-Length'] = body.length;
-            options.headers!['Expect'] = '100-continue';
+            // Only use Expect: 100-continue for non-empty bodies.
+            // Empty markers (_.dir) don't need the extra round-trip.
+            if (body.length > 0) {
+                options.headers!['Expect'] = '100-continue';
+            }
         }
 
         const logUrl = `${parsedUrl.protocol}//${options.hostname}:${options.port}${fullPath}`;
@@ -220,7 +227,7 @@ export class SfDirectRestClient {
             let requestAborted = false;
 
             const req = requestModule.request(options, (res) => {
-                SfUtility.outputLog(`📥 Response headers received: ${res.statusCode} ${res.statusMessage}`, null, debugLevel.info);
+                SfUtility.outputLog(`📥 Response ${res.statusCode} ${res.statusMessage} (connection=${res.headers['connection'] || 'not-set'})`, null, debugLevel.info);
 
                 res.on('data', (chunk: Buffer) => {
                     chunks.push(chunk);
@@ -303,7 +310,9 @@ export class SfDirectRestClient {
             // Socket-level diagnostic logging
             req.on('socket', (socket) => {
                 const tlsSock = socket as tls.TLSSocket;
-                SfUtility.outputLog(`🔌 Socket assigned (connecting=${socket.connecting})`, null, debugLevel.info);
+                // Log agent pool status to diagnose parallelism
+                const poolInfo = this.httpsAgent ? `active=${Object.values(this.httpsAgent.sockets).reduce((s: number, a: any) => s + (a?.length || 0), 0)}, free=${Object.values(this.httpsAgent.freeSockets).reduce((s: number, a: any) => s + (a?.length || 0), 0)}, queued=${Object.values(this.httpsAgent.requests).reduce((s: number, a: any) => s + (a?.length || 0), 0)}` : 'no-agent';
+                SfUtility.outputLog(`🔌 Socket assigned (connecting=${socket.connecting}, reused=${!socket.connecting}, pool: ${poolInfo})`, null, debugLevel.info);
 
                 socket.on('connect', () => {
                     SfUtility.outputLog(`🔌 TCP connected to ${PiiObfuscation.generic(options.hostname || '')}:${options.port}`, null, debugLevel.info);
@@ -334,7 +343,7 @@ export class SfDirectRestClient {
 
             // Send body if provided
             if (body) {
-                if (isBinaryBody) {
+                if (isBinaryBody && body.length > 0) {
                     SfUtility.outputLog(`📤 Sending <binary ${body.length} bytes> (waiting for 100-continue)`, null, debugLevel.info);
                     // With Expect: 100-continue, Node.js sends only the headers first.
                     // The server completes TLS renegotiation (client cert request), then
@@ -344,6 +353,9 @@ export class SfDirectRestClient {
                         SfUtility.outputLog(`📤 100-continue received, sending body (${body.length} bytes)`, null, debugLevel.info);
                         req.end(body);
                     });
+                } else if (isBinaryBody) {
+                    // Empty binary body (e.g. _.dir markers) — send immediately, no 100-continue
+                    req.end(body);
                 } else {
                     const bodyStr = typeof body === 'string' ? body : JSON.stringify(body);
                     SfUtility.outputLog(`📤 Request body: ${bodyStr}`, null, debugLevel.info);
@@ -724,8 +736,9 @@ export class SfDirectRestClient {
         const encodedPath = contentPath.split('/').map(s => encodeURIComponent(s)).join('/');
 
         if (stat <= SfDirectRestClient.CHUNK_UPLOAD_THRESHOLD) {
-            // Small file: read entirely and single-shot upload
-            const content = fs.readFileSync(localFilePath);
+            // Small file: read entirely and single-shot upload.
+            // Use async read to avoid blocking the event loop during parallel uploads.
+            const content = await fs.promises.readFile(localFilePath);
             const uploadTimeout = Math.max(this.timeout, 120000);
             await this.makeRequest<void>(
                 'PUT',

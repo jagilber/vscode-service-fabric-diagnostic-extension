@@ -53,6 +53,8 @@ export class SfRest implements IHttpOptionsProvider {
 
     // Cached image store connection string (e.g. 'file:C:\path' or 'fabric:ImageStore')
     private imageStoreConnectionString?: string;
+    // Single-flight promise to prevent concurrent getClusterManifest() calls
+    private imageStoreConnectionStringPromise?: Promise<string>;
 
     constructor(
         context: vscode.ExtensionContext,
@@ -669,6 +671,21 @@ export class SfRest implements IHttpOptionsProvider {
         if (this.imageStoreConnectionString) {
             return this.imageStoreConnectionString;
         }
+        // Single-flight: if already fetching, share the in-flight promise.
+        // Prevents N concurrent workers from each calling getClusterManifest()
+        // through the Azure SDK (which serializes on VS Code's patched globalAgent).
+        if (this.imageStoreConnectionStringPromise) {
+            return this.imageStoreConnectionStringPromise;
+        }
+        this.imageStoreConnectionStringPromise = this.fetchImageStoreConnectionString();
+        try {
+            return await this.imageStoreConnectionStringPromise;
+        } finally {
+            this.imageStoreConnectionStringPromise = undefined;
+        }
+    }
+
+    private async fetchImageStoreConnectionString(): Promise<string> {
         try {
             const manifest = await this.getClusterManifest();
             const xml = manifest.manifest || '';
@@ -1427,6 +1444,12 @@ export class SfRest implements IHttpOptionsProvider {
             
             const fs = await import('fs');
             const path = await import('path');
+
+            // Pre-fetch image store connection string BEFORE starting workers.
+            // This prevents all N workers from hitting getClusterManifest() simultaneously
+            // through the Azure SDK's serialized globalAgent.
+            const imageStoreConn = await this.getImageStoreConnectionString();
+            SfUtility.outputLog(`sfRest:uploadApplicationPackage: imageStoreConn=${imageStoreConn}`, null, debugLevel.info);
             
             // Collect all files recursively with sizes
             const allFiles: { path: string; size: number }[] = [];
@@ -1457,13 +1480,19 @@ export class SfRest implements IHttpOptionsProvider {
             });
 
             let cursor = 0;
-            const runNext = async (): Promise<void> => {
+            const uploadStartTime = Date.now();
+            const runNext = async (workerId: number): Promise<void> => {
+                SfUtility.outputLog(`sfRest:uploadApplicationPackage: worker[${workerId}] started (t+${Date.now() - uploadStartTime}ms)`, null, debugLevel.info);
                 while (cursor < queue.length) {
                     if (firstError) { return; }
                     const idx = cursor++;
                     const item = queue[idx];
+                    const fileStartMs = Date.now();
+                    SfUtility.outputLog(`sfRest:uploadApplicationPackage: worker[${workerId}] uploading[${idx}] ${item.relativePath} (${item.file.size} bytes, t+${fileStartMs - uploadStartTime}ms)`, null, debugLevel.info);
                     try {
                         await this.uploadFileToImageStore(item.imageStorePath, item.file.path, item.file.size);
+                        const durationMs = Date.now() - fileStartMs;
+                        SfUtility.outputLog(`sfRest:uploadApplicationPackage: worker[${workerId}] complete[${idx}] ${item.relativePath} ${durationMs}ms (t+${Date.now() - uploadStartTime}ms)`, null, debugLevel.info);
                         completed++;
                         progress?.(item.relativePath, completed, allFiles.length);
                     } catch (err) {
@@ -1473,12 +1502,15 @@ export class SfRest implements IHttpOptionsProvider {
                         return;
                     }
                 }
+                SfUtility.outputLog(`sfRest:uploadApplicationPackage: worker[${workerId}] finished (t+${Date.now() - uploadStartTime}ms)`, null, debugLevel.info);
             };
 
-            // Launch up to maxConcurrency workers
+            // Launch up to maxConcurrency workers in parallel
+            const workerCount = Math.min(maxConcurrency, queue.length);
+            SfUtility.outputLog(`sfRest:uploadApplicationPackage: launching ${workerCount} parallel workers for ${queue.length} files`, null, debugLevel.info);
             const workers: Promise<void>[] = [];
-            for (let w = 0; w < Math.min(maxConcurrency, queue.length); w++) {
-                workers.push(runNext());
+            for (let w = 0; w < workerCount; w++) {
+                workers.push(runNext(w));
             }
             await Promise.all(workers);
 
@@ -1492,7 +1524,6 @@ export class SfRest implements IHttpOptionsProvider {
             // The Image Store Service requires these 0-byte marker files to recognize
             // uploaded paths as directories for the provision process.
             // File-based image stores (file:C:\path) use real OS directories and don't need markers.
-            const imageStoreConn = await this.getImageStoreConnectionString();
             if (!imageStoreConn.startsWith('file:')) {
                 const dirs = new Set<string>();
                 dirs.add(imageStoreRelativePath);
