@@ -1409,14 +1409,21 @@ export class SfRest implements IHttpOptionsProvider {
      * Upload an entire application package directory to the Image Store.
      * Recursively uploads all files under the given local directory.
      * Uses streaming file reads to avoid loading entire files into memory (supports 1GB+ packages).
+     * Uploads files in parallel with a concurrency cap (matching the native SF client's
+     * ParallelUploadObjectsAsyncOperation pattern from NativeImageStore.cpp).
      */
     public async uploadApplicationPackage(
         localPackagePath: string,
         imageStoreRelativePath: string,
         progress?: (fileName: string, current: number, total: number) => void,
     ): Promise<void> {
+        // Cap concurrent uploads to avoid overwhelming the gateway.
+        // The native SF client fires all at once, but HTTP gateway connections are
+        // limited by the OS/node agent pool. 8 strikes a good balance.
+        const maxConcurrency = 8;
+
         try {
-            SfUtility.outputLog(`sfRest:uploadApplicationPackage: ${localPackagePath} → ${imageStoreRelativePath}`, null, debugLevel.info);
+            SfUtility.outputLog(`sfRest:uploadApplicationPackage: ${localPackagePath} -> ${imageStoreRelativePath} (concurrency=${maxConcurrency})`, null, debugLevel.info);
             
             const fs = await import('fs');
             const path = await import('path');
@@ -1440,14 +1447,46 @@ export class SfRest implements IHttpOptionsProvider {
             const totalBytes = allFiles.reduce((sum, f) => sum + f.size, 0);
             SfUtility.outputLog(`sfRest:uploadApplicationPackage: uploading ${allFiles.length} file(s), total ${totalBytes} bytes`, null, debugLevel.info);
             
-            for (let i = 0; i < allFiles.length; i++) {
-                const file = allFiles[i];
+            // Parallel upload with concurrency cap
+            let completed = 0;
+            let firstError: Error | undefined;
+            const queue = allFiles.map((file, _idx) => {
                 const relativePath = path.relative(localPackagePath, file.path).replace(/\\/g, '/');
                 const imageStorePath = `${imageStoreRelativePath}/${relativePath}`;
-                
-                progress?.(relativePath, i + 1, allFiles.length);
-                await this.uploadFileToImageStore(imageStorePath, file.path, file.size);
+                return { file, relativePath, imageStorePath };
+            });
+
+            let cursor = 0;
+            const runNext = async (): Promise<void> => {
+                while (cursor < queue.length) {
+                    if (firstError) { return; }
+                    const idx = cursor++;
+                    const item = queue[idx];
+                    try {
+                        await this.uploadFileToImageStore(item.imageStorePath, item.file.path, item.file.size);
+                        completed++;
+                        progress?.(item.relativePath, completed, allFiles.length);
+                    } catch (err) {
+                        if (!firstError) {
+                            firstError = err instanceof Error ? err : new Error(String(err));
+                        }
+                        return;
+                    }
+                }
+            };
+
+            // Launch up to maxConcurrency workers
+            const workers: Promise<void>[] = [];
+            for (let w = 0; w < Math.min(maxConcurrency, queue.length); w++) {
+                workers.push(runNext());
             }
+            await Promise.all(workers);
+
+            if (firstError) {
+                throw firstError;
+            }
+
+            SfUtility.outputLog(`sfRest:uploadApplicationPackage: all ${allFiles.length} files uploaded`, null, debugLevel.info);
             
             // Upload _.dir marker files for fabric:ImageStore (service-based Image Store).
             // The Image Store Service requires these 0-byte marker files to recognize
@@ -1460,17 +1499,37 @@ export class SfRest implements IHttpOptionsProvider {
                 for (const file of allFiles) {
                     const relativePath = path.relative(localPackagePath, file.path).replace(/\\/g, '/');
                     const dirParts = relativePath.split('/');
-                    // Add each intermediate directory
                     for (let d = 1; d < dirParts.length; d++) {
                         dirs.add(`${imageStoreRelativePath}/${dirParts.slice(0, d).join('/')}`);
                     }
                 }
-                SfUtility.outputLog(`sfRest:uploadApplicationPackage: uploading ${dirs.size} _.dir marker(s)`, null, debugLevel.info);
+                SfUtility.outputLog(`sfRest:uploadApplicationPackage: uploading ${dirs.size} _.dir marker(s) (concurrency=${maxConcurrency})`, null, debugLevel.info);
                 const emptyBuffer = Buffer.alloc(0);
-                for (const dir of dirs) {
-                    const markerPath = `${dir}/_.dir`;
-                    SfUtility.outputLog(`sfRest:uploadApplicationPackage: uploading marker ${markerPath}`, null, debugLevel.info);
-                    await this.uploadToImageStore(markerPath, emptyBuffer);
+                const markerList = Array.from(dirs);
+                let markerCursor = 0;
+                let markerError: Error | undefined;
+                const runMarker = async (): Promise<void> => {
+                    while (markerCursor < markerList.length) {
+                        if (markerError) { return; }
+                        const mi = markerCursor++;
+                        const markerPath = `${markerList[mi]}/_.dir`;
+                        try {
+                            await this.uploadToImageStore(markerPath, emptyBuffer);
+                        } catch (err) {
+                            if (!markerError) {
+                                markerError = err instanceof Error ? err : new Error(String(err));
+                            }
+                            return;
+                        }
+                    }
+                };
+                const markerWorkers: Promise<void>[] = [];
+                for (let w = 0; w < Math.min(maxConcurrency, markerList.length); w++) {
+                    markerWorkers.push(runMarker());
+                }
+                await Promise.all(markerWorkers);
+                if (markerError) {
+                    throw markerError;
                 }
             }
             

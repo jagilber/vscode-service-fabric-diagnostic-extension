@@ -125,15 +125,18 @@ export class SfDirectRestClient {
         this.key = options.key;
 
         // Create a dedicated HTTPS agent that bypasses VS Code's proxy-patched globalAgent.
-        // This ensures upload requests get their own fresh TLS connections.
+        // keepAlive: true reuses TCP+TLS connections across requests, avoiding the ~400ms
+        // per-request overhead of TCP connect + TLS handshake (critical for parallel uploads
+        // of 100-700+ files). maxSockets caps concurrent connections to the gateway.
         const parsedEndpoint = url.parse(this.endpoint);
         if (parsedEndpoint.protocol === 'https:') {
             this.httpsAgent = new https.Agent({
                 cert: this.certificate,
                 key: this.key,
                 rejectUnauthorized: false,
-                keepAlive: false,
-                maxSockets: Infinity,
+                keepAlive: true,
+                maxSockets: 8,
+                maxFreeSockets: 8,
             });
         }
 
@@ -176,7 +179,6 @@ export class SfDirectRestClient {
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
-                'Connection': 'close',
                 ...customHeaders,
             },
             rejectUnauthorized: false
@@ -324,12 +326,9 @@ export class SfDirectRestClient {
 
                 socket.on('close', (hadError) => {
                     SfUtility.outputLog(`🔌 Socket closed (hadError=${hadError}, bytesWritten=${socket.bytesWritten})`, null, debugLevel.info);
-                    // NOTE: Do NOT reject here. With keepAlive:false, the PREVIOUS request's
-                    // socket close event fires via the new request's socket handler (Node.js
-                    // assigns the dying socket first, then creates a fresh one internally).
-                    // Rejecting here would kill the new request that is processing normally
-                    // on a different underlying socket. The timeout handler provides the
-                    // safety net for truly dead connections.
+                    // Do NOT reject here. With keepAlive, sockets are reused across requests.
+                    // A close event here may be for a pooled socket being recycled.
+                    // The timeout handler provides safety for truly dead connections.
                 });
             });
 
