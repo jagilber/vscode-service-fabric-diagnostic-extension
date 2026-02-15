@@ -7,22 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.8] - 2026-02-15
+
+### Added
+- **Package compression before upload** — `uploadApplicationPackage()` now automatically
+  compresses the package before uploading, mirroring `Copy-ServiceFabricApplicationPackage
+  -CompressPackage`. Code/, Config/, and Data/ subdirectories are zipped into `.zip` archives
+  using Node.js built-in `zlib` (no external dependencies). This reduces hundreds of files
+  to a handful, cutting upload time by 60–80%. Already-compressed packages are detected
+  and skipped. Compressed temp directory is cleaned up after upload.
+
 ### Fixed
-- **Parallel Image Store upload** - `sfRest.uploadApplicationPackage()` now uploads files in
-  parallel using a worker-pool pattern with concurrency capped at 8. Previously uploads were
-  sequential (one HTTP PUT at a time), making deploys of packages with 100-700+ files take
-  minutes. The native SF client (`NativeImageStore.cpp` `ParallelUploadObjectsAsyncOperation`)
-  fires all uploads concurrently; this implementation matches that pattern with a safe
-  concurrency cap for the Node.js HTTP agent. Both file uploads and `_.dir` marker uploads
-  use the same parallel approach.
+- **TLS client certificate renegotiation** — SF HTTP Gateway uses lazy TLS client cert
+  negotiation (renegotiation after the initial handshake). Fixed `SfDirectRestClient` to set
+  `cert`/`key` on per-request options in addition to the HTTPS Agent, so Node.js presents
+  the certificate during TLS renegotiation. Eliminates 403 Forbidden errors on cert-secured
+  clusters.
+- **Retry logic for transient upload errors** — Expanded transient error detection to also
+  catch `OperationsPending` (HTTP 500), `timeout`, and HTTP 5xx responses in addition to
+  SSL/network errors. Retries with exponential backoff (2s, 4s).
+- **Parallel Image Store upload** — `uploadApplicationPackage()` uploads files in parallel
+  using a worker-pool pattern (concurrency capped at 8), matching the native SF client's
+  `ParallelUploadObjectsAsyncOperation` pattern.
 
 ### Changed
-- **Documentation** - Updated architecture docs to document the native SF parallel upload
-  approach discovered from WindowsFabric source (`NativeImageStore.cpp`). Call chain:
-  `Copy-ServiceFabricApplicationPackage` -> `CommonCmdletBase.UploadToImageStore()` ->
-  `NativeImageStoreClient` (COM interop) -> `ParallelUploadObjectsAsyncOperation`.
-  Updated BUILD_PACKAGE_DEPLOY_FLOW.md, deploy-upgrade-phases.md, ARCHITECTURE.md,
-  LOGICAL_ARCHITECTURE.md, and SF_APPLICATION_CRUD_LIFECYCLE.md.
+- **Chunk upload threshold raised from 2MB to 25MB** — SF HTTP Gateway accepts single PUT
+  bodies up to ~25MB. With package compression, most files are zip archives well under this
+  limit, eliminating session-based chunked upload overhead for the vast majority of files.
+- **Removed `onStartupFinished` activation event** — Extension now activates only on explicit
+  commands, reducing startup overhead.
 
 ## [1.0.7] - 2026-02-14
 

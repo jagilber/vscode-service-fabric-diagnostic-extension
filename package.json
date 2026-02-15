@@ -2,7 +2,7 @@
   "name": "vscode-service-fabric-diagnostic-extension",
   "displayName": "Service Fabric Diagnostic Extension",
   "description": "Manage and diagnose Azure Service Fabric clusters with visual tree view, health monitoring, and operational tools",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "publisher": "jagilber",
   "license": "MIT",
   "keywords": [
@@ -31,7 +31,6 @@
     "Other"
   ],
   "activationEvents": [
-    "onStartupFinished",
     "onCommand:sfClusterExplorer.startExtension",
     "onCommand:sfClusterExplorer.refresh",
     "onCommand:sfClusterExplorer.sfSetClusterEndpoint",

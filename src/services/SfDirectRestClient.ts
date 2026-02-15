@@ -184,18 +184,22 @@ export class SfDirectRestClient {
             rejectUnauthorized: false
         };
 
-        // Use dedicated HTTPS agent to bypass VS Code's proxy-patched globalAgent.
-        // The agent already carries cert/key — do NOT duplicate them on the request
-        // options, because Node.js https.Agent.getName() includes options.cert/key in
-        // the connection pool key.  If the same cert is on both agent and options,
-        // getName() computes a key that includes the cert string twice, creating a
-        // different pool key than expected and defeating connection reuse.
-        if (isHttps && this.httpsAgent) {
-            options.agent = this.httpsAgent;
-        } else if (this.certificate && this.key) {
-            // Fallback: no agent available, set cert/key on request directly
+        // Always set cert/key on request options when available.
+        // SF HTTP Gateway uses lazy TLS client cert negotiation (renegotiation):
+        // the server does NOT request the client cert during the initial handshake,
+        // only after seeing the HTTP request. Node.js needs cert/key on the
+        // per-request options to present them during TLS renegotiation.
+        // Connection reuse still works: all requests share the same cert, so
+        // Agent.getName() produces a consistent pool key.
+        if (this.certificate && this.key) {
             options.cert = this.certificate;
             options.key = this.key;
+        }
+
+        // Use dedicated HTTPS agent to bypass VS Code's proxy-patched globalAgent
+        // and enable keepAlive connection pooling with parallel sockets.
+        if (isHttps && this.httpsAgent) {
+            options.agent = this.httpsAgent;
         }
 
         // For binary uploads, set Content-Length and Expect: 100-continue.
@@ -617,10 +621,11 @@ export class SfDirectRestClient {
      * Threshold for switching to session-based chunked upload.
      * The SF HTTP Gateway has a DefaultHttpRequestTimeout of 120 seconds.
      * Large files that can't upload within 120s will fail when the gateway kills the connection.
-     * Max entity body for upload chunk is 10MB on the server side; we use a smaller value
-     * to leave headroom for TLS overhead and slower connections.
+     * SF HTTP Gateway accepts single PUT bodies up to ~25MB.
+     * Files larger than this threshold use the session-based chunked upload API.
+     * With package compression, most files are zip archives well under this limit.
      */
-    private static readonly CHUNK_UPLOAD_THRESHOLD = 2 * 1024 * 1024;
+    private static readonly CHUNK_UPLOAD_THRESHOLD = 25 * 1024 * 1024;
 
     /**
      * Size of each chunk for session-based chunked upload (4MB).
