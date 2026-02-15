@@ -87,8 +87,10 @@ describe('CommandRegistry', () => {
         });
 
         test('resource commands should require cluster', () => {
+            // cancelDeployment doesn't require cluster — it cancels a pending local operation
             const resourceCommands = Object.entries(COMMAND_MANIFEST)
-                .filter(([_, meta]) => meta.category === 'resource');
+                .filter(([_, meta]) => meta.category === 'resource')
+                .filter(([id]) => id !== 'sfClusterExplorer.cancelDeployment');
 
             for (const [id, meta] of resourceCommands) {
                 expect(meta.requiresCluster).toBe(true);

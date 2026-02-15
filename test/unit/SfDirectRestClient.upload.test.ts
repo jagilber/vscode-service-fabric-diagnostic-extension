@@ -163,9 +163,9 @@ describe('SfDirectRestClient — Image Store Upload', () => {
         });
 
         test('should handle file at exactly the chunk threshold', async () => {
-            // 2MB exactly should still be single-shot (threshold is >2MB, not >=)
+            // 25MB exactly should still be single-shot (threshold is >25MB, not >=)
             setupMockHttp();
-            const content = Buffer.alloc(2 * 1024 * 1024, 0xFF);
+            const content = Buffer.alloc(25 * 1024 * 1024, 0xFF);
             await client.uploadToImageStore('exact/threshold.bin', content);
 
             expect(capturedRequests).toHaveLength(1);
@@ -185,20 +185,22 @@ describe('SfDirectRestClient — Image Store Upload', () => {
     // ===========================
     describe('large file upload (session-based chunked)', () => {
         const CHUNK_SIZE = 4 * 1024 * 1024; // must match SfDirectRestClient.UPLOAD_CHUNK_SIZE
+        const THRESHOLD = 25 * 1024 * 1024; // must match SfDirectRestClient.CHUNK_UPLOAD_THRESHOLD
 
-        test('should use chunked upload for files larger than 2MB', async () => {
+        test('should use chunked upload for files larger than threshold', async () => {
             setupMockHttp();
-            const content = Buffer.alloc(2 * 1024 * 1024 + 1, 0xCC); // 2MB + 1 byte
+            const content = Buffer.alloc(THRESHOLD + 1, 0xCC);
 
             await client.uploadToImageStore('AppType/Code.zip', content);
 
-            // Should have 1 chunk PUT + 1 commit POST = 2 requests
-            expect(capturedRequests.length).toBe(2);
+            // Should have ceil((25MB+1)/4MB)=7 chunk PUTs + 1 commit POST = 8 requests
+            const expectedChunks = Math.ceil((THRESHOLD + 1) / CHUNK_SIZE);
+            expect(capturedRequests.length).toBe(expectedChunks + 1);
         });
 
         test('should generate a session-id and use UploadChunk endpoint', async () => {
             setupMockHttp();
-            const content = Buffer.alloc(2 * 1024 * 1024 + 1, 0xCC);
+            const content = Buffer.alloc(THRESHOLD + 1, 0xCC);
 
             await client.uploadToImageStore('AppType/Code.zip', content);
 
@@ -210,7 +212,7 @@ describe('SfDirectRestClient — Image Store Upload', () => {
 
         test('should commit the session after all chunks', async () => {
             setupMockHttp();
-            const content = Buffer.alloc(2 * 1024 * 1024 + 1, 0xCC);
+            const content = Buffer.alloc(THRESHOLD + 1, 0xCC);
 
             await client.uploadToImageStore('AppType/Code.zip', content);
 
@@ -222,33 +224,40 @@ describe('SfDirectRestClient — Image Store Upload', () => {
 
         test('should send correct Content-Range header on each chunk', async () => {
             setupMockHttp();
-            const totalSize = CHUNK_SIZE + 100; // 4MB + 100 bytes = 2 chunks
+            const totalSize = THRESHOLD + CHUNK_SIZE + 100; // > threshold, forces 2+ extra chunks
             const content = Buffer.alloc(totalSize, 0xDD);
 
             await client.uploadToImageStore('App/Pkg/Code.zip', content);
 
-            // chunk requests = 2, commit = 1 → total 3
-            expect(capturedRequests.length).toBe(3);
+            const expectedChunks = Math.ceil(totalSize / CHUNK_SIZE);
+            // chunk requests + 1 commit
+            expect(capturedRequests.length).toBe(expectedChunks + 1);
 
             // First chunk: bytes 0 to CHUNK_SIZE-1
             const chunk1Headers = capturedRequests[0].opts.headers;
             expect(chunk1Headers['Content-Range']).toBe(`bytes 0-${CHUNK_SIZE - 1}/${totalSize}`);
 
-            // Second chunk: bytes CHUNK_SIZE to totalSize-1
+            // Second chunk: bytes CHUNK_SIZE to 2*CHUNK_SIZE-1
             const chunk2Headers = capturedRequests[1].opts.headers;
-            expect(chunk2Headers['Content-Range']).toBe(`bytes ${CHUNK_SIZE}-${totalSize - 1}/${totalSize}`);
+            expect(chunk2Headers['Content-Range']).toBe(`bytes ${CHUNK_SIZE}-${2 * CHUNK_SIZE - 1}/${totalSize}`);
+
+            // Last chunk: ends at totalSize-1
+            const lastChunkIdx = expectedChunks - 1;
+            const lastStart = lastChunkIdx * CHUNK_SIZE;
+            const lastChunkHeaders = capturedRequests[lastChunkIdx].opts.headers;
+            expect(lastChunkHeaders['Content-Range']).toBe(`bytes ${lastStart}-${totalSize - 1}/${totalSize}`);
         });
 
-        test('should split a 10MB file into correct number of chunks', async () => {
+        test('should split a 30MB file into correct number of chunks', async () => {
             setupMockHttp();
-            const tenMB = 10 * 1024 * 1024;
-            const content = Buffer.alloc(tenMB, 0xAA);
+            const thirtyMB = 30 * 1024 * 1024;
+            const content = Buffer.alloc(thirtyMB, 0xAA);
 
             await client.uploadToImageStore('VotingType/Code.zip', content);
 
-            // 10MB / 4MB = 2.5 → 3 chunks + 1 commit = 4 requests
-            const expectedChunks = Math.ceil(tenMB / CHUNK_SIZE);
-            expect(expectedChunks).toBe(3);
+            // 30MB / 4MB = 7.5 → 8 chunks + 1 commit = 9 requests
+            const expectedChunks = Math.ceil(thirtyMB / CHUNK_SIZE);
+            expect(expectedChunks).toBe(8);
             expect(capturedRequests.length).toBe(expectedChunks + 1);
 
             // Verify all chunk data adds up to original size
@@ -257,29 +266,30 @@ describe('SfDirectRestClient — Image Store Upload', () => {
                 const bodyLen = Buffer.concat(capturedRequests[i].bodyChunks).length;
                 totalBytesUploaded += bodyLen;
             }
-            expect(totalBytesUploaded).toBe(tenMB);
+            expect(totalBytesUploaded).toBe(thirtyMB);
         });
 
         test('should split exactly on chunk boundary', async () => {
             setupMockHttp();
-            const exactlyTwoChunks = CHUNK_SIZE * 2;
-            const content = Buffer.alloc(exactlyTwoChunks, 0xBB);
+            // 28MB = 7 chunks of 4MB exactly, and is > 25MB threshold
+            const exactChunks = CHUNK_SIZE * 7;
+            const content = Buffer.alloc(exactChunks, 0xBB);
 
             await client.uploadToImageStore('App/Pkg.zip', content);
 
-            // 2 chunks + 1 commit = 3 requests
-            expect(capturedRequests.length).toBe(3);
+            // 7 chunks + 1 commit = 8 requests
+            expect(capturedRequests.length).toBe(8);
 
-            // Chunk 1: 0 to CHUNK_SIZE-1
-            expect(capturedRequests[0].opts.headers['Content-Range']).toBe(`bytes 0-${CHUNK_SIZE - 1}/${exactlyTwoChunks}`);
-            // Chunk 2: CHUNK_SIZE to 2*CHUNK_SIZE-1
-            expect(capturedRequests[1].opts.headers['Content-Range']).toBe(`bytes ${CHUNK_SIZE}-${exactlyTwoChunks - 1}/${exactlyTwoChunks}`);
+            // First chunk: 0 to CHUNK_SIZE-1
+            expect(capturedRequests[0].opts.headers['Content-Range']).toBe(`bytes 0-${CHUNK_SIZE - 1}/${exactChunks}`);
+            // Last chunk: (6*CHUNK_SIZE) to (7*CHUNK_SIZE-1)
+            expect(capturedRequests[6].opts.headers['Content-Range']).toBe(`bytes ${6 * CHUNK_SIZE}-${exactChunks - 1}/${exactChunks}`);
         });
 
         test('should preserve binary data integrity across chunks', async () => {
             setupMockHttp();
-            // Create buffer with unique pattern per byte
-            const totalSize = CHUNK_SIZE + 500;
+            // Create buffer with unique pattern per byte, > 25MB threshold
+            const totalSize = THRESHOLD + CHUNK_SIZE + 500;
             const content = Buffer.alloc(totalSize);
             for (let i = 0; i < totalSize; i++) {
                 content[i] = i % 256;
@@ -300,7 +310,7 @@ describe('SfDirectRestClient — Image Store Upload', () => {
 
         test('should URL-encode path segments in chunked upload', async () => {
             setupMockHttp();
-            const content = Buffer.alloc(2 * 1024 * 1024 + 1, 0x11);
+            const content = Buffer.alloc(THRESHOLD + 1, 0x11);
 
             await client.uploadToImageStore('My App/Code Package/data.zip', content);
 
@@ -316,7 +326,7 @@ describe('SfDirectRestClient — Image Store Upload', () => {
             (crypto.randomUUID as jest.Mock).mockImplementation(() => uuids[callIdx++]);
 
             setupMockHttp();
-            const content = Buffer.alloc(2 * 1024 * 1024 + 1, 0x22);
+            const content = Buffer.alloc(THRESHOLD + 1, 0x22);
 
             await client.uploadToImageStore('App1/Code.zip', content);
             expect(capturedRequests[0].opts.path).toContain('session-id=session-aaa');
@@ -333,7 +343,6 @@ describe('SfDirectRestClient — Image Store Upload', () => {
     // ===========================
     describe('chunked upload error handling', () => {
         test('should delete session on chunk upload failure', async () => {
-            let reqIdx = 0;
             setupMockHttp((opts, idx) => {
                 if (idx === 0) {
                     // First chunk succeeds
@@ -347,11 +356,13 @@ describe('SfDirectRestClient — Image Store Upload', () => {
                 return createMockResponse(200, undefined);
             });
 
-            const content = Buffer.alloc(4 * 1024 * 1024 + 1, 0xFF); // forces 2 chunks
+            const CHUNK_SIZE = 4 * 1024 * 1024;
+            const THRESHOLD = 25 * 1024 * 1024;
+            const content = Buffer.alloc(THRESHOLD + CHUNK_SIZE + 1, 0xFF); // forces multiple chunks
 
             await expect(client.uploadToImageStore('App/Code.zip', content)).rejects.toThrow();
 
-            // Should have: chunk1 (ok) + chunk2 (fail) + DELETE session (cleanup) = 3 requests
+            // Should have: multiple chunks + failed chunk + DELETE session (cleanup)
             const deleteReq = capturedRequests.find(r => r.opts.method === 'DELETE');
             expect(deleteReq).toBeDefined();
             expect(deleteReq!.opts.path).toContain('/ImageStore/$/DeleteUploadSession');
@@ -368,13 +379,16 @@ describe('SfDirectRestClient — Image Store Upload', () => {
                 return createMockResponse(500, 'Cleanup failed', 'Internal Server Error');
             });
 
-            const content = Buffer.alloc(2 * 1024 * 1024 + 1, 0xEE);
+            const THRESHOLD = 25 * 1024 * 1024;
+            const content = Buffer.alloc(THRESHOLD + 1, 0xEE);
 
             await expect(client.uploadToImageStore('App/Pkg.zip', content)).rejects.toThrow('503');
         });
 
         test('should delete session on commit failure', async () => {
-            const chunkCount = 1; // 2MB+1 → 1 chunk
+            const THRESHOLD = 25 * 1024 * 1024;
+            const CHUNK_SIZE = 4 * 1024 * 1024;
+            const chunkCount = Math.ceil((THRESHOLD + 1) / CHUNK_SIZE);
             setupMockHttp((opts, idx) => {
                 if (idx < chunkCount) {
                     // Chunk succeeds
@@ -388,7 +402,7 @@ describe('SfDirectRestClient — Image Store Upload', () => {
                 return createMockResponse(200, undefined);
             });
 
-            const content = Buffer.alloc(2 * 1024 * 1024 + 1, 0xDD);
+            const content = Buffer.alloc(THRESHOLD + 1, 0xDD);
 
             await expect(client.uploadToImageStore('App/Code.zip', content)).rejects.toThrow();
 
