@@ -71,7 +71,7 @@ flowchart TD
 
         subgraph REST_C["REST API — 3-Step"]
             direction TB
-            R1["1. Upload to ImageStore\nPUT /ImageStore/path\napi-version=6.0"]
+            R1[\"1. Upload to ImageStore\nPUT /ImageStore/path\napi-version=6.0\n(parallel, 8 concurrent workers)\"]
             R2["2. Provision Type\nPOST /AppTypes/$/Provision\napi-version=6.2"]
             R3["3. Create Instance\nPOST /Applications/$/Create\napi-version=6.0"]
             R_OK["✅ App Running"]

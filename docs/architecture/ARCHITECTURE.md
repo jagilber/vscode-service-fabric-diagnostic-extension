@@ -388,6 +388,14 @@ createTreeItem(options: TreeItemOptions): TreeItem {
 - **Implementation**: `Promise.all()` with batching
 - **Impact**: 80% reduction in total query time
 
+### 2b. Image Store Upload (Parallel)
+- **What**: Upload application package files to Image Store
+- **Implementation**: Worker-pool pattern in `sfRest.uploadApplicationPackage()` - 8 concurrent workers pull from a shared queue
+- **Native SF behavior**: `NativeImageStore.cpp` `ParallelUploadObjectsAsyncOperation` fires ALL uploads concurrently with atomic pending counter
+- **Impact**: Packages with 100-700+ files upload in seconds instead of minutes
+- **Concurrency cap**: 8 (balances throughput vs HTTP gateway/TLS stability)
+- **Reference**: `Copy-ServiceFabricApplicationPackage` -> `CommonCmdletBase.UploadToImageStore()` -> `NativeImageStoreClient` (COM) -> `ParallelUploadObjectsAsyncOperation`
+
 ### 3. Debounced Refresh
 - **What**: Batch rapid refresh requests within 300ms window
 - **Implementation**: Lodash `debounce()`

@@ -252,6 +252,7 @@ sequenceDiagram
         User->>DeployService: Confirm parameters
         
         DeployService->>RestClient: POST /ImageStore/.../$/upload
+        Note over DeployService,SFAPI: Parallel upload: 8 concurrent workers,<br/>matching native NativeImageStore.cpp pattern.
         RestClient->>SFAPI: Upload application package
         SFAPI-->>RestClient: Upload complete
         

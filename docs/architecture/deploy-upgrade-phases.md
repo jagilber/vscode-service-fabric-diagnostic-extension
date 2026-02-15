@@ -35,7 +35,7 @@ flowchart TD
 
     subgraph deploy [Deploy Phases]
         direction TB
-        UPLOAD["📦 Phase 1: Upload<br/>PUT files to Image Store<br/>Track: fileName (n/total)"]
+        UPLOAD["📦 Phase 1: Upload<br/>PUT files to Image Store<br/>Parallel (8 concurrent workers)<br/>Track: fileName (n/total)"]
         UPLOAD --> VERIFY["🔍 Phase 2: Verify Upload<br/>GET Image Store content"]
         VERIFY --> PROVISION["⚙️ Phase 3: Provision<br/>POST RegisterApplicationType<br/>async=true"]
         PROVISION --> POLL["⏳ Phase 3b: Poll Provision<br/>GET ApplicationTypes<br/>until Status=Available"]
@@ -62,7 +62,7 @@ flowchart TD
 
     subgraph upgrade [Upgrade Phases]
         direction TB
-        UPLOAD["📦 Phase 1: Upload New Package<br/>PUT files to Image Store<br/>Track: fileName (n/total)"]
+        UPLOAD["📦 Phase 1: Upload New Package<br/>PUT files to Image Store<br/>Parallel (8 concurrent workers)<br/>Track: fileName (n/total)"]
         UPLOAD --> PROVISION["⚙️ Phase 2: Provision New Version<br/>POST RegisterApplicationType<br/>async=true"]
         PROVISION --> POLL["⏳ Phase 2b: Poll Provision<br/>GET ApplicationTypes<br/>until Status=Available"]
         POLL -->|Timeout| FAIL_PROV([❌ Provision Timeout])
@@ -96,7 +96,8 @@ flowchart TD
 | Pre-flight | GET | `/ApplicationTypes/{name}/$/GetApplicationManifest` | Get provisioned manifest XML |
 | Pre-flight | GET | `/Applications` | Find running instances by type |
 | Pre-flight | DELETE | `/Applications/{id}/$/Delete` | Delete instances (redeploy) |
-| Upload | PUT | `/ImageStore/{path}` | Upload each file in package |
+| Upload | PUT | `/ImageStore/{path}` | Upload each file in package (parallel, 8 concurrent workers; matches native SF client pattern) |
+| Upload | PUT | `/ImageStore/{dir}/_.dir` | Upload 0-byte directory marker files for `fabric:ImageStore` (service-based Image Store only) |
 | Verify | GET | `/ImageStore/{path}` | Verify upload content |
 | Provision | POST | `/ApplicationTypes/$/Provision` | Register application type (async) |
 | Poll | GET | `/ApplicationTypes/{name}` | Poll until Status=Available |
@@ -108,7 +109,7 @@ flowchart TD
 
 ## PowerShell Deployment Path
 
-The extension also supports deployment via SF PowerShell cmdlets. This path uses the same logical phases but through different commands:
+The extension also supports deployment via SF PowerShell cmdlets. This path uses the same logical phases but through different commands. Notably, `Copy-ServiceFabricApplicationPackage` calls into the native `NativeImageStoreClient` which uploads ALL files in parallel via `ParallelUploadObjectsAsyncOperation`.
 
 ```mermaid
 flowchart LR

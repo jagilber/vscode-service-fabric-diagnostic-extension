@@ -5,6 +5,25 @@ All notable changes to the Service Fabric Diagnostic Extension will be documente
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- **Parallel Image Store upload** - `sfRest.uploadApplicationPackage()` now uploads files in
+  parallel using a worker-pool pattern with concurrency capped at 8. Previously uploads were
+  sequential (one HTTP PUT at a time), making deploys of packages with 100-700+ files take
+  minutes. The native SF client (`NativeImageStore.cpp` `ParallelUploadObjectsAsyncOperation`)
+  fires all uploads concurrently; this implementation matches that pattern with a safe
+  concurrency cap for the Node.js HTTP agent. Both file uploads and `_.dir` marker uploads
+  use the same parallel approach.
+
+### Changed
+- **Documentation** - Updated architecture docs to document the native SF parallel upload
+  approach discovered from WindowsFabric source (`NativeImageStore.cpp`). Call chain:
+  `Copy-ServiceFabricApplicationPackage` -> `CommonCmdletBase.UploadToImageStore()` ->
+  `NativeImageStoreClient` (COM interop) -> `ParallelUploadObjectsAsyncOperation`.
+  Updated BUILD_PACKAGE_DEPLOY_FLOW.md, deploy-upgrade-phases.md, ARCHITECTURE.md,
+  LOGICAL_ARCHITECTURE.md, and SF_APPLICATION_CRUD_LIFECYCLE.md.
+
 ## [1.0.7] - 2026-02-14
 
 ### Fixed
