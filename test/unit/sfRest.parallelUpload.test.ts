@@ -30,6 +30,13 @@ jest.mock('../../src/services/SfDirectRestClient', () => ({
     })),
 }));
 
+// Mock PackageCompressor so compression is skipped (these tests mock fs globally)
+jest.mock('../../src/utils/PackageCompressor', () => ({
+    compressApplicationPackage: jest.fn(),
+    isPackageCompressed: jest.fn().mockReturnValue(true),
+    cleanupCompressedPackage: jest.fn(),
+}));
+
 // Mock fs module for file scanning
 const mockReaddirSync = jest.fn();
 const mockStatSync = jest.fn();
