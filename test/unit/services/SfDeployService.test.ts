@@ -40,7 +40,7 @@ describe('SfDeployService', () => {
 
             const result = await service.buildProject(mockProject, 'msbuild');
             expect(result.success).toBe(true);
-            expect(result.warnings).toContain('Build launched in terminal. Check terminal for output.');
+            expect(result.warnings).toContainEqual(expect.stringContaining('Build launched in terminal'));
             expect(mockTerminal.show).toHaveBeenCalled();
             expect(mockTerminal.sendText).toHaveBeenCalledWith(
                 expect.stringContaining('msbuild')

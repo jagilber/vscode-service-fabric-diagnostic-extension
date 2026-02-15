@@ -16,7 +16,7 @@ import { SfApplicationsDataProvider } from '../treeview/SfApplicationsDataProvid
 import { SfProjectNode } from '../treeview/nodes/applications/SfProjectNode';
 import { ProfileNode } from '../treeview/nodes/applications/ProfileNode';
 import { ManifestNode } from '../treeview/nodes/shared/ManifestNode';
-import { DeployOptions } from '../types/ProjectTypes';
+import { DeployOptions, DeployMethod } from '../types/ProjectTypes';
 import { SfConfiguration } from '../sfConfiguration';
 import { SfExtSettings, sfExtSettingsList } from '../sfExtSettings';
 
@@ -67,8 +67,10 @@ export function registerProjectCommands(
                     { placeHolder: 'Select project to build' },
                 );
                 if (!picked) { return; }
-                
-                const result = await deployService.buildProject(picked.project);
+
+                const method = await resolveBuildMethod();
+                if (!method) { return; }
+                const result = await deployService.buildProject(picked.project, method);
                 if (result.success) {
                     vscode.window.showInformationMessage(`Build launched for ${picked.label}. Check terminal for output.`);
                 } else {
@@ -77,16 +79,10 @@ export function registerProjectCommands(
                 return;
             }
 
-            const method = await vscode.window.showQuickPick(
-                [
-                    { label: 'MSBuild', description: 'msbuild /t:Package', value: 'msbuild' as const },
-                    { label: 'dotnet', description: 'dotnet build', value: 'dotnet' as const },
-                ],
-                { placeHolder: 'Select build method' },
-            );
+            const method = await resolveBuildMethod();
             if (!method) { return; }
 
-            const result = await deployService.buildProject(project, method.value);
+            const result = await deployService.buildProject(project, method);
             if (result.success) {
                 vscode.window.showInformationMessage(`Build launched for ${project.appTypeName}. Check terminal for output.`);
             } else {
@@ -416,6 +412,7 @@ export function registerProjectCommands(
                     c.getClusterEndpoint().includes(node.profile.connectionEndpoint || '')
                 );
                 if (matchingConfig) {
+                    await matchingConfig.ensureRestClientReady();
                     cluster = { endpoint: matchingConfig.getClusterEndpoint(), sfRest: matchingConfig.getSfRest() };
                 }
             }
@@ -722,6 +719,33 @@ export function registerProjectCommands(
 }
 
 /**
+ * Resolve build method from the `buildMethod` setting.
+ * Returns the method directly, or shows a picker when set to 'ask'.
+ * Returns undefined if the user cancels the picker.
+ */
+async function resolveBuildMethod(): Promise<DeployMethod | undefined> {
+    const buildMethodSetting = SfExtSettings.getSetting(sfExtSettingsList.buildMethod) as string || 'msbuild';
+    SfUtility.outputLog(`resolveBuildMethod: setting=${buildMethodSetting}`, null, debugLevel.info);
+
+    if (buildMethodSetting === 'ask') {
+        const picked = await vscode.window.showQuickPick(
+            [
+                { label: 'MSBuild', description: 'msbuild /t:Package — produces valid SF package (recommended)', value: 'msbuild' as DeployMethod },
+                { label: 'dotnet', description: 'dotnet build — compiles only, no SF package layout', value: 'dotnet' as DeployMethod },
+            ],
+            { placeHolder: 'Select build method' },
+        );
+        if (!picked) { return undefined; }
+        SfUtility.outputLog(`resolveBuildMethod: user picked ${picked.value}`, null, debugLevel.info);
+        return picked.value;
+    }
+
+    const method: DeployMethod = buildMethodSetting === 'dotnet' ? 'dotnet' : 'msbuild';
+    SfUtility.outputLog(`resolveBuildMethod: using setting value=${method}`, null, debugLevel.info);
+    return method;
+}
+
+/**
  * Pick a cluster to deploy to. Uses active cluster if available,
  * otherwise shows a picker of all configured clusters.
  */
@@ -736,44 +760,52 @@ async function pickCluster(sfMgr: SfMgr): Promise<{ endpoint: string; sfRest: an
         return undefined;
     }
 
+    let selectedConfig: SfConfiguration | undefined;
+
     // If only one cluster, use it directly
     if (configs.length === 1) {
-        const config = configs[0];
-        SfUtility.outputLog(`pickCluster: single cluster, auto-selecting ${config.getClusterEndpoint()}`, null, debugLevel.info);
-        return { endpoint: config.getClusterEndpoint(), sfRest: config.getSfRest() };
+        selectedConfig = configs[0];
+        SfUtility.outputLog(`pickCluster: single cluster, auto-selecting ${selectedConfig.getClusterEndpoint()}`, null, debugLevel.info);
     }
-
     // If there's an active cluster and it's the only one, use it
-    if (activeCluster && configs.length <= 1) {
-        return activeCluster;
+    else if (activeCluster && configs.length <= 1) {
+        selectedConfig = configs.find(c => c.getClusterEndpoint() === activeCluster.endpoint);
+        if (!selectedConfig) {
+            // activeCluster exists but no matching config — return as-is (legacy path)
+            return activeCluster;
+        }
+    } else {
+        // Multiple clusters — let user pick
+        const items = configs.map((c: SfConfiguration) => {
+            const ep = c.getClusterEndpoint();
+            const isActive = activeCluster && ep === activeCluster.endpoint;
+            const isLocal = ep.includes('localhost') || ep.includes('127.0.0.1');
+            return {
+                label: isActive ? `$(check) ${ep}` : ep,
+                description: isActive ? '(active)' : isLocal ? '(local)' : '',
+                config: c,
+            };
+        });
+
+        // Sort: active first, then local, then others
+        items.sort((a, b) => {
+            if (a.description === '(active)') { return -1; }
+            if (b.description === '(active)') { return 1; }
+            if (a.description === '(local)') { return -1; }
+            if (b.description === '(local)') { return 1; }
+            return 0;
+        });
+
+        const picked = await vscode.window.showQuickPick(items, {
+            placeHolder: 'Select target cluster (active cluster is pre-selected)',
+        });
+        if (!picked) { return undefined; }
+        selectedConfig = picked.config;
     }
 
-    // Multiple clusters — let user pick
-    // Pre-select localhost if available (most common deploy target)
-    const items = configs.map((c: SfConfiguration) => {
-        const ep = c.getClusterEndpoint();
-        const isActive = activeCluster && ep === activeCluster.endpoint;
-        const isLocal = ep.includes('localhost') || ep.includes('127.0.0.1');
-        return {
-            label: isActive ? `$(check) ${ep}` : ep,
-            description: isActive ? '(active)' : isLocal ? '(local)' : '',
-            config: c,
-        };
-    });
+    // Ensure REST client is configured with correct endpoint + certificate before returning
+    SfUtility.outputLog(`pickCluster: ensuring REST client ready for ${selectedConfig.getClusterEndpoint()}`, null, debugLevel.info);
+    await selectedConfig.ensureRestClientReady();
 
-    // Sort: active first, then local, then others
-    items.sort((a, b) => {
-        if (a.description === '(active)') { return -1; }
-        if (b.description === '(active)') { return 1; }
-        if (a.description === '(local)') { return -1; }
-        if (b.description === '(local)') { return 1; }
-        return 0;
-    });
-
-    const picked = await vscode.window.showQuickPick(items, {
-        placeHolder: 'Select target cluster (active cluster is pre-selected)',
-    });
-    if (!picked) { return undefined; }
-
-    return { endpoint: picked.config.getClusterEndpoint(), sfRest: picked.config.getSfRest() };
+    return { endpoint: selectedConfig.getClusterEndpoint(), sfRest: selectedConfig.getSfRest() };
 }

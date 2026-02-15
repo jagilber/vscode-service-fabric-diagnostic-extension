@@ -9,6 +9,7 @@ export const  enum sfExtSettingsList {
     autorefresh = 'autorefresh',
     refreshInterval = 'refreshInterval',
     autoReconnect = 'autoReconnect',
+    buildMethod = 'buildMethod',
     deployMethod = 'deployMethod',
     timeoutSeconds = 'timeoutSeconds',
     sfxBrowser = 'sfxBrowser',
