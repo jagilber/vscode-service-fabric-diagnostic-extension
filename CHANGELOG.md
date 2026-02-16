@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **View Summary for ARM templates** — New `$(book)` inline button on template folder nodes
+  generates a markdown document with:
+  - Overview table (resource count, parameters, variables, outputs)
+  - Mermaid architecture diagram with resource icons, provider subgraphs, and dependency arrows
+  - Resource table with types, names, API versions, and dependencies
+  - Parameter table with types, defaults, descriptions, and allowed values
+  - Variables list and outputs table
+  - `TemplateSummaryService` — Parses ARM JSON templates and generates the summary
+
 ## [1.1.0] - 2026-02-16
 
 ### Added

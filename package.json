@@ -349,6 +349,11 @@
         "command": "sfClusterExplorer.deployFromAzure",
         "title": "Deploy from Azure",
         "icon": "$(link-external)"
+      },
+      {
+        "command": "sfClusterExplorer.viewTemplateSummary",
+        "title": "View Summary",
+        "icon": "$(book)"
       }
     ],
     "menus": {
@@ -609,6 +614,11 @@
           "command": "sfClusterExplorer.deployFromAzure",
           "when": "view == serviceFabricTemplatesView && viewItem == template-folder",
           "group": "inline@2"
+        },
+        {
+          "command": "sfClusterExplorer.viewTemplateSummary",
+          "when": "view == serviceFabricTemplatesView && viewItem == template-folder",
+          "group": "inline@3"
         },
         {
           "command": "sfClusterExplorer.openTemplateInBrowser",

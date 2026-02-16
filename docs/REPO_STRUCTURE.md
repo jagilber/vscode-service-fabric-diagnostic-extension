@@ -94,6 +94,7 @@ Main TypeScript source code following clean architecture principles.
 - `services/SfHttpClient.ts` - HTTP request utilities
 - `services/TemplateService.ts` - GitHub template repository API client with caching
 - `services/TemplateDeployService.ts` - ARM template download, review, and deploy orchestration
+- `services/TemplateSummaryService.ts` - ARM template markdown summary + Mermaid diagram generator
 - `services/SfProjectScaffoldService.ts` - SF project scaffolding (stateless/stateful templates)
 
 **Infrastructure (Cross-cutting):**

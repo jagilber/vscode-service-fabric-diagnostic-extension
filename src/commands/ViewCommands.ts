@@ -21,6 +21,7 @@ import { registerCommandWithErrorHandling, safeRegisterCommand } from '../utils/
 import { DetailViewService } from '../services/DetailViewService';
 import { TemplateService } from '../services/TemplateService';
 import { TemplateDeployService } from '../services/TemplateDeployService';
+import { TemplateSummaryService } from '../services/TemplateSummaryService';
 import { TemplateFolderNode } from '../treeview/nodes/templates/TemplateNodes';
 
 import { SfTemplatesDataProvider } from '../treeview/SfTemplatesDataProvider';
@@ -256,5 +257,22 @@ export function registerViewCommands(
             await deployService.deployFromAzurePortal(item.repo, item.entry);
         },
         'deploy from Azure portal',
+    );
+
+    // -----------------------------------------------------------------------
+    // sfClusterExplorer.viewTemplateSummary  — generate markdown summary + diagram
+    // -----------------------------------------------------------------------
+    registerCommandWithErrorHandling(
+        context,
+        'sfClusterExplorer.viewTemplateSummary',
+        async (item: TemplateFolderNode) => {
+            if (!item || !item.repo || !item.entry) {
+                SfUtility.showInformation('Select a template folder to view summary');
+                return;
+            }
+            const summaryService = TemplateSummaryService.getInstance();
+            await summaryService.showSummary(item.repo, item.entry);
+        },
+        'view template summary',
     );
 }
