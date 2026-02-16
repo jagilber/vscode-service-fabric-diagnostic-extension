@@ -81,10 +81,16 @@ export class TemplateSummaryService {
         }
 
         // Download and parse
-        let content = await vscode.window.withProgress(
-            { location: vscode.ProgressLocation.Notification, title: `Downloading ${templateFile.name}...` },
-            () => service.getFileContent(repo, templateFile.path),
-        );
+        let content: string;
+        try {
+            content = await vscode.window.withProgress(
+                { location: vscode.ProgressLocation.Notification, title: `Downloading ${templateFile.name}...` },
+                () => service.getFileContent(repo, templateFile.path),
+            );
+        } catch (err) {
+            vscode.window.showErrorMessage(`Failed to download ${templateFile.name}: ${err instanceof Error ? err.message : err}`);
+            return;
+        }
 
         // Strip JSONC comments if present
         if (hasJsonComments(content)) {
@@ -96,6 +102,14 @@ export class TemplateSummaryService {
             template = JSON.parse(content);
         } catch (err) {
             vscode.window.showErrorMessage(`Failed to parse ${templateFile.name}: ${err}`);
+            return;
+        }
+
+        // Validate this is actually an ARM template
+        if (!template.$schema || !template.$schema.toLowerCase().includes('deploymenttemplate')) {
+            vscode.window.showWarningMessage(
+                `${templateFile.name} does not appear to be an ARM deployment template (missing or unrecognized $schema).`,
+            );
             return;
         }
 
@@ -233,7 +247,11 @@ export class TemplateSummaryService {
     private _generateMermaidDiagram(resources: ArmResource[]): string {
         const lines: string[] = [];
         lines.push('```mermaid');
-        lines.push('graph TD');
+        lines.push('---');
+        lines.push('config:');
+        lines.push('  layout: elk');
+        lines.push('---');
+        lines.push('graph TB');
         lines.push('');
 
         // Group resources by provider for subgraph boxes
@@ -426,20 +444,30 @@ export class TemplateSummaryService {
         return 'other';
     }
 
+    /** Known non-template JSON files to skip in the fallback. */
+    private static readonly _nonTemplateFiles = new Set([
+        'metadata.json', 'createuidefinition.json', 'package.json',
+        'tsconfig.json', 'tslint.json', '.eslintrc.json', 'appsettings.json',
+    ]);
+
     /** Find the main ARM template file. */
     private _findTemplateFile(jsonFiles: GitHubEntry[]): GitHubEntry | undefined {
         const lower = (e: GitHubEntry) => e.name.toLowerCase();
-        const priority = ['azuredeploy.json', 'template.json', 'maintemplate.json', 'deploy.json'];
+        const priority = ['azuredeploy.json', 'template.json', 'maintemplate.json', 'deploy.json', 'main.json'];
         for (const name of priority) {
             const found = jsonFiles.find(f => lower(f) === name);
             if (found) { return found; }
         }
-        return jsonFiles.find(f => !this._isParameterFile(f.name));
+        // Fallback: first JSON file that isn't a parameter file or known non-template
+        return jsonFiles.find(f =>
+            !this._isParameterFile(f.name) &&
+            !TemplateSummaryService._nonTemplateFiles.has(f.name.toLowerCase()),
+        );
     }
 
     /** Check if a file name looks like a parameter file. */
     private _isParameterFile(name: string): boolean {
         const lower = name.toLowerCase();
-        return lower.includes('parameter') || lower.includes('params');
+        return /\.parameters?\.json$/i.test(lower) || /\.params\.json$/i.test(lower);
     }
 }

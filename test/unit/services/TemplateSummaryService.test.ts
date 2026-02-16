@@ -163,8 +163,51 @@ describe('TemplateSummaryService', () => {
             expect(service._isParameterFile('deploy.params.json')).toBe(true);
         });
 
+        it('should detect .parameter.json suffix', () => {
+            expect(service._isParameterFile('cluster.parameter.json')).toBe(true);
+        });
+
         it('should not match template file', () => {
             expect(service._isParameterFile('AzureDeploy.json')).toBe(false);
+        });
+
+        it('should not false-positive on names containing params substring', () => {
+            expect(service._isParameterFile('customparams-script.json')).toBe(false);
+        });
+    });
+
+    describe('_findTemplateFile', () => {
+        it('should prefer azuredeploy.json', () => {
+            const files = [
+                { name: 'metadata.json', type: 'file' },
+                { name: 'AzureDeploy.json', type: 'file' },
+                { name: 'createUiDefinition.json', type: 'file' },
+            ];
+            expect(service._findTemplateFile(files)?.name).toBe('AzureDeploy.json');
+        });
+
+        it('should skip metadata.json and createUiDefinition.json in fallback', () => {
+            const files = [
+                { name: 'createUiDefinition.json', type: 'file' },
+                { name: 'metadata.json', type: 'file' },
+                { name: 'sf-cluster.json', type: 'file' },
+            ];
+            expect(service._findTemplateFile(files)?.name).toBe('sf-cluster.json');
+        });
+
+        it('should return undefined when only non-template files exist', () => {
+            const files = [
+                { name: 'metadata.json', type: 'file' },
+                { name: 'deploy.parameters.json', type: 'file' },
+            ];
+            expect(service._findTemplateFile(files)).toBeUndefined();
+        });
+
+        it('should match mainTemplate.json case-insensitively', () => {
+            const files = [
+                { name: 'mainTemplate.json', type: 'file' },
+            ];
+            expect(service._findTemplateFile(files)?.name).toBe('mainTemplate.json');
         });
     });
 
@@ -228,10 +271,11 @@ describe('TemplateSummaryService', () => {
             expect(md).toContain('## Outputs');
         });
 
-        it('should include mermaid diagram', () => {
+        it('should include mermaid diagram with ELK layout', () => {
             const md = service._generateMarkdown(template, 'test-folder', repo, 'AzureDeploy.json', []);
             expect(md).toContain('```mermaid');
-            expect(md).toContain('graph TD');
+            expect(md).toContain('layout: elk');
+            expect(md).toContain('graph TB');
             expect(md).toContain('```');
         });
 
@@ -285,7 +329,8 @@ describe('TemplateSummaryService', () => {
         it('should handle empty resource list', () => {
             const diagram = service._generateMermaidDiagram([]);
             expect(diagram).toContain('```mermaid');
-            expect(diagram).toContain('graph TD');
+            expect(diagram).toContain('layout: elk');
+            expect(diagram).toContain('graph TB');
         });
 
         it('should handle single resource with no deps', () => {
