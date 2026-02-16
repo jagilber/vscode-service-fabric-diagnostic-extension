@@ -111,9 +111,10 @@ export class TemplateDeployService {
      * Azure portal's fragment parser.  Building with `.with({ fragment })` keeps
      * the percent-encoded raw URL intact inside the fragment.
      *
-     * If the portal cannot download the template from GitHub (CORS or CDN issue),
-     * the "Build in Editor" fallback copies the template JSON to the clipboard and
-     * opens the portal's manual template editor.
+     * When the template contains JSONC comments (// or /* … *​/), the portal's
+     * strict JSON parser will reject it.  In that case we strip comments, open
+     * the clean JSON in VS Code for review, and guide the user through the
+     * portal's "Build your own template in the editor" flow.
      */
     async deployFromAzurePortal(repo: TemplateRepo, folderEntry: GitHubEntry): Promise<void> {
         const service = TemplateService.getInstance();
@@ -131,109 +132,148 @@ export class TemplateDeployService {
             return;
         }
 
+        // Pre-fetch template content to check for JSONC comments before showing options
+        const rawContent = await vscode.window.withProgress(
+            { location: vscode.ProgressLocation.Notification, title: `Checking ${templateFile.name}...` },
+            () => service.getFileContent(repo, templateFile.path),
+        );
+
+        const templateHasComments = hasJsonComments(rawContent);
+
         const rawUrl = service.getRawUrl(repo, templateFile.path);
         const encodedRawUrl = encodeURIComponent(rawUrl);
         const portalUrl = `https://portal.azure.com/#create/Microsoft.Template/uri/${encodedRawUrl}`;
 
         SfUtility.outputLog(`TemplateDeployService: raw template URL: ${rawUrl}`, null, debugLevel.info);
         SfUtility.outputLog(`TemplateDeployService: portal deploy URL: ${portalUrl}`, null, debugLevel.info);
-
-        const action = await vscode.window.showInformationMessage(
-            `Deploy "${folderEntry.name}" to Azure via portal?`,
-            'Open in Browser', 'Build in Editor', 'Copy URL',
-        );
-
-        if (action === 'Open in Browser') {
-            // Check if the template has JSONC comments that would break the portal's
-            // strict JSON parser.  If so, redirect to "Build in Editor" automatically.
-            const templateContent = await vscode.window.withProgress(
-                { location: vscode.ProgressLocation.Notification, title: `Checking template content...` },
-                () => service.getFileContent(repo, templateFile.path),
+        if (templateHasComments) {
+            SfUtility.outputLog(
+                `TemplateDeployService: template contains JSONC comments — direct URL will not work`,
+                null,
+                debugLevel.warn,
             );
+        }
 
-            if (hasJsonComments(templateContent)) {
-                SfUtility.outputLog(
-                    `TemplateDeployService: template contains JSONC comments — redirecting to "Build in Editor"`,
-                    null,
-                    debugLevel.warn,
-                );
-                vscode.window.showWarningMessage(
-                    `Template "${folderEntry.name}/${templateFile.name}" contains // comments (invalid JSON). ` +
-                    `The Azure portal requires strict JSON, so using "Build in Editor" instead. ` +
-                    `Comments will be stripped automatically.`,
-                );
-                await this._openPortalEditorWithClipboard(service, repo, templateFile, folderEntry.name, templateContent);
-                return;
+        // Show different options depending on whether the template has comments
+        let action: string | undefined;
+        if (templateHasComments) {
+            action = await vscode.window.showWarningMessage(
+                `"${folderEntry.name}" contains // comments (invalid strict JSON). ` +
+                `The portal cannot parse it directly — opening clean template in editor for manual paste.`,
+                'Open Clean Template', 'Copy URL Anyway',
+            );
+        } else {
+            action = await vscode.window.showInformationMessage(
+                `Deploy "${folderEntry.name}" to Azure via portal?`,
+                'Open in Browser', 'Build in Editor', 'Copy URL',
+            );
+        }
+
+        switch (action) {
+            case 'Open in Browser': {
+                // Build URI preserving percent-encoding in the fragment (see method doc)
+                const portalUri = vscode.Uri.parse('https://portal.azure.com/').with({
+                    fragment: `create/Microsoft.Template/uri/${encodedRawUrl}`,
+                });
+                const opened = await vscode.env.openExternal(portalUri);
+                if (!opened) {
+                    await vscode.env.clipboard.writeText(portalUrl);
+                    vscode.window.showWarningMessage('Could not open browser. Portal URL copied to clipboard.');
+                }
+                break;
             }
-
-            // Build URI preserving percent-encoding in the fragment (see method doc)
-            const portalUri = vscode.Uri.parse('https://portal.azure.com/').with({
-                fragment: `create/Microsoft.Template/uri/${encodedRawUrl}`,
-            });
-            const opened = await vscode.env.openExternal(portalUri);
-            if (!opened) {
+            case 'Open Clean Template':
+            case 'Build in Editor': {
+                await this._openCleanTemplateAndPortal(rawContent, templateFile, folderEntry.name);
+                break;
+            }
+            case 'Copy URL':
+            case 'Copy URL Anyway': {
                 await vscode.env.clipboard.writeText(portalUrl);
-                vscode.window.showWarningMessage('Could not open browser. Portal URL copied to clipboard — paste it in your browser.');
+                if (templateHasComments) {
+                    vscode.window.showWarningMessage(
+                        'URL copied. Note: the template has // comments so the portal may fail to parse it.',
+                    );
+                } else {
+                    vscode.window.showInformationMessage('Portal URL copied to clipboard.');
+                }
+                break;
             }
-        } else if (action === 'Build in Editor') {
-            // Fallback: download template content, strip comments, copy to clipboard, open portal editor
-            await this._openPortalEditorWithClipboard(service, repo, templateFile, folderEntry.name);
-        } else if (action === 'Copy URL') {
-            await vscode.env.clipboard.writeText(portalUrl);
-            vscode.window.showInformationMessage('Portal URL copied to clipboard.');
         }
     }
 
-    // ── File identification ────────────────────────────────────────────
+    // ── Clean template editor flow ─────────────────────────────────────
 
     /**
-     * Fallback: download template JSON, strip any JSONC comments, copy to
-     * clipboard, and open the portal template editor. Used when the URI-based
-     * deployment fails (e.g., portal cannot fetch from raw.githubusercontent.com
-     * due to CDN/CORS issues or the template contains `//` comments).
-     *
-     * @param prefetchedContent  Optional — if the content was already downloaded
-     *                           (e.g. during the comment-detection check), pass
-     *                           it here to avoid a redundant network call.
+     * Strip JSONC comments, validate the result, open the clean JSON in a
+     * VS Code editor tab, copy it to clipboard, and open the portal's
+     * custom deployment blade.  The user can then:
+     *   1. Click "Build your own template in the editor"
+     *   2. Select all → Paste → Save
+     * The clean JSON is conveniently available in both clipboard and an
+     * open editor tab.
      */
-    private async _openPortalEditorWithClipboard(
-        service: TemplateService,
-        repo: TemplateRepo,
+    private async _openCleanTemplateAndPortal(
+        rawContent: string,
         templateFile: GitHubEntry,
         folderName: string,
-        prefetchedContent?: string,
     ): Promise<void> {
-        let content = prefetchedContent ?? await vscode.window.withProgress(
-            { location: vscode.ProgressLocation.Notification, title: `Downloading ${templateFile.name}...` },
-            () => service.getFileContent(repo, templateFile.path),
-        );
-
-        // Strip JSONC comments so the portal's strict JSON parser accepts it
-        if (hasJsonComments(content)) {
+        // 1. Strip comments
+        let cleanContent = rawContent;
+        if (hasJsonComments(rawContent)) {
             SfUtility.outputLog(
                 `TemplateDeployService: stripping JSONC comments from ${templateFile.name}`,
                 null,
                 debugLevel.info,
             );
-            content = stripJsonComments(content);
+            cleanContent = stripJsonComments(rawContent);
         }
 
-        await vscode.env.clipboard.writeText(content);
+        // 2. Validate the result is parseable JSON
+        try {
+            JSON.parse(cleanContent);
+        } catch (err) {
+            SfUtility.outputLog(
+                `TemplateDeployService: stripped JSON failed to parse: ${err}`,
+                null,
+                debugLevel.error,
+            );
+            vscode.window.showErrorMessage(
+                `Could not produce valid JSON after stripping comments from ${templateFile.name}. ` +
+                `The template may have additional syntax issues beyond comments.`,
+            );
+            return;
+        }
 
+        // 3. Pretty-print the JSON for the editor
+        const prettyJson = JSON.stringify(JSON.parse(cleanContent), null, 2);
+
+        // 4. Open clean template in an untitled VS Code editor tab
+        const doc = await vscode.workspace.openTextDocument({
+            content: prettyJson,
+            language: 'json',
+        });
+        await vscode.window.showTextDocument(doc, { preview: false });
+
+        // 5. Copy to clipboard
+        await vscode.env.clipboard.writeText(prettyJson);
+
+        // 6. Open the portal
         const editorUri = vscode.Uri.parse('https://portal.azure.com/#create/Microsoft.Template');
-        const opened = await vscode.env.openExternal(editorUri);
+        await vscode.env.openExternal(editorUri);
 
-        if (opened) {
-            vscode.window.showInformationMessage(
-                `Template "${folderName}/${templateFile.name}" copied to clipboard. ` +
-                `In the Azure portal, click "Build your own template in the editor", ` +
-                `select all (Ctrl+A), paste (Ctrl+V), then click Save.`,
-            );
-        } else {
-            vscode.window.showInformationMessage(
-                `Template copied to clipboard. Open https://portal.azure.com/#create/Microsoft.Template ` +
-                `in your browser, click "Build your own template in the editor", and paste.`,
-            );
+        // 7. Show step-by-step instructions
+        const instructionAction = await vscode.window.showInformationMessage(
+            `Clean template opened in editor and copied to clipboard.\n` +
+            `In the Azure portal:\n` +
+            `  1. Click "Build your own template in the editor"\n` +
+            `  2. Select all (Ctrl+A) → Paste (Ctrl+V)\n` +
+            `  3. Click "Save"`,
+            'Copy Again',
+        );
+        if (instructionAction === 'Copy Again') {
+            await vscode.env.clipboard.writeText(prettyJson);
+            vscode.window.showInformationMessage('Template copied to clipboard again.');
         }
     }
 
