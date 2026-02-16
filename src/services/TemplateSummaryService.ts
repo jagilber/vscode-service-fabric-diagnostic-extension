@@ -13,6 +13,7 @@ import * as vscode from 'vscode';
 import { TemplateService, TemplateRepo, GitHubEntry } from './TemplateService';
 import { SfUtility, debugLevel } from '../sfUtility';
 import { hasJsonComments, stripJsonComments } from '../utils/JsonCommentStripper';
+import { openMarkdownPreview } from './reports/ReportUtils';
 
 /** Parsed ARM template shape (subset we care about). */
 interface ArmTemplate {
@@ -121,12 +122,8 @@ export class TemplateSummaryService {
         // Generate markdown
         const markdown = this._generateMarkdown(template, folderEntry.name, repo, templateFile.name, paramFiles);
 
-        // Open in editor
-        const doc = await vscode.workspace.openTextDocument({
-            content: markdown,
-            language: 'markdown',
-        });
-        await vscode.window.showTextDocument(doc, { preview: false });
+        // Open in markdown preview
+        await openMarkdownPreview(markdown);
 
         SfUtility.outputLog(
             `TemplateSummaryService: generated summary for ${folderEntry.name}`,

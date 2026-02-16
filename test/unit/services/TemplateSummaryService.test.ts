@@ -15,7 +15,17 @@ jest.mock('vscode', () => ({
     workspace: {
         openTextDocument: jest.fn().mockResolvedValue({ uri: { fsPath: '/mock' } }),
     },
+    commands: {
+        executeCommand: jest.fn().mockResolvedValue(undefined),
+    },
+    Uri: {
+        file: jest.fn().mockImplementation((p: string) => ({ fsPath: p, scheme: 'file' })),
+    },
     ProgressLocation: { Notification: 15 },
+}));
+
+jest.mock('../../../src/services/reports/ReportUtils', () => ({
+    openMarkdownPreview: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock('../../../src/services/TemplateService', () => ({
