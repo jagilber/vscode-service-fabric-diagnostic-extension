@@ -104,17 +104,11 @@ export class TemplateDeployService {
      * Finds the main template JSON, builds the raw GitHub URL, and opens the
      * portal URL: https://portal.azure.com/#create/Microsoft.Template/uri/{encoded}
      *
-     * NOTE: We construct the portal URI via `Uri.parse(base).with({ fragment })`
-     * rather than `Uri.parse(fullUrl)` because `Uri.parse` percent-decodes the
-     * fragment, and `openExternal` serialises with `toString(true)` (skip encoding),
-     * which would send an un-encoded template URL to the browser — breaking the
-     * Azure portal's fragment parser.  Building with `.with({ fragment })` keeps
-     * the percent-encoded raw URL intact inside the fragment.
+     * The URL is always copied to the clipboard as a fallback so the user
+     * can paste it manually if vscode.env.openExternal mangles the fragment.
      *
-     * When the template contains JSONC comments (// or /* … *​/), the portal's
-     * strict JSON parser will reject it.  In that case we strip comments, open
-     * the clean JSON in VS Code for review, and guide the user through the
-     * portal's "Build your own template in the editor" flow.
+     * "Build in Editor" is offered as an alternative — it opens the template
+     * JSON in VS Code and guides the user through the portal's manual paste flow.
      */
     async deployFromAzurePortal(repo: TemplateRepo, folderEntry: GitHubEntry): Promise<void> {
         const service = TemplateService.getInstance();
@@ -132,71 +126,64 @@ export class TemplateDeployService {
             return;
         }
 
-        // Pre-fetch template content to check for JSONC comments before showing options
-        const rawContent = await vscode.window.withProgress(
-            { location: vscode.ProgressLocation.Notification, title: `Checking ${templateFile.name}...` },
-            () => service.getFileContent(repo, templateFile.path),
-        );
-
-        const templateHasComments = hasJsonComments(rawContent);
-
         const rawUrl = service.getRawUrl(repo, templateFile.path);
         const encodedRawUrl = encodeURIComponent(rawUrl);
         const portalUrl = `https://portal.azure.com/#create/Microsoft.Template/uri/${encodedRawUrl}`;
 
         SfUtility.outputLog(`TemplateDeployService: raw template URL: ${rawUrl}`, null, debugLevel.info);
         SfUtility.outputLog(`TemplateDeployService: portal deploy URL: ${portalUrl}`, null, debugLevel.info);
-        if (templateHasComments) {
-            SfUtility.outputLog(
-                `TemplateDeployService: template contains JSONC comments — direct URL will not work`,
-                null,
-                debugLevel.warn,
-            );
-        }
 
-        // Show different options depending on whether the template has comments
-        let action: string | undefined;
-        if (templateHasComments) {
-            action = await vscode.window.showWarningMessage(
-                `"${folderEntry.name}" contains // comments (invalid strict JSON). ` +
-                `The portal cannot parse it directly — opening clean template in editor for manual paste.`,
-                'Open Clean Template', 'Copy URL Anyway',
-            );
-        } else {
-            action = await vscode.window.showInformationMessage(
-                `Deploy "${folderEntry.name}" to Azure via portal?`,
-                'Open in Browser', 'Build in Editor', 'Copy URL',
-            );
-        }
+        const action = await vscode.window.showInformationMessage(
+            `Deploy "${folderEntry.name}" to Azure via portal?`,
+            'Open in Browser', 'Build in Editor', 'Copy URL',
+        );
 
         switch (action) {
             case 'Open in Browser': {
-                // Build URI preserving percent-encoding in the fragment (see method doc)
+                // Always copy URL to clipboard as fallback
+                await vscode.env.clipboard.writeText(portalUrl);
+
+                // Build URI preserving percent-encoding in the fragment.
+                // Uri.parse(fullUrl) would percent-decode the fragment, breaking
+                // the Azure portal's parser.  Using .with({ fragment }) keeps it intact.
                 const portalUri = vscode.Uri.parse('https://portal.azure.com/').with({
                     fragment: `create/Microsoft.Template/uri/${encodedRawUrl}`,
                 });
+
+                SfUtility.outputLog(
+                    `TemplateDeployService: opening URI: ${portalUri.toString()}`,
+                    null,
+                    debugLevel.info,
+                );
+                SfUtility.outputLog(
+                    `TemplateDeployService: URI toString(true): ${portalUri.toString(true)}`,
+                    null,
+                    debugLevel.info,
+                );
+
                 const opened = await vscode.env.openExternal(portalUri);
-                if (!opened) {
-                    await vscode.env.clipboard.writeText(portalUrl);
-                    vscode.window.showWarningMessage('Could not open browser. Portal URL copied to clipboard.');
+                if (opened) {
+                    vscode.window.showInformationMessage(
+                        'Portal URL also copied to clipboard. If the template does not load, paste the URL directly in your browser.',
+                    );
+                } else {
+                    vscode.window.showWarningMessage(
+                        'Could not open browser. Portal URL copied to clipboard — paste it in your browser.',
+                    );
                 }
                 break;
             }
-            case 'Open Clean Template':
             case 'Build in Editor': {
+                const rawContent = await vscode.window.withProgress(
+                    { location: vscode.ProgressLocation.Notification, title: `Downloading ${templateFile.name}...` },
+                    () => service.getFileContent(repo, templateFile.path),
+                );
                 await this._openCleanTemplateAndPortal(rawContent, templateFile, folderEntry.name);
                 break;
             }
-            case 'Copy URL':
-            case 'Copy URL Anyway': {
+            case 'Copy URL': {
                 await vscode.env.clipboard.writeText(portalUrl);
-                if (templateHasComments) {
-                    vscode.window.showWarningMessage(
-                        'URL copied. Note: the template has // comments so the portal may fail to parse it.',
-                    );
-                } else {
-                    vscode.window.showInformationMessage('Portal URL copied to clipboard.');
-                }
+                vscode.window.showInformationMessage('Portal URL copied to clipboard.');
                 break;
             }
         }
