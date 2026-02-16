@@ -10,6 +10,7 @@ import { SfProjectService } from './services/SfProjectService';
 import { SfDeployService } from './services/SfDeployService';
 import { SfManifestValidator } from './services/SfManifestValidator';
 import { SfApplicationsDataProvider } from './treeview/SfApplicationsDataProvider';
+import { SfTemplatesDataProvider } from './treeview/SfTemplatesDataProvider';
 
 // Global references for cleanup
 let sfMgrInstance: SfMgr | undefined;
@@ -18,6 +19,7 @@ let projectServiceInstance: SfProjectService | undefined;
 let deployServiceInstance: SfDeployService | undefined;
 let manifestValidatorInstance: SfManifestValidator | undefined;
 let applicationsProviderInstance: SfApplicationsDataProvider | undefined;
+let templatesProviderInstance: SfTemplatesDataProvider | undefined;
 
 
 export async function activate(context: vscode.ExtensionContext) {
@@ -127,14 +129,19 @@ export async function activate(context: vscode.ExtensionContext) {
             manifestValidatorInstance = manifestValidator;
             applicationsProviderInstance = applicationsProvider;
 
+            console.log('[SF Extension] 7.6/10 - Setting up ARM Templates view...');
+            const templatesProvider = new SfTemplatesDataProvider(context);
+            templatesProviderInstance = templatesProvider;
+
             context.subscriptions.push(projectService);
             context.subscriptions.push(deployService);
             context.subscriptions.push(manifestValidator);
             context.subscriptions.push(applicationsProvider);
+            context.subscriptions.push(templatesProvider);
 
             console.log('[SF Extension] 8/10 - Registering commands...');
             // Register ALL commands via centralized CommandRegistry
-            CommandRegistry.registerAll(context, sfMgr, sfPrompts, projectService, deployService, applicationsProvider, manifestValidator);
+            CommandRegistry.registerAll(context, sfMgr, sfPrompts, projectService, deployService, applicationsProvider, manifestValidator, templatesProvider);
 
             console.log('[SF Extension] 9/10 - All commands registered successfully');
 

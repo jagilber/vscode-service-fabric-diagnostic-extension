@@ -2,7 +2,7 @@
   "name": "vscode-service-fabric-diagnostic-extension",
   "displayName": "Service Fabric Diagnostic Extension",
   "description": "Manage and diagnose Azure Service Fabric clusters with visual tree view, health monitoring, and operational tools",
-  "version": "1.0.8",
+  "version": "1.1.0",
   "publisher": "jagilber",
   "license": "MIT",
   "keywords": [
@@ -65,7 +65,8 @@
     "onCommand:sfApplications.addExternalProject",
     "onCommand:sfApplications.removeExternalProject",
     "onCommand:sfApplications.validateManifest",
-    "onCommand:sfApplications.removeAllProjects"
+    "onCommand:sfApplications.removeAllProjects",
+    "onCommand:sfApplications.createProject"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -82,6 +83,11 @@
           "when": "serviceFabricActive"
         },
         {
+          "id": "serviceFabricTemplatesView",
+          "name": "Service Fabric ARM Templates",
+          "when": "serviceFabricActive"
+        },
+        {
           "id": "serviceFabricManagementPanel",
           "name": "Service Fabric Management",
           "type": "webview",
@@ -92,7 +98,11 @@
     "viewsWelcome": [
       {
         "view": "serviceFabricApplicationsView",
-        "contents": "No Service Fabric application projects (.sfproj) found in this workspace.\n[Add External Project](command:sfApplications.addExternalProject)\n[Learn more](https://learn.microsoft.com/en-us/azure/service-fabric/service-fabric-application-model)"
+        "contents": "No Service Fabric application projects (.sfproj) found in this workspace.\n[Create New Project](command:sfApplications.createProject)\n[Add External Project](command:sfApplications.addExternalProject)\n[Learn more](https://learn.microsoft.com/en-us/azure/service-fabric/service-fabric-application-model)"
+      },
+      {
+        "view": "serviceFabricTemplatesView",
+        "contents": "No ARM template repositories configured.\nConfigure repositories in settings.\n[Open Settings](command:workbench.action.openSettings?%5B%22sfClusterExplorer.templateRepositories%22%5D)"
       }
     ],
     "commands": [
@@ -296,6 +306,11 @@
         "icon": "$(clear-all)"
       },
       {
+        "command": "sfApplications.createProject",
+        "title": "New SF Project",
+        "icon": "$(file-directory-create)"
+      },
+      {
         "command": "sfClusterExplorer.viewManifestXml",
         "title": "View Manifest XML",
         "icon": "$(file-code)"
@@ -304,6 +319,36 @@
         "command": "sfClusterExplorer.viewManifestReport",
         "title": "View Manifest Report",
         "icon": "$(file-text)"
+      },
+      {
+        "command": "sfClusterExplorer.viewJson",
+        "title": "View JSON",
+        "icon": "$(json)"
+      },
+      {
+        "command": "sfClusterExplorer.openTemplateFile",
+        "title": "Open Template File",
+        "icon": "$(file-code)"
+      },
+      {
+        "command": "sfClusterExplorer.openTemplateInBrowser",
+        "title": "Open in GitHub",
+        "icon": "$(link-external)"
+      },
+      {
+        "command": "sfClusterExplorer.refreshTemplates",
+        "title": "Refresh Templates",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "sfClusterExplorer.deployCluster",
+        "title": "Create Cluster",
+        "icon": "$(cloud-upload)"
+      },
+      {
+        "command": "sfClusterExplorer.deployFromAzure",
+        "title": "Deploy from Azure",
+        "icon": "$(link-external)"
       }
     ],
     "menus": {
@@ -339,8 +384,18 @@
           "group": "navigation"
         },
         {
+          "command": "sfApplications.createProject",
+          "when": "view == serviceFabricApplicationsView",
+          "group": "navigation"
+        },
+        {
           "command": "sfApplications.removeAllProjects",
           "when": "view == serviceFabricApplicationsView",
+          "group": "navigation"
+        },
+        {
+          "command": "sfClusterExplorer.refreshTemplates",
+          "when": "view == serviceFabricTemplatesView",
           "group": "navigation"
         }
       ],
@@ -436,36 +491,6 @@
           "group": "snapshot@1"
         },
         {
-          "command": "sfClusterExplorer.generateEventsReport",
-          "when": "view == serviceFabricClusterView && viewItem == events",
-          "group": "reports@1"
-        },
-        {
-          "command": "sfClusterExplorer.generateEventsReport",
-          "when": "view == serviceFabricClusterView && viewItem == node-events",
-          "group": "reports@1"
-        },
-        {
-          "command": "sfClusterExplorer.generateEventsReport",
-          "when": "view == serviceFabricClusterView && viewItem == app-events",
-          "group": "reports@1"
-        },
-        {
-          "command": "sfClusterExplorer.generateEventsReport",
-          "when": "view == serviceFabricClusterView && viewItem == service-events",
-          "group": "reports@1"
-        },
-        {
-          "command": "sfClusterExplorer.generateEventsReport",
-          "when": "view == serviceFabricClusterView && viewItem == partition-events",
-          "group": "reports@1"
-        },
-        {
-          "command": "sfClusterExplorer.generateEventsReport",
-          "when": "view == serviceFabricClusterView && viewItem == replica-events",
-          "group": "reports@1"
-        },
-        {
           "command": "sfClusterExplorer.removeClusterFromTree",
           "when": "view == serviceFabricClusterView && viewItem =~ /^cluster/",
           "group": "remove@1"
@@ -496,36 +521,6 @@
           "group": "cluster@4"
         },
         {
-          "command": "sfClusterExplorer.generateHealthReport",
-          "when": "view == serviceFabricClusterView && viewItem == health",
-          "group": "reports@1"
-        },
-        {
-          "command": "sfClusterExplorer.generateHealthReport",
-          "when": "view == serviceFabricClusterView && viewItem == node-health",
-          "group": "reports@1"
-        },
-        {
-          "command": "sfClusterExplorer.generateHealthReport",
-          "when": "view == serviceFabricClusterView && viewItem == app-health",
-          "group": "reports@1"
-        },
-        {
-          "command": "sfClusterExplorer.generateHealthReport",
-          "when": "view == serviceFabricClusterView && viewItem == service-health",
-          "group": "reports@1"
-        },
-        {
-          "command": "sfClusterExplorer.generateHealthReport",
-          "when": "view == serviceFabricClusterView && viewItem == partition-health",
-          "group": "reports@1"
-        },
-        {
-          "command": "sfClusterExplorer.generateHealthReport",
-          "when": "view == serviceFabricClusterView && viewItem == replica-health",
-          "group": "reports@1"
-        },
-        {
           "command": "sfClusterExplorer.generateMetricsReport",
           "when": "view == serviceFabricClusterView && viewItem == metrics",
           "group": "reports@1"
@@ -541,14 +536,34 @@
           "group": "reports@1"
         },
         {
-          "command": "sfClusterExplorer.viewManifestXml",
-          "when": "view == serviceFabricClusterView && viewItem =~ /^(manifest|app-manifest|service-manifest)$/",
-          "group": "manifest@1"
-        },
-        {
           "command": "sfClusterExplorer.viewManifestReport",
           "when": "view == serviceFabricClusterView && viewItem =~ /^(manifest|app-manifest|service-manifest)$/",
           "group": "manifest@2"
+        },
+        {
+          "command": "sfClusterExplorer.viewJson",
+          "when": "view == serviceFabricClusterView && viewItem == essentials",
+          "group": "json@1"
+        },
+        {
+          "command": "sfClusterExplorer.viewJson",
+          "when": "view == serviceFabricClusterView && viewItem == details",
+          "group": "json@1"
+        },
+        {
+          "command": "sfClusterExplorer.viewJson",
+          "when": "view == serviceFabricClusterView && viewItem =~ /^(health|node-health|app-health|service-health|partition-health|replica-health)$/",
+          "group": "json@1"
+        },
+        {
+          "command": "sfClusterExplorer.viewJson",
+          "when": "view == serviceFabricClusterView && viewItem =~ /^(manifest|app-manifest|service-manifest)$/",
+          "group": "json@1"
+        },
+        {
+          "command": "sfClusterExplorer.viewJson",
+          "when": "view == serviceFabricClusterView && viewItem =~ /^(events|node-events|app-events|service-events|partition-events|replica-events)$/",
+          "group": "json@1"
         },
         {
           "command": "sfClusterExplorer.restartReplica",
@@ -574,6 +589,31 @@
           "command": "sfClusterExplorer.unprovisionApplicationType",
           "when": "view == serviceFabricClusterView && viewItem == applicationType",
           "group": "management@1"
+        },
+        {
+          "command": "sfClusterExplorer.openTemplateInBrowser",
+          "when": "view == serviceFabricTemplatesView && viewItem == template-repo",
+          "group": "navigation@1"
+        },
+        {
+          "command": "sfClusterExplorer.openTemplateInBrowser",
+          "when": "view == serviceFabricTemplatesView && viewItem == template-folder",
+          "group": "navigation@1"
+        },
+        {
+          "command": "sfClusterExplorer.deployCluster",
+          "when": "view == serviceFabricTemplatesView && viewItem == template-folder",
+          "group": "inline@1"
+        },
+        {
+          "command": "sfClusterExplorer.deployFromAzure",
+          "when": "view == serviceFabricTemplatesView && viewItem == template-folder",
+          "group": "inline@2"
+        },
+        {
+          "command": "sfClusterExplorer.openTemplateInBrowser",
+          "when": "view == serviceFabricTemplatesView && viewItem =~ /^template-file/",
+          "group": "navigation@1"
         }
       ]
     },

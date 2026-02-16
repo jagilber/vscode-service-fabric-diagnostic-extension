@@ -76,8 +76,6 @@ describe('Extension Command Registration', () => {
 
     test('context menu commands should have proper viewItem guards in package.json', () => {
         const contextCommands = [
-            { cmd: 'sfClusterExplorer.generateEventsReport', viewItem: 'events' },
-            { cmd: 'sfClusterExplorer.generateHealthReport', viewItem: 'health' },
             { cmd: 'sfClusterExplorer.manageNodeFromContext', viewItem: 'node' },
             { cmd: 'sfClusterExplorer.restartReplica', viewItem: 'replica' },
             { cmd: 'sfClusterExplorer.deleteReplica', viewItem: 'replica' },
@@ -132,11 +130,13 @@ describe('Bug Regression Tests', () => {
     });
 
     test('BUG: No menu item on health tree item to create report should be fixed', () => {
+        // Default click on health items now opens the markdown report.
+        // Verify the View JSON menu exists on health items instead.
         const declaredCommands = packageJson.contributes.commands.map((c: any) => c.command);
-        expect(declaredCommands).toContain('sfClusterExplorer.generateHealthReport');
+        expect(declaredCommands).toContain('sfClusterExplorer.viewJson');
 
         const menuItems = packageJson.contributes?.menus?.['view/item/context'] || [];
-        const healthMenu = menuItems.find((m: any) => m.command === 'sfClusterExplorer.generateHealthReport');
-        expect(healthMenu).toBeDefined();
+        const jsonMenu = menuItems.find((m: any) => m.command === 'sfClusterExplorer.viewJson' && m.when?.includes('health'));
+        expect(jsonMenu).toBeDefined();
     });
 });

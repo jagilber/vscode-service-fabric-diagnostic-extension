@@ -716,6 +716,128 @@ export function registerProjectCommands(
         },
         'remove all projects',
     );
+
+    // -----------------------------------------------------------------------
+    // sfApplications.createProject — scaffold a new SF application project
+    // -----------------------------------------------------------------------
+    registerCommandWithErrorHandling(
+        context,
+        'sfApplications.createProject',
+        async () => {
+            const { SfProjectScaffoldService } = await import('../services/SfProjectScaffoldService');
+
+            // 1. Pick template type
+            const templatePick = await vscode.window.showQuickPick(
+                [
+                    { label: 'Stateless Service', description: 'A stateless service with no persisted state', value: 'stateless' as const },
+                    { label: 'Stateful Service', description: 'A stateful reliable service with persisted state', value: 'stateful' as const },
+                ],
+                { title: 'New Service Fabric Project', placeHolder: 'Select service template type' },
+            );
+            if (!templatePick) { return; }
+
+            // 2. Application name
+            const appName = await vscode.window.showInputBox({
+                title: 'Application Name',
+                prompt: 'Enter the SF application name (PascalCase recommended)',
+                placeHolder: 'MyApplication',
+                ignoreFocusOut: true,
+                validateInput: SfProjectScaffoldService.validateName,
+            });
+            if (!appName) { return; }
+
+            // 3. Service name
+            const defaultServiceName = templatePick.value === 'stateful'
+                ? `${appName}Data`
+                : `${appName}Web`;
+            const serviceName = await vscode.window.showInputBox({
+                title: 'Service Name',
+                prompt: 'Enter the service name (PascalCase recommended)',
+                placeHolder: defaultServiceName,
+                value: defaultServiceName,
+                ignoreFocusOut: true,
+                validateInput: (val) => {
+                    const err = SfProjectScaffoldService.validateName(val);
+                    if (err) { return err; }
+                    if (val === appName) { return 'Service name must differ from application name'; }
+                    return undefined;
+                },
+            });
+            if (!serviceName) { return; }
+
+            // 4. Target directory — always ask so user picks the right location
+            let targetDir: string | undefined;
+            const folders = vscode.workspace.workspaceFolders;
+            if (folders && folders.length > 0) {
+                const items = folders.map(f => ({ label: f.name, description: f.uri.fsPath, uri: f.uri }));
+                items.push({ label: '$(folder-opened) Browse...', description: 'Choose a different folder', uri: undefined as any });
+                const pick = await vscode.window.showQuickPick(items, {
+                    title: 'Project Location',
+                    placeHolder: 'Select folder for the new SF project',
+                });
+                if (!pick) { return; }
+                if (pick.uri) {
+                    targetDir = pick.uri.fsPath;
+                } else {
+                    const browsed = await vscode.window.showOpenDialog({
+                        canSelectFolders: true, canSelectFiles: false, canSelectMany: false,
+                        openLabel: 'Select folder', title: 'Choose a folder for the new SF project',
+                    });
+                    if (!browsed || browsed.length === 0) { return; }
+                    targetDir = browsed[0].fsPath;
+                }
+            } else {
+                const picked = await vscode.window.showOpenDialog({
+                    canSelectFolders: true, canSelectFiles: false, canSelectMany: false,
+                    openLabel: 'Select folder', title: 'Choose a folder for the new SF project',
+                });
+                if (!picked || picked.length === 0) { return; }
+                targetDir = picked[0].fsPath;
+            }
+
+            // 5. Scaffold
+            const scaffold = SfProjectScaffoldService.getInstance();
+            const result = await vscode.window.withProgress(
+                { location: vscode.ProgressLocation.Notification, title: `Creating ${appName}...` },
+                () => scaffold.scaffoldProject({
+                    templateType: templatePick.value,
+                    appName,
+                    serviceName,
+                    targetDir: targetDir!,
+                }),
+            );
+
+            // 6. Open ApplicationManifest.xml (only when folder is in current workspace)
+            const projectUri = vscode.Uri.file(result.projectDir);
+            const isInsideWorkspace = vscode.workspace.workspaceFolders?.some(
+                wf => result.projectDir.startsWith(wf.uri.fsPath),
+            ) ?? false;
+
+            if (isInsideWorkspace) {
+                const doc = await vscode.workspace.openTextDocument(result.manifestPath);
+                await vscode.window.showTextDocument(doc, { preview: false });
+
+                // 7. Refresh tree (file watchers will also fire, but explicit refresh is immediate)
+                applicationsProvider.refresh();
+
+                vscode.window.showInformationMessage(
+                    `Created "${appName}" with ${templatePick.label} "${serviceName}" (${result.allFiles.length} files). Build with SF SDK or dotnet CLI.`,
+                );
+            } else {
+                // Project created outside workspace — offer to open it
+                const open = await vscode.window.showInformationMessage(
+                    `Created "${appName}" with ${templatePick.label} "${serviceName}" (${result.allFiles.length} files). Open in VS Code?`,
+                    'Open', 'Open in New Window', 'Dismiss',
+                );
+                if (open === 'Open') {
+                    await vscode.commands.executeCommand('vscode.openFolder', projectUri, false);
+                } else if (open === 'Open in New Window') {
+                    await vscode.commands.executeCommand('vscode.openFolder', projectUri, true);
+                }
+            }
+        },
+        'create new SF project',
+    );
 }
 
 /**

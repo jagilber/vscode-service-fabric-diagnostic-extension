@@ -19,10 +19,16 @@ import { SfMgr } from '../sfMgr';
 import { SfUtility, debugLevel } from '../sfUtility';
 import { registerCommandWithErrorHandling, safeRegisterCommand } from '../utils/CommandUtils';
 import { DetailViewService } from '../services/DetailViewService';
+import { TemplateService } from '../services/TemplateService';
+import { TemplateDeployService } from '../services/TemplateDeployService';
+import { TemplateFolderNode } from '../treeview/nodes/templates/TemplateNodes';
+
+import { SfTemplatesDataProvider } from '../treeview/SfTemplatesDataProvider';
 
 export function registerViewCommands(
     context: vscode.ExtensionContext,
     sfMgr: SfMgr,
+    templatesProvider?: SfTemplatesDataProvider,
 ): void {
 
     // -----------------------------------------------------------------------
@@ -133,5 +139,122 @@ export function registerViewCommands(
             await detailViewService.show(sfMgr, item);
         },
         'show item details',
+    );
+
+    // -----------------------------------------------------------------------
+    // sfClusterExplorer.viewJson  — always show item data as JSON
+    // Bypasses default format overrides (manifest→XML, health→markdown, etc.)
+    // -----------------------------------------------------------------------
+    registerCommandWithErrorHandling(
+        context,
+        'sfClusterExplorer.viewJson',
+        async (item: any) => {
+            await detailViewService.showAsJson(sfMgr, item);
+        },
+        'view JSON',
+    );
+
+    // -----------------------------------------------------------------------
+    // sfClusterExplorer.openTemplateFile  — fetch & open a template file
+    // Downloads file content from GitHub and opens in an untitled editor.
+    // -----------------------------------------------------------------------
+    registerCommandWithErrorHandling(
+        context,
+        'sfClusterExplorer.openTemplateFile',
+        async (args: { repoName: string; repoUrl: string; repoBranch?: string; filePath: string; fileName: string }) => {
+            if (!args?.repoUrl || !args?.filePath) {
+                SfUtility.showInformation('No template file specified');
+                return;
+            }
+
+            const service = TemplateService.getInstance();
+            const repo = { name: args.repoName, url: args.repoUrl, branch: args.repoBranch };
+
+            await vscode.window.withProgress(
+                { location: vscode.ProgressLocation.Notification, title: `Loading ${args.fileName}...` },
+                async () => {
+                    const content = await service.getFileContent(repo, args.filePath);
+                    const lang = TemplateService.getLanguageId(args.fileName);
+                    const doc = await vscode.workspace.openTextDocument({ content, language: lang });
+                    await vscode.window.showTextDocument(doc, { preview: true });
+                },
+            );
+        },
+        'open template file',
+    );
+
+    // -----------------------------------------------------------------------
+    // sfClusterExplorer.openTemplateInBrowser  — open GitHub URL
+    // -----------------------------------------------------------------------
+    registerCommandWithErrorHandling(
+        context,
+        'sfClusterExplorer.openTemplateInBrowser',
+        async (item: any) => {
+            if (!item) { return; }
+            // Build GitHub URL from the tree item data
+            const repoUrl = item.repoUrl || item.url;
+            const branch = item.repoBranch || item.branch || 'master';
+            const path = item.filePath || item.path || '';
+            if (repoUrl) {
+                const url = path
+                    ? `${repoUrl}/tree/${branch}/${path}`
+                    : `${repoUrl}/tree/${branch}`;
+                await vscode.env.openExternal(vscode.Uri.parse(url));
+            }
+        },
+        'open template in browser',
+    );
+
+    // -----------------------------------------------------------------------
+    // sfClusterExplorer.refreshTemplates  — clear cache & refresh templates tree
+    // -----------------------------------------------------------------------
+    registerCommandWithErrorHandling(
+        context,
+        'sfClusterExplorer.refreshTemplates',
+        async () => {
+            // The SfTemplatesDataProvider.refresh() clears cache internally
+            if (templatesProvider) {
+                templatesProvider.refresh();
+            } else {
+                TemplateService.getInstance().clearCache();
+            }
+            SfUtility.showInformation('Template cache cleared');
+        },
+        'refresh templates',
+    );
+
+    // -----------------------------------------------------------------------
+    // sfClusterExplorer.deployCluster  — deploy ARM template from a folder node
+    // Downloads template + parameter files, opens for review, deploys via PS
+    // -----------------------------------------------------------------------
+    registerCommandWithErrorHandling(
+        context,
+        'sfClusterExplorer.deployCluster',
+        async (item: TemplateFolderNode) => {
+            if (!item || !item.repo || !item.entry) {
+                SfUtility.showInformation('Select a template folder to deploy');
+                return;
+            }
+            const deployService = TemplateDeployService.getInstance();
+            await deployService.deployFromFolder(item.repo, item.entry);
+        },
+        'deploy cluster from template',
+    );
+
+    // -----------------------------------------------------------------------
+    // sfClusterExplorer.deployFromAzure  — open Azure portal deploy blade
+    // -----------------------------------------------------------------------
+    registerCommandWithErrorHandling(
+        context,
+        'sfClusterExplorer.deployFromAzure',
+        async (item: TemplateFolderNode) => {
+            if (!item || !item.repo || !item.entry) {
+                SfUtility.showInformation('Select a template folder to deploy');
+                return;
+            }
+            const deployService = TemplateDeployService.getInstance();
+            await deployService.deployFromAzurePortal(item.repo, item.entry);
+        },
+        'deploy from Azure portal',
     );
 }

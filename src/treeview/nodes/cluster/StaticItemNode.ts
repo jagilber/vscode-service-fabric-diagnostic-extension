@@ -63,6 +63,7 @@ export class StaticItemNode implements ITreeNode {
             arguments: [{
                 itemType: this.itemType,
                 id: this.id,
+                contextValue: this.contextValue,
                 clusterEndpoint: this.ctx.clusterEndpoint,
                 // Pass parent context so the handler can make correct API calls
                 nodeName: this.ctx.parentNodeName,

@@ -84,11 +84,17 @@ Main TypeScript source code following clean architecture principles.
 **Views (Presentation Layer):**
 - `views/serviceFabricClusterView.ts` - Tree view data provider
 - `views/ManagementWebviewProvider.ts` - Interactive management panel
+- `treeview/SfTemplatesDataProvider.ts` - ARM Templates treeview provider
+- `treeview/nodes/templates/TemplateNodes.ts` - Template tree node classes
+- `treeview/data/bundled-templates.json` - Offline fallback template manifest
 
 **Services (Business Logic):**
 - `services/SfClusterService.ts` - Cluster operations orchestration
 - `services/SfSdkInstaller.ts` - SDK installation and management
 - `services/SfHttpClient.ts` - HTTP request utilities
+- `services/TemplateService.ts` - GitHub template repository API client with caching
+- `services/TemplateDeployService.ts` - ARM template download, review, and deploy orchestration
+- `services/SfProjectScaffoldService.ts` - SF project scaffolding (stateless/stateful templates)
 
 **Infrastructure (Cross-cutting):**
 - `infrastructure/CacheManager.ts` - LRU cache with TTL

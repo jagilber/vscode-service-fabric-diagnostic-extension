@@ -22,6 +22,9 @@ export { ImageStoreNode } from './cluster/ImageStoreNode';
 export { MetricsNode } from './cluster/MetricsNode';
 export { CommandsNode } from './cluster/CommandsNode';
 
+// ── Template nodes ──────────────────────────────────────────────────────
+export { TemplateRepoNode, TemplateFolderNode, TemplateFileNode } from './templates/TemplateNodes';
+
 // ── Application nodes ──────────────────────────────────────────────────
 export { SfProjectNode, ServicesGroupNode, ParametersGroupNode, ProfilesGroupNode } from './applications/SfProjectNode';
 export { ServiceRefNode } from './applications/ServiceRefNode';

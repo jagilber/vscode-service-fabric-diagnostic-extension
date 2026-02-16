@@ -7,6 +7,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-02-16
+
+### Added
+- **ARM Templates Browser** — New dedicated "Service Fabric ARM Templates" treeview in the
+  Explorer sidebar (`serviceFabricTemplatesView`). Displays ARM deployment templates from
+  configured GitHub repositories with lazy-loading, in-memory caching (5 min TTL), and
+  bundled JSON fallback for offline use. Browsable repo → folder → file hierarchy with
+  click-to-open file content in the editor.
+  - `SfTemplatesDataProvider` — TreeDataProvider for the templates view
+  - `TemplateRepoNode`, `TemplateFolderNode`, `TemplateFileNode`, `TemplateErrorNode` — tree nodes
+  - `TemplateService` — GitHub Contents API client with cache and bundled fallback
+  - `TemplateDeployService` — Downloads and deploys templates
+  - Bundled template manifest for Azure-Samples and jagilber repos
+- **Create Cluster command** — "Create Cluster" inline button on template folder nodes downloads
+  ARM template + parameter files to a temp directory, opens them for review/editing, and when all
+  tabs are closed prompts the user to deploy via PowerShell (`New-AzResourceGroupDeployment`).
+  Includes resource group creation, template validation, What-If mode, and Az module auto-install.
+- **Deploy from Azure command** — "Deploy from Azure" inline button on template folder nodes
+  opens the Azure portal custom deployment blade (`#create/Microsoft.Template/uri/...`) with
+  the template's raw GitHub URL. Also offers "Copy URL" to clipboard as a fallback.
+- **New SF Project scaffolding** — "New SF Project" button (`$(file-directory-create)`) in the
+  Service Fabric Applications view title bar. Wizard prompts for template type (Stateless/Stateful),
+  application name, service name, and target directory. Generates a Visual Studio 2019/2022-compatible
+  project structure: `.sfproj`, `ApplicationManifest.xml`, `ApplicationParameters/`, `PublishProfiles/`,
+  `ServiceManifest.xml`, `.csproj`, `Program.cs`, and service class files.
+  - Always prompts for target directory with QuickPick (workspace folders + Browse)
+  - When created outside workspace, offers "Open" / "Open in New Window" / "Dismiss"
+- **View JSON context menu** — New "View JSON" context menu item on essentials, details, health,
+  manifest, and events tree nodes. Bypasses default format overrides (manifest→XML, health→markdown)
+  to show raw JSON data.
+- **Default format for health/events/manifest clicks** — Clicking health nodes opens the markdown
+  health report, events nodes open the events report, and manifest nodes open as XML — all without
+  requiring context menu navigation.
+- **Open in GitHub** — Context menu on template repo, folder, and file nodes to open the
+  corresponding GitHub URL in the browser.
+- **Refresh Templates** — View title button to clear the template cache and refresh all repos.
+- **Welcome view for templates** — Empty-state welcome view with link to configure template
+  repositories in settings.
+- **Welcome view for applications** — Updated empty-state to include "Create New Project" button.
+
+### Fixed
+- **Portal URL encoding for Deploy from Azure** — `vscode.Uri.parse(fullUrl)` percent-decodes
+  the fragment, breaking Azure portal's fragment parser. Fixed by using
+  `vscode.Uri.parse('https://portal.azure.com/').with({ fragment: ... })` which preserves
+  the percent-encoded template URL in the fragment.
+- **Consolidated context menu entries** — Replaced per-viewItem health/events report entries with
+  regex-based `when` clauses (e.g., `viewItem =~ /^(health|node-health|...)$/`), reducing
+  `package.json` menu bloat by ~40 lines.
+- **Details node context value** — Added `contextValue: 'details'` to the details `StaticItemNode`
+  so context menus can target it properly.
+
+### Changed
+- **Health/events report entries removed from context menu** — Default click now opens the report
+  directly; "View JSON" menu item provides access to raw data when needed.
+
 ## [1.0.8] - 2026-02-15
 
 ### Added

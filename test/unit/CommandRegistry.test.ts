@@ -105,7 +105,7 @@ describe('CommandRegistry', () => {
             expect(registerClusterCommands).toHaveBeenCalledWith(mockContext, mockSfMgr, mockSfPrompts);
             expect(registerNodeCommands).toHaveBeenCalledWith(mockContext, mockSfMgr);
             expect(registerResourceCommands).toHaveBeenCalledWith(mockContext, mockSfMgr);
-            expect(registerViewCommands).toHaveBeenCalledWith(mockContext, mockSfMgr);
+            expect(registerViewCommands).toHaveBeenCalledWith(mockContext, mockSfMgr, undefined);
             expect(registerReportCommands).toHaveBeenCalledWith(mockContext, mockSfMgr);
         });
 

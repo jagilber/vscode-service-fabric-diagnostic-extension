@@ -19,6 +19,8 @@ import { UpgradeTracker } from './UpgradeTracker';
 import { openMarkdownPreview } from './reports/ReportUtils';
 import { generateEssentialsReport } from './reports/EssentialsReportGenerator';
 import { generateMetricsReport } from './reports/MetricsReportGenerator';
+import { generateHealthReport } from './reports/HealthReportGenerator';
+import { generateEventsReport } from './reports/EventsReportGenerator';
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -447,6 +449,29 @@ export class DetailViewService {
             return;
         }
 
+        // ── Manifest → open as XML by default ──
+        if (normalisedItemType === 'manifest' || normalisedItemType.endsWith('-manifest')) {
+            SfUtility.outputLog('Opening manifest as XML (default view)', null, debugLevel.info);
+            await this.showManifestXml(sfRest, item, normalisedItemType);
+            return;
+        }
+
+        // ── Health → open markdown report by default ──
+        if (normalisedItemType === 'health' || normalisedItemType.endsWith('-health')) {
+            SfUtility.outputLog('Opening health report (default view)', null, debugLevel.info);
+            if (!item.contextValue) { item.contextValue = normalisedItemType; }
+            await generateHealthReport(this.extensionContext, sfMgr, item);
+            return;
+        }
+
+        // ── Events → open markdown report by default ──
+        if (normalisedItemType === 'events' || normalisedItemType.endsWith('-events')) {
+            SfUtility.outputLog('Opening events report (default view)', null, debugLevel.info);
+            if (!item.contextValue) { item.contextValue = normalisedItemType; }
+            await generateEventsReport(this.extensionContext, sfMgr, item);
+            return;
+        }
+
         // ── Dispatch to handler ──
         const handler = HANDLER_REGISTRY[normalisedItemType];
         if (!handler) {
@@ -472,6 +497,81 @@ export class DetailViewService {
 
         const doc = await vscode.workspace.openTextDocument(filePath);
         await vscode.window.showTextDocument(doc, { preview: true });
+    }
+
+    /**
+     * Always show item data as JSON, bypassing default format overrides
+     * (manifest→XML, health→markdown, events→markdown).
+     */
+    async showAsJson(sfMgr: SfMgr, item: any): Promise<void> {
+        const itemId = item?.itemId || item?.id;
+        const itemType = item?.itemType;
+
+        if (!itemType || !itemId) {
+            SfUtility.showWarning('No details available for this item');
+            return;
+        }
+
+        item.itemId = itemId;
+
+        const clusterEndpoint = item.clusterEndpoint || sfMgr.getCurrentSfConfig().getClusterEndpoint();
+        if (!clusterEndpoint) { SfUtility.showWarning('No cluster endpoint available'); return; }
+
+        const sfConfig = sfMgr.getSfConfig(clusterEndpoint);
+        if (!sfConfig) { SfUtility.showError(`Cluster configuration not found for: ${clusterEndpoint}`); return; }
+
+        const sfRest = sfConfig.getSfRest();
+        const normalisedItemType = normaliseItemType(itemType);
+
+        const handler = HANDLER_REGISTRY[normalisedItemType];
+        if (!handler) {
+            SfUtility.showWarning(`No JSON view available for: ${normalisedItemType}`);
+            return;
+        }
+
+        const ctx: DetailContext = { sfRest, sfConfig, item, clusterEndpoint, context: this.extensionContext };
+        const details = await handler(ctx);
+
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
+        const clusterName = clusterEndpoint.replace(/[^a-zA-Z0-9]/g, '_');
+        const fileName = `${normalisedItemType}-${timestamp}.json`;
+        const dirPath = path.join(this.extensionContext.globalStorageUri.fsPath, clusterName);
+
+        await vscode.workspace.fs.createDirectory(vscode.Uri.file(dirPath));
+        const filePath = path.join(dirPath, fileName);
+        await vscode.workspace.fs.writeFile(
+            vscode.Uri.file(filePath),
+            new TextEncoder().encode(JSON.stringify(details, null, 2)),
+        );
+
+        const doc = await vscode.workspace.openTextDocument(filePath);
+        await vscode.window.showTextDocument(doc, { preview: true });
+    }
+
+    /**
+     * Open manifest data as raw XML document.
+     */
+    private async showManifestXml(sfRest: any, item: any, normalisedType: string): Promise<void> {
+        let xml: string;
+
+        if (normalisedType === 'application-manifest') {
+            const appId = item.applicationId;
+            if (!appId) { throw new Error('Application manifest requires applicationId'); }
+            const resp = await sfRest.getApplicationManifest(appId);
+            xml = resp?.manifest || JSON.stringify(resp, null, 2);
+        } else if (normalisedType === 'service-manifest') {
+            const svcId = item.serviceId;
+            const appId = item.applicationId;
+            if (!appId || !svcId) { throw new Error('Service manifest requires applicationId and serviceId'); }
+            const resp = await sfRest.getServiceManifest(svcId, appId);
+            xml = resp?.manifest || JSON.stringify(resp, null, 2);
+        } else {
+            const resp = await sfRest.getClusterManifest();
+            xml = (resp as any).manifest || JSON.stringify(resp, null, 2);
+        }
+
+        const doc = await vscode.workspace.openTextDocument({ content: xml, language: 'xml' });
+        await vscode.window.showTextDocument(doc, { preview: false });
     }
 }
 

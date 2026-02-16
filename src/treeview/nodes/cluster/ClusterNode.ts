@@ -127,7 +127,7 @@ export class ClusterNode extends BaseTreeNode {
         return [
             // Static items (NEVER individually refreshed — see IconService / RefreshManager)
             new StaticItemNode(ctx, icon, 'essentials', 'essentials', 'info', 'charts.blue', 'essentials'),
-            new StaticItemNode(ctx, icon, 'details', 'details', 'list-tree', 'charts.green'),
+            new StaticItemNode(ctx, icon, 'details', 'details', 'list-tree', 'charts.green', 'details'),
             new MetricsNode(ctx, icon, cache),
             new StaticItemNode(ctx, icon, 'cluster map', 'cluster-map', 'map', 'charts.blue'),
             new ImageStoreNode(ctx, icon, cache),

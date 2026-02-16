@@ -31,6 +31,7 @@ import { SfProjectService } from '../services/SfProjectService';
 import { SfDeployService } from '../services/SfDeployService';
 import { SfManifestValidator } from '../services/SfManifestValidator';
 import { SfApplicationsDataProvider } from '../treeview/SfApplicationsDataProvider';
+import { SfTemplatesDataProvider } from '../treeview/SfTemplatesDataProvider';
 
 // ---------------------------------------------------------------------------
 // Command Manifest
@@ -79,6 +80,7 @@ export const COMMAND_MANIFEST: Record<string, CommandMeta> = {
     'sfClusterExplorer.showManagementView':       { friendlyName: 'management view',       category: 'view',     requiresCluster: false },
     'sfClusterExplorer.deployApplicationFromContext': { friendlyName: 'deploy app',        category: 'view',     requiresCluster: false },
     'sfClusterExplorer.showItemDetails':          { friendlyName: 'show details',          category: 'view',     requiresCluster: true },
+    'sfClusterExplorer.viewJson':                 { friendlyName: 'view JSON',             category: 'view',     requiresCluster: true },
     'sfClusterExplorer.retryNode':                { friendlyName: 'retry node',            category: 'internal', requiresCluster: false },
 
     // ---- Report commands ----
@@ -91,6 +93,13 @@ export const COMMAND_MANIFEST: Record<string, CommandMeta> = {
     'sfClusterExplorer.exportSnapshot':           { friendlyName: 'export snapshot',       category: 'report',   requiresCluster: true },
     'sfClusterExplorer.viewManifestXml':          { friendlyName: 'view manifest XML',     category: 'report',   requiresCluster: true },
     'sfClusterExplorer.viewManifestReport':       { friendlyName: 'view manifest report',  category: 'report',   requiresCluster: true },
+
+    // ---- Template commands ----
+    'sfClusterExplorer.openTemplateFile':          { friendlyName: 'open template file',   category: 'view',     requiresCluster: false },
+    'sfClusterExplorer.openTemplateInBrowser':     { friendlyName: 'open in browser',      category: 'view',     requiresCluster: false },
+    'sfClusterExplorer.refreshTemplates':          { friendlyName: 'refresh templates',    category: 'view',     requiresCluster: false },
+    'sfClusterExplorer.deployCluster':               { friendlyName: 'create cluster',       category: 'view',     requiresCluster: false },
+    'sfClusterExplorer.deployFromAzure':             { friendlyName: 'deploy from Azure',    category: 'view',     requiresCluster: false },
 
     // ---- Node commands ----
     'sfClusterExplorer.manageNodeFromContext':     { friendlyName: 'manage node',          category: 'node',     requiresCluster: true },
@@ -115,6 +124,7 @@ export const COMMAND_MANIFEST: Record<string, CommandMeta> = {
     'sfApplications.removeExternalProject':        { friendlyName: 'remove external project', category: 'project', requiresCluster: false },
     'sfApplications.validateManifest':             { friendlyName: 'validate manifest',    category: 'project',  requiresCluster: false },
     'sfApplications.removeAllProjects':            { friendlyName: 'remove all projects',  category: 'project',  requiresCluster: false },
+    'sfApplications.createProject':                  { friendlyName: 'new SF project',       category: 'project',  requiresCluster: false },
 };
 
 // ---------------------------------------------------------------------------
@@ -135,6 +145,7 @@ export class CommandRegistry {
         deployService?: SfDeployService,
         applicationsProvider?: SfApplicationsDataProvider,
         manifestValidator?: SfManifestValidator,
+        templatesProvider?: SfTemplatesDataProvider,
     ): void {
         SfUtility.outputLog('CommandRegistry: registering all commands...', null, debugLevel.info);
 
@@ -148,7 +159,7 @@ export class CommandRegistry {
         registerResourceCommands(context, sfMgr);
 
         // 4. View / UI commands (refresh, reveal, showItemDetails, retryNode, etc.)
-        registerViewCommands(context, sfMgr);
+        registerViewCommands(context, sfMgr, templatesProvider);
 
         // 5. Report commands (events, health, metrics, essentials, repair, commands ref, snapshot)
         registerReportCommands(context, sfMgr);
