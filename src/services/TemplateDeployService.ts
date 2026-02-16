@@ -12,6 +12,7 @@ import * as os from 'os';
 import * as fs from 'fs';
 import { TemplateService, TemplateRepo, GitHubEntry } from './TemplateService';
 import { SfUtility, debugLevel } from '../sfUtility';
+import { hasJsonComments, stripJsonComments } from '../utils/JsonCommentStripper';
 
 export class TemplateDeployService {
     private static _instance: TemplateDeployService | undefined;
@@ -143,6 +144,28 @@ export class TemplateDeployService {
         );
 
         if (action === 'Open in Browser') {
+            // Check if the template has JSONC comments that would break the portal's
+            // strict JSON parser.  If so, redirect to "Build in Editor" automatically.
+            const templateContent = await vscode.window.withProgress(
+                { location: vscode.ProgressLocation.Notification, title: `Checking template content...` },
+                () => service.getFileContent(repo, templateFile.path),
+            );
+
+            if (hasJsonComments(templateContent)) {
+                SfUtility.outputLog(
+                    `TemplateDeployService: template contains JSONC comments — redirecting to "Build in Editor"`,
+                    null,
+                    debugLevel.warn,
+                );
+                vscode.window.showWarningMessage(
+                    `Template "${folderEntry.name}/${templateFile.name}" contains // comments (invalid JSON). ` +
+                    `The Azure portal requires strict JSON, so using "Build in Editor" instead. ` +
+                    `Comments will be stripped automatically.`,
+                );
+                await this._openPortalEditorWithClipboard(service, repo, templateFile, folderEntry.name, templateContent);
+                return;
+            }
+
             // Build URI preserving percent-encoding in the fragment (see method doc)
             const portalUri = vscode.Uri.parse('https://portal.azure.com/').with({
                 fragment: `create/Microsoft.Template/uri/${encodedRawUrl}`,
@@ -153,7 +176,7 @@ export class TemplateDeployService {
                 vscode.window.showWarningMessage('Could not open browser. Portal URL copied to clipboard — paste it in your browser.');
             }
         } else if (action === 'Build in Editor') {
-            // Fallback: download template content, copy to clipboard, open portal editor
+            // Fallback: download template content, strip comments, copy to clipboard, open portal editor
             await this._openPortalEditorWithClipboard(service, repo, templateFile, folderEntry.name);
         } else if (action === 'Copy URL') {
             await vscode.env.clipboard.writeText(portalUrl);
@@ -164,20 +187,36 @@ export class TemplateDeployService {
     // ── File identification ────────────────────────────────────────────
 
     /**
-     * Fallback: download template JSON, copy to clipboard, and open the portal
-     * template editor. Used when the URI-based deployment fails (e.g., portal
-     * cannot fetch from raw.githubusercontent.com due to CDN/CORS issues).
+     * Fallback: download template JSON, strip any JSONC comments, copy to
+     * clipboard, and open the portal template editor. Used when the URI-based
+     * deployment fails (e.g., portal cannot fetch from raw.githubusercontent.com
+     * due to CDN/CORS issues or the template contains `//` comments).
+     *
+     * @param prefetchedContent  Optional — if the content was already downloaded
+     *                           (e.g. during the comment-detection check), pass
+     *                           it here to avoid a redundant network call.
      */
     private async _openPortalEditorWithClipboard(
         service: TemplateService,
         repo: TemplateRepo,
         templateFile: GitHubEntry,
         folderName: string,
+        prefetchedContent?: string,
     ): Promise<void> {
-        const content = await vscode.window.withProgress(
+        let content = prefetchedContent ?? await vscode.window.withProgress(
             { location: vscode.ProgressLocation.Notification, title: `Downloading ${templateFile.name}...` },
             () => service.getFileContent(repo, templateFile.path),
         );
+
+        // Strip JSONC comments so the portal's strict JSON parser accepts it
+        if (hasJsonComments(content)) {
+            SfUtility.outputLog(
+                `TemplateDeployService: stripping JSONC comments from ${templateFile.name}`,
+                null,
+                debugLevel.info,
+            );
+            content = stripJsonComments(content);
+        }
 
         await vscode.env.clipboard.writeText(content);
 
