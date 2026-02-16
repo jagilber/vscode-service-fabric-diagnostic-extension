@@ -109,6 +109,10 @@ export class TemplateDeployService {
      * which would send an un-encoded template URL to the browser — breaking the
      * Azure portal's fragment parser.  Building with `.with({ fragment })` keeps
      * the percent-encoded raw URL intact inside the fragment.
+     *
+     * If the portal cannot download the template from GitHub (CORS or CDN issue),
+     * the "Build in Editor" fallback copies the template JSON to the clipboard and
+     * opens the portal's manual template editor.
      */
     async deployFromAzurePortal(repo: TemplateRepo, folderEntry: GitHubEntry): Promise<void> {
         const service = TemplateService.getInstance();
@@ -135,7 +139,7 @@ export class TemplateDeployService {
 
         const action = await vscode.window.showInformationMessage(
             `Deploy "${folderEntry.name}" to Azure via portal?`,
-            'Open in Browser', 'Copy URL',
+            'Open in Browser', 'Build in Editor', 'Copy URL',
         );
 
         if (action === 'Open in Browser') {
@@ -148,9 +152,49 @@ export class TemplateDeployService {
                 await vscode.env.clipboard.writeText(portalUrl);
                 vscode.window.showWarningMessage('Could not open browser. Portal URL copied to clipboard — paste it in your browser.');
             }
+        } else if (action === 'Build in Editor') {
+            // Fallback: download template content, copy to clipboard, open portal editor
+            await this._openPortalEditorWithClipboard(service, repo, templateFile, folderEntry.name);
         } else if (action === 'Copy URL') {
             await vscode.env.clipboard.writeText(portalUrl);
             vscode.window.showInformationMessage('Portal URL copied to clipboard.');
+        }
+    }
+
+    // ── File identification ────────────────────────────────────────────
+
+    /**
+     * Fallback: download template JSON, copy to clipboard, and open the portal
+     * template editor. Used when the URI-based deployment fails (e.g., portal
+     * cannot fetch from raw.githubusercontent.com due to CDN/CORS issues).
+     */
+    private async _openPortalEditorWithClipboard(
+        service: TemplateService,
+        repo: TemplateRepo,
+        templateFile: GitHubEntry,
+        folderName: string,
+    ): Promise<void> {
+        const content = await vscode.window.withProgress(
+            { location: vscode.ProgressLocation.Notification, title: `Downloading ${templateFile.name}...` },
+            () => service.getFileContent(repo, templateFile.path),
+        );
+
+        await vscode.env.clipboard.writeText(content);
+
+        const editorUri = vscode.Uri.parse('https://portal.azure.com/#create/Microsoft.Template');
+        const opened = await vscode.env.openExternal(editorUri);
+
+        if (opened) {
+            vscode.window.showInformationMessage(
+                `Template "${folderName}/${templateFile.name}" copied to clipboard. ` +
+                `In the Azure portal, click "Build your own template in the editor", ` +
+                `select all (Ctrl+A), paste (Ctrl+V), then click Save.`,
+            );
+        } else {
+            vscode.window.showInformationMessage(
+                `Template copied to clipboard. Open https://portal.azure.com/#create/Microsoft.Template ` +
+                `in your browser, click "Build your own template in the editor", and paste.`,
+            );
         }
     }
 
