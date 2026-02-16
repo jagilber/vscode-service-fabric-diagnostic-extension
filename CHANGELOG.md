@@ -48,10 +48,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Welcome view for applications** — Updated empty-state to include "Create New Project" button.
 
 ### Fixed
-- **Portal URL encoding for Deploy from Azure** — `vscode.Uri.parse(fullUrl)` percent-decodes
-  the fragment, breaking Azure portal's fragment parser. Fixed by using
-  `vscode.Uri.parse('https://portal.azure.com/').with({ fragment: ... })` which preserves
-  the percent-encoded template URL in the fragment.
+- **Portal URL fragment decoding for Deploy from Azure** — `vscode.env.openExternal()` runs
+  URLs through VS Code's `Uri` model, which decodes percent-encoded characters in the fragment
+  (`%3A` → `:`, `%2F` → `/`). The Azure portal requires the template URL to stay percent-encoded
+  inside the `#create/Microsoft.Template/uri/...` fragment. Fixed by launching the browser
+  directly via `child_process.exec` (OS-native `start`/`open`/`xdg-open`) which preserves the
+  exact URL string.
+- **JSONC comment stripping for Build in Editor** — ARM templates containing `//` or `/* */`
+  comments are valid JSONC but may cause issues with strict JSON parsers. The "Build in Editor"
+  fallback now strips comments, validates with `JSON.parse`, and pretty-prints the clean JSON
+  before copying to clipboard. The clean template is also opened in a VS Code editor tab for
+  easy review.
 - **Consolidated context menu entries** — Replaced per-viewItem health/events report entries with
   regex-based `when` clauses (e.g., `viewItem =~ /^(health|node-health|...)$/`), reducing
   `package.json` menu bloat by ~40 lines.

@@ -106,6 +106,7 @@ Main TypeScript source code following clean architecture principles.
 - `types.ts` - Shared TypeScript interfaces
 
 **Utilities:**
+- `utils/JsonCommentStripper.ts` - Strips `//` and `/* */` comments from JSONC for strict JSON parsers
 - `utils/` - Helper functions and shared utilities
 
 **Commands:**
