@@ -10,6 +10,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
+import * as cp from 'child_process';
 import { TemplateService, TemplateRepo, GitHubEntry } from './TemplateService';
 import { SfUtility, debugLevel } from '../sfUtility';
 import { hasJsonComments, stripJsonComments } from '../utils/JsonCommentStripper';
@@ -143,34 +144,21 @@ export class TemplateDeployService {
                 // Always copy URL to clipboard as fallback
                 await vscode.env.clipboard.writeText(portalUrl);
 
-                // Build URI preserving percent-encoding in the fragment.
-                // Uri.parse(fullUrl) would percent-decode the fragment, breaking
-                // the Azure portal's parser.  Using .with({ fragment }) keeps it intact.
-                const portalUri = vscode.Uri.parse('https://portal.azure.com/').with({
-                    fragment: `create/Microsoft.Template/uri/${encodedRawUrl}`,
-                });
-
+                // IMPORTANT: We cannot use vscode.env.openExternal() here because
+                // VS Code's Uri model decodes percent-encoded characters in the
+                // fragment (%3A → :, %2F → /) and the portal fragment requires
+                // the template URL to remain percent-encoded inside the fragment.
+                // Instead, launch the browser directly via the OS shell command.
                 SfUtility.outputLog(
-                    `TemplateDeployService: opening URI: ${portalUri.toString()}`,
-                    null,
-                    debugLevel.info,
-                );
-                SfUtility.outputLog(
-                    `TemplateDeployService: URI toString(true): ${portalUri.toString(true)}`,
+                    `TemplateDeployService: opening portal URL via shell: ${portalUrl}`,
                     null,
                     debugLevel.info,
                 );
 
-                const opened = await vscode.env.openExternal(portalUri);
-                if (opened) {
-                    vscode.window.showInformationMessage(
-                        'Portal URL also copied to clipboard. If the template does not load, paste the URL directly in your browser.',
-                    );
-                } else {
-                    vscode.window.showWarningMessage(
-                        'Could not open browser. Portal URL copied to clipboard — paste it in your browser.',
-                    );
-                }
+                await this._openUrlInBrowser(portalUrl);
+                vscode.window.showInformationMessage(
+                    'Portal URL also copied to clipboard. If the template does not load, paste the URL directly in your browser.',
+                );
                 break;
             }
             case 'Build in Editor': {
@@ -262,6 +250,39 @@ export class TemplateDeployService {
             await vscode.env.clipboard.writeText(prettyJson);
             vscode.window.showInformationMessage('Template copied to clipboard again.');
         }
+    }
+
+    // ── Browser launch (bypassing VS Code Uri model) ──────────────────
+
+    /**
+     * Open a URL in the default browser using the OS shell command.
+     * This bypasses vscode.env.openExternal() which decodes percent-encoded
+     * characters in the URI fragment, breaking Azure portal template URLs.
+     */
+    private _openUrlInBrowser(url: string): Promise<void> {
+        return new Promise((resolve, reject) => {
+            let cmd: string;
+            if (process.platform === 'win32') {
+                cmd = `start "" "${url}"`;
+            } else if (process.platform === 'darwin') {
+                cmd = `open "${url}"`;
+            } else {
+                cmd = `xdg-open "${url}"`;
+            }
+
+            cp.exec(cmd, (err) => {
+                if (err) {
+                    SfUtility.outputLog(
+                        `TemplateDeployService: failed to open browser: ${err.message}`,
+                        null,
+                        debugLevel.error,
+                    );
+                    reject(err);
+                } else {
+                    resolve();
+                }
+            });
+        });
     }
 
     // ── File identification ────────────────────────────────────────────
